@@ -1,3 +1,7 @@
+//
+// Based on https://craftinginterpreters.com/ and the associated book with many changes
+//
+
 // ********************** kumu **********************
 // basic (hawaiian): small, fast, portable, familiar
 // See https://github.com/velentir/kumu/tree/main
