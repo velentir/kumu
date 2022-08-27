@@ -432,7 +432,7 @@ typedef enum {
   // Keywords.
   TOK_AND, TOK_CLASS, TOK_ELSE, TOK_FALSE, TOK_FOR, TOK_FUN,
   TOK_IF, TOK_NIL, TOK_OR, TOK_RETURN, TOK_SUPER,
-  TOK_THIS, TOK_TRUE, TOK_VAR, TOK_WHILE, TOK_ERR, TOK_EOF,
+  TOK_THIS, TOK_TRUE, TOK_LET, TOK_WHILE, TOK_ERR, TOK_EOF,
   TOK_BREAK, TOK_CONTINUE,
 } kutok_t;
 
@@ -481,7 +481,7 @@ typedef struct kucomp {
 void ku_compinit(kuvm *vm, kucomp *compiler, kufunc_t type);
 void ku_beginscope(kuvm *vm);
 void ku_endscope(kuvm *vm);
-void ku_declare_var(kuvm *vm);
+void ku_declare_let(kuvm *vm);
 void ku_addlocal(kuvm *vm, kutok name);
 bool ku_identeq(kuvm *vm, kutok *a, kutok *b);
 int ku_resolvelocal(kuvm *vm, kucomp *compiler, kutok *name);
