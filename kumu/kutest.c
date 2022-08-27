@@ -1183,7 +1183,7 @@ void ku_test() {
   kut_free(vm);
 
   vm = kut_new(false);
-  res = ku_exec(vm, "let x =3; break;");
+  res = ku_exec(vm, "let x =3; break;"); 
   EXPECT_INT(vm, res, KVM_ERR_SYNTAX, "global break");
   kut_free(vm);
 
