@@ -1164,12 +1164,6 @@ void ku_test() {
   kut_free(vm);
 
   vm = kut_new(false);
-  res = ku_exec(vm, "let f = { a,b => a*b }; let x=f(3,4);");
-  EXPECT_INT(vm, res, KVM_OK, "lambda args res");
-  EXPECT_VAL(vm, ku_get_global(vm, "x"), NUM_VAL(12), "lambda args ret");
-  kut_free(vm);
-  
-  vm = kut_new(false);
   res = ku_exec(vm, "let f = (a,b) => a*b; let x=f(3,4);");
   EXPECT_INT(vm, res, KVM_OK, "lambda (args) res");
   EXPECT_VAL(vm, ku_get_global(vm, "x"), NUM_VAL(12), "lambda (args) ret");
@@ -1177,13 +1171,13 @@ void ku_test() {
 
 
   vm = kut_new(false);
-  res = ku_exec(vm, "let max = { a,b => { if (a>b) return a; else return b; }}; let x=max(3,14);");
+  res = ku_exec(vm, "let max = (a,b) => { if (a>b) return a; else return b; }; let x=max(3,14);");
   EXPECT_INT(vm, res, KVM_OK, "lambda args body res");
   EXPECT_VAL(vm, ku_get_global(vm, "x"), NUM_VAL(14), "lambda args body ret");
   kut_free(vm);
 
   vm = kut_new(false);
-  res = ku_exec(vm, "let abs = { a=> { if (a<0) return -a; else return a; }}; let x=abs(-12);");
+  res = ku_exec(vm, "let abs = a => { if (a<0) return -a; else return a; }; let x=abs(-12);");
   EXPECT_INT(vm, res, KVM_OK, "lambda body res");
   EXPECT_VAL(vm, ku_get_global(vm, "x"), NUM_VAL(12), "lambda body ret");
   kut_free(vm);
@@ -1618,18 +1612,18 @@ void ku_test() {
   kut_free(vm);
 
   vm = kut_new(true);
-  res = ku_exec(vm, "let a=[1,3,4]; let x=a.map({ e, b => e*2 });");
+  res = ku_exec(vm, "let a=[1,3,4]; let x=a.map((e, b) => e*2 );");
   EXPECT_INT(vm, res, KVM_ERR_RUNTIME, "array.map args");
   kut_free(vm);
 
   vm = kut_new(true);
-  res = ku_exec(vm, "let sum=[1,3,4].reduce(0, {v,e => v+e});");
+  res = ku_exec(vm, "let sum=[1,3,4].reduce(0, (v,e) => v+e);");
   EXPECT_INT(vm, res, KVM_OK, "array.reduce res");
   EXPECT_VAL(vm, ku_get_global(vm, "sum"), NUM_VAL(8), "array.reduce value");
   kut_free(vm);
 
   vm = kut_new(true);
-  res = ku_exec(vm, "let sum=[1,3,4].reduce(0, {v,e => bad()});");
+  res = ku_exec(vm, "let sum=[1,3,4].reduce(0, (v,e) => bad());");
   EXPECT_INT(vm, res, KVM_ERR_RUNTIME, "array.reduce bad fn");
   kut_free(vm);
 
@@ -1644,7 +1638,7 @@ void ku_test() {
   kut_free(vm);
 
   vm = kut_new(true);
-  res = ku_exec(vm, "let sum=[1,3,4].reduce(0, {v=> v*2});");
+  res = ku_exec(vm, "let sum=[1,3,4].reduce(0, v => v*2);");
   EXPECT_INT(vm, res, KVM_ERR_RUNTIME, "array.reduce 1 arg");
   kut_free(vm);
 
@@ -1713,7 +1707,7 @@ void ku_test() {
   kut_free(vm);
 
   vm = kut_new(true);
-  res = ku_exec(vm, "let t=table(); t.x=1; t.y=2; t.z=3; let K=\"\"; let V=0; t.iter({ k,v => { K=K+k; V=V+v; }} );");
+  res = ku_exec(vm, "let t=table(); t.x=1; t.y=2; t.z=3; let K=\"\"; let V=0; t.iter( (k,v) => { K=K+k; V=V+v; } );");
   EXPECT_INT(vm, res, KVM_OK, "table iter res");
   v = ku_get_global(vm, "K");
   EXPECT_TRUE(vm, IS_STR(v), "table iter K type");
@@ -1933,12 +1927,12 @@ void ku_test() {
   kut_free(vm);
 
   vm = kut_new(true);
-  res = ku_exec(vm, "let a=[1,3,4]; let x=a.filter({ e, b => e*2 });");
+  res = ku_exec(vm, "let a=[1,3,4]; let x=a.filter((e, b) => e*2 );");
   EXPECT_INT(vm, res, KVM_ERR_RUNTIME, "array.filter args");
   kut_free(vm);
 
   vm = kut_new(true);
-  res = ku_exec(vm, "let x=[7,3,4]; x.sort({ a,b => a-b });");
+  res = ku_exec(vm, "let x=[7,3,4]; x.sort((a,b) => a-b );");
   EXPECT_INT(vm, res, KVM_OK, "array.sort res");
   v = ku_get_global(vm, "x");
   EXPECT_TRUE(vm, IS_ARRAY(v), "array.sort type");
@@ -1960,7 +1954,7 @@ void ku_test() {
   kut_free(vm);
 
   vm = kut_new(true);
-  res = ku_exec(vm, "let x=[7,3,4]; x.sort({ a,b => false });");
+  res = ku_exec(vm, "let x=[7,3,4]; x.sort((a,b) => false);");
   EXPECT_INT(vm, res, KVM_ERR_RUNTIME, "array.sort res");
   kut_free(vm);
 
@@ -1974,18 +1968,18 @@ void ku_test() {
   kut_free(vm);
 
   vm = kut_new(true);
-  res = ku_exec(vm, "let comp = { a, b => ( (a < b) and -1 or ( (a > b) and 1 or 0)) };");
+  res = ku_exec(vm, "let comp = (a, b) => ( (a < b) and -1 or ( (a > b) and 1 or 0)) ;");
   EXPECT_INT(vm, res, KVM_OK, "tertiary comp res");
   res = ku_exec(vm, "let x = comp(9, 7);");
   EXPECT_VAL(vm, ku_get_global(vm, "x"), NUM_VAL(1), "tertiary comp ret");
   kut_free(vm);
   
   vm = kut_new(true);
-  res = ku_exec(vm, "let comp = { a, b => ( (a < b) and -1 or ( (a > b) and 1 or 0)) };");
+  res = ku_exec(vm, "let comp = (a, b) => ( (a < b) and -1 or ( (a > b) and 1 or 0)) ;");
   EXPECT_INT(vm, res, KVM_OK, "db comp res");
   res = ku_exec(vm, "let db = [ { \"name\" = \"mohsen\", \"age\"=55 }, { \"name\" = \"josh\", \"age\"=40 }];");
   EXPECT_INT(vm, res, KVM_OK, "db init res");
-  res = ku_exec(vm, "db.sort({ a,b => comp(a.name, b.name)});");
+  res = ku_exec(vm, "db.sort((a,b) => comp(a.name, b.name));");
   EXPECT_INT(vm, res, KVM_OK, "db sort res");
   res = ku_exec(vm, "let c = db.count;");
   EXPECT_VAL(vm, ku_get_global(vm, "c"), NUM_VAL(2), "db sort count");

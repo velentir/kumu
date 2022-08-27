@@ -1160,15 +1160,7 @@ static void ku_lblock(kuvm *vm, bool lhs) {
     ku_pconsume(vm, TOK_RBRACE, "'}' expected");
     // leave table on the stack
     return;
-  }
-  
-  kucomp compiler;
-  ku_compinit(vm, &compiler, FUNC_STD);
-  ku_beginscope(vm);
-  ku_params(vm);
-  ku_pconsume(vm, TOK_ARROW, "'=>' expected");
-  ku_lbody(vm, &compiler);
-  ku_pconsume(vm, TOK_RBRACE, "'}' expected");
+  }  
 }
 
 static void ku_function(kuvm *vm, kufunc_t type) {
