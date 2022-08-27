@@ -911,6 +911,46 @@ static void ku_grouping(kuvm *vm, bool lhs) {
   ku_pconsume(vm, TOK_RPAR, "')' expected");
 }
 
+static bool ku_peek_lambda(kuvm *vm) {
+  bool ret = false;
+  const char *start = vm->scanner.start;
+  const char *curr = vm->scanner.curr;
+  
+  if (ku_isalpha(*vm->scanner.start)) {
+    while (ku_isalpha(ku_lexpeek(vm)) || ku_isdigit(ku_lexpeek(vm))) {
+      ku_advance(vm);
+    }
+    kutok_t type = ku_keyword(vm);
+    if (type == TOK_IDENT) {
+      ku_lexspace(vm);
+      if (ku_lexpeek(vm) == ',') {
+        ret = true;
+      }
+    }
+  }
+  vm->scanner.start = start;
+  vm->scanner.curr = curr;
+  return ret;
+}
+
+static void ku_params(kuvm *vm);
+static void ku_lbody(kuvm *vm, kucomp *compiler);
+
+static void ku_lambda_or_group(kuvm *vm, bool lhs) {
+  if (ku_peek_lambda(vm)) {
+    kucomp compiler;
+    ku_compinit(vm, &compiler, FUNC_STD);
+    ku_beginscope(vm);
+    ku_params(vm);
+    ku_pconsume(vm, TOK_RPAR, "')' expected");
+    ku_pconsume(vm, TOK_ARROW, "'=>' expected");
+    ku_lbody(vm, &compiler);
+    return;
+  }
+
+  return ku_grouping(vm, lhs);
+}
+
 static void ku_array(kuvm *vm, bool lhs) {
   int count = ku_arglist(vm, TOK_RBRACKET);
   ku_emitbyte(vm, OP_ARRAY);
@@ -1524,7 +1564,7 @@ void ku_or(kuvm *vm, bool lhs) {
   ku_patchjump(vm, end_jump);
 }
 kuprule ku_rules[] = {
-  [TOK_LPAR] =        { ku_grouping, ku_call,  P_CALL },
+  [TOK_LPAR] =        { ku_lambda_or_group, ku_call,  P_CALL },
   [TOK_RPAR] =        { NULL,        NULL,     P_NONE },
   [TOK_LBRACE] =      { ku_lblock,   NULL,     P_NONE },
   [TOK_RBRACE] =      { NULL,        NULL,     P_NONE },

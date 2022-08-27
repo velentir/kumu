@@ -1168,6 +1168,13 @@ void ku_test() {
   EXPECT_INT(vm, res, KVM_OK, "lambda args res");
   EXPECT_VAL(vm, ku_get_global(vm, "x"), NUM_VAL(12), "lambda args ret");
   kut_free(vm);
+  
+  vm = kut_new(false);
+  res = ku_exec(vm, "let f = (a,b) => a*b; let x=f(3,4);");
+  EXPECT_INT(vm, res, KVM_OK, "lambda (args) res");
+  EXPECT_VAL(vm, ku_get_global(vm, "x"), NUM_VAL(12), "lambda (args) ret");
+  kut_free(vm);
+
 
   vm = kut_new(false);
   res = ku_exec(vm, "let max = { a,b => { if (a>b) return a; else return b; }}; let x=max(3,14);");
