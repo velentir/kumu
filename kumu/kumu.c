@@ -79,8 +79,8 @@ void ku_objfree(kuvm* vm, kuobj* obj) {
       kufunc *fn = (kufunc*)obj;
       ku_chunkfree(vm, &fn->chunk);
       FREE(vm, kufunc, obj);
-      break;
     }
+      break;
 
     case OBJ_ARRAY: {
       kuaobj *ao = (kuaobj*)obj;
@@ -89,64 +89,65 @@ void ku_objfree(kuvm* vm, kuobj* obj) {
       ao->elements.count = 0;
       ao->elements.count = 0;
       FREE(vm, kuaobj, obj);
-      break;
     }
+      break;
+
     case OBJ_CCLASS: {
       kucclass *cc = (kucclass*)obj;
       if (cc->sfree) {
         cc->sfree(vm, obj);
       }
       FREE(vm, kucclass, obj);
-      break;
     }
+      break;
 
     case OBJ_CINST: {
       kunobj *i = (kunobj*)obj;
       if (i->klass->ifree) {
         i->klass->ifree(vm, obj);
       }
-      break;
     }
+      break;
+
     case OBJ_CFUNC:
       FREE(vm, kucfunc, obj);
       break;
-     
+
     case OBJ_CLOSURE: {
       kuclosure *cl = (kuclosure*)obj;
       ARRAY_FREE(vm, kuxobj*, cl->upvals, cl->upcount);
       FREE(vm, kuclosure, obj);
-      break;
     }
-      
+      break;
+
     case OBJ_CLASS: {
       kuclass *c = (kuclass*)obj;
       ku_tabfree(vm, &c->methods);
       FREE(vm, kuclass, obj);
-      break;
     }
-      
+      break;
+
     case OBJ_INSTANCE: {
       kuiobj *i = (kuiobj*)obj;
       ku_tabfree(vm, &i->fields);
       FREE(vm, kuiobj, obj);
-      break;
     }
-      
-    case OBJ_BOUND_METHOD: {
+      break;
+
+    case OBJ_BOUND_METHOD:
       FREE(vm, kubound, obj);
       break;
+
+    case OBJ_STR: {
+      kustr* str = (kustr*)obj;
+      ARRAY_FREE(vm, char, str->chars, str->len + 1);
+      FREE(vm, kustr, obj);
     }
-      
-  case OBJ_STR: {
-    kustr* str = (kustr*)obj;
-    ARRAY_FREE(vm, char, str->chars, str->len + 1);
-    FREE(vm, kustr, obj);
-    break;
-    
-  case OBJ_UPVAL:
-    FREE(vm, kuxobj, obj);
-    break;
-  }
+      break;
+
+    case OBJ_UPVAL:
+      FREE(vm, kuxobj, obj);
+      break;
   }
 }
 
@@ -444,12 +445,13 @@ static void ku_lexspace(kuvm *vm) {
         break;
       case '/':
         if (ku_lexpeeknext(vm) == '/') {
-          while (ku_lexpeek(vm) != '\n' && !ku_lexend(vm))
+          while (ku_lexpeek(vm) != '\n' && !ku_lexend(vm)) {
             ku_advance(vm);
+          }
+          break;
         } else {
           return;
         }
-        break;
       default:
         return;
     }
@@ -529,12 +531,12 @@ static kutok_t ku_lexkey(kuvm *vm, int start, int len,
 }
 
 static kutok_t ku_keyword(kuvm *vm) {
-  switch(vm->scanner.start[0]) {
+  switch (vm->scanner.start[0]) {
     case 'a': return ku_lexkey(vm, 1,2,"nd", TOK_AND);
     case 'b': return ku_lexkey(vm, 1,4,"reak", TOK_BREAK);
     case 'c': {
       if (vm->scanner.curr - vm->scanner.start > 1) {
-        switch(vm->scanner.start[1]) {
+        switch (vm->scanner.start[1]) {
           case 'l': return ku_lexkey(vm, 2, 3, "ass", TOK_CLASS);
           case 'o': return ku_lexkey(vm, 2, 6, "ntinue", TOK_CONTINUE);
         }
@@ -558,7 +560,7 @@ static kutok_t ku_keyword(kuvm *vm) {
     case 's': return ku_lexkey(vm, 1,4,"uper", TOK_SUPER);
     case 't':
       if (vm->scanner.curr - vm->scanner.start > 1) {
-        switch(vm->scanner.start[1]) {
+        switch (vm->scanner.start[1]) {
           case 'h': return ku_lexkey(vm, 2, 2, "is", TOK_THIS);
           case 'r': return ku_lexkey(vm, 2, 2, "ue", TOK_TRUE);
         }
@@ -932,7 +934,7 @@ static void ku_unary(kuvm *vm, bool lhs) {
   
   ku_prec(vm, P_UNARY);
   
-  switch(optype) {
+  switch (optype) {
     case TOK_MINUS: ku_emitbyte(vm, OP_NEG); break;
     case TOK_BANG: ku_emitbyte(vm, OP_NOT); break;
     default: return;
@@ -1930,12 +1932,11 @@ kures ku_run(kuvm *vm) {
     }
 #endif // TRACE_ENABLED
 
-    switch(op = BYTE_READ(vm)) {
-      case OP_TABLE: {
+    switch (op = BYTE_READ(vm)) {
+      case OP_TABLE:
         ku_push(vm, ku_cinstance(vm, "table"));
         break;
 
-      }
       case OP_ARRAY: {
         int count = READ_SHORT(vm);
         kuaobj *ao = ku_arrnew(vm, count);
@@ -1947,8 +1948,8 @@ kures ku_run(kuvm *vm) {
         
         vm->sp -= count;
         ku_push(vm, OBJ_VAL(ao));
-        break;
       }
+        break;
 
       case OP_CALL: {
         int argc = BYTE_READ(vm);
@@ -1959,18 +1960,17 @@ kures ku_run(kuvm *vm) {
         if (!native) {
           frame = &vm->frames[vm->framecount - 1];
         }
-        break;
       }
-        
-      case OP_CLASS: {
+        break;
+
+      case OP_CLASS:
         ku_push(vm, OBJ_VAL(ku_classnew(vm, READ_STRING(vm))));
         break;
-      }
-        
-      case OP_METHOD: {
+
+      case OP_METHOD:
         ku_defmethod(vm, READ_STRING(vm));
         break;
-      }
+
       case OP_INVOKE: {
         bool native;
         kustr *method = READ_STRING(vm);
@@ -1981,9 +1981,9 @@ kures ku_run(kuvm *vm) {
         if (!native) {
           frame = &vm->frames[vm->framecount - 1];
         }
-        break;
       }
-        
+        break;
+
       case OP_SUPER_INVOKE: {
         kustr *method = READ_STRING(vm);
         int argc = BYTE_READ(vm);
@@ -1992,8 +1992,9 @@ kures ku_run(kuvm *vm) {
           return KVM_ERR_RUNTIME;
         }
         frame = &vm->frames[vm->framecount - 1];
-        break;
       }
+        break;
+
       case OP_INHERIT: {
         kuval sc = ku_peek(vm, 1);
 
@@ -2006,8 +2007,9 @@ kures ku_run(kuvm *vm) {
 //        ku_printf(vm, ">> class %p inherits from %p\n", (void*)subclass, (void*)superclass);
         ku_tabcopy(vm, &superclass->methods, &subclass->methods);
         ku_pop(vm); // subclass
-        break;
       }
+        break;
+
       case OP_CLOSURE: {
         kufunc *fn = AS_FUNC(CONST_READ(vm));
         ku_push(vm, OBJ_VAL(fn));  // for GC
@@ -2023,28 +2025,33 @@ kures ku_run(kuvm *vm) {
             cl->upvals[i] = frame->closure->upvals[index];
           }
         }
-        break;
       }
-      case OP_CLOSE_UPVAL: {
+        break;
+
+      case OP_CLOSE_UPVAL:
         ku_close(vm, vm->sp - 1);
         ku_pop(vm);
         break;
-      }
+
       case OP_NIL:
         ku_push(vm, NIL_VAL);
         break;
+
       case OP_TRUE:
         ku_push(vm, BOOL_VAL(true));
         break;
+
       case OP_FALSE:
         ku_push(vm, BOOL_VAL(false));
         break;
+
       case OP_EQ: {
         kuval b = ku_pop(vm);
         kuval a = ku_pop(vm);
         ku_push(vm, BOOL_VAL(ku_equal(a, b)));
-        break;
       }
+        break;
+
       case OP_RET: {
         kuval v = ku_pop(vm);
         ku_close(vm, frame->bp);
@@ -2058,13 +2065,15 @@ kures ku_run(kuvm *vm) {
         vm->sp = frame->bp;
         ku_push(vm, v);
         frame = &vm->frames[vm->framecount - 1];
-        break;
       }
+        break;
+
       case OP_CONST: {
         kuval con = CONST_READ(vm);
         ku_push(vm, con);
-        break;
       }
+        break;
+
       case OP_NEG: {
         if (! IS_NUM(ku_peek(vm, 0))) {
           ku_err(vm, "number expected" );
@@ -2074,14 +2083,14 @@ kures ku_run(kuvm *vm) {
         double dv = AS_NUM(v);
         kuval nv = NUM_VAL(-dv);
         ku_push(vm, nv);
-        break;
       }
-      
-      case OP_DUP: {
+        break;
+
+      case OP_DUP:
         ku_push(vm, ku_peek(vm, 0));
         break;
-      }
-      case OP_POP: 
+
+      case OP_POP:
         ku_pop(vm);
         break;
 
@@ -2094,15 +2103,15 @@ kures ku_run(kuvm *vm) {
           return KVM_ERR_RUNTIME;
         }
         ku_push(vm, value);
-        break;
       }
+        break;
 
       case OP_DEF_GLOBAL: {
         kustr* name = READ_STRING(vm);
         ku_tabset(vm, &vm->globals, name, ku_peek(vm, 0));
         ku_pop(vm);
-        break;
       }
+        break;
 
       case OP_SET_GLOBAL: {
         kustr* name = READ_STRING(vm);
@@ -2111,8 +2120,8 @@ kures ku_run(kuvm *vm) {
           ku_err(vm, "undefined variable %s", name->chars);
           return KVM_ERR_RUNTIME;
         }
-        break;
       }
+        break;
 
       case OP_ASET: {
         kuval val = ku_pop(vm);
@@ -2131,8 +2140,9 @@ kures ku_run(kuvm *vm) {
         ku_arrset(vm, aobj, (int)AS_NUM(ival), val);
         ku_pop(vm); // array
         ku_push(vm, val);
-        break;
       }
+        break;
+
       case OP_AGET: {
         kuval ival = ku_pop(vm);
         kuval aval = ku_peek(vm, 0); // for GC
@@ -2161,31 +2171,33 @@ kures ku_run(kuvm *vm) {
         kuval v = ku_arrget(vm, AS_ARRAY(aval), (int)AS_NUM(ival));
         ku_pop(vm);
         ku_push(vm, v);
-        break;
       }
+        break;
+
       case OP_GET_LOCAL: {
         uint8_t slot = BYTE_READ(vm);
         ku_push(vm, frame->bp[slot]);
-        break;
       }
+        break;
+
       case OP_SET_LOCAL: {
         uint8_t slot = BYTE_READ(vm);
         frame->bp[slot] = ku_peek(vm, 0);
-        break;
       }
-        
+        break;
+
       case OP_GET_UPVAL: {
         uint8_t slot = BYTE_READ(vm);
         ku_push(vm, *frame->closure->upvals[slot]->location);
-        break;
       }
-        
+        break;
+
       case OP_SET_UPVAL: {
         uint8_t slot = BYTE_READ(vm);
         *frame->closure->upvals[slot]->location = ku_peek(vm, 0);
-        break;
       }
-        
+        break;
+
       case OP_GET_PROP: {
         kustr *name = READ_STRING(vm);
         kuval target = ku_peek(vm, 0);
@@ -2253,9 +2265,9 @@ kures ku_run(kuvm *vm) {
         if (!ku_bindmethod(vm, i->klass, name)) {
           return KVM_ERR_RUNTIME;
         }
-        break;
       }
-        
+        break;
+
       case OP_SET_PROP: {
         if (IS_CCLASS(ku_peek(vm, 1))) {
           kucclass *cc = AS_CCLASS(ku_peek(vm, 1));
@@ -2290,9 +2302,9 @@ kures ku_run(kuvm *vm) {
         kuval val = ku_pop(vm);
         ku_pop(vm); // instance
         ku_push(vm, val);
-        break;
       }
-        
+        break;
+
       case OP_GET_SUPER: {
         kustr *name = READ_STRING(vm);
         kuval v = ku_pop(vm);
@@ -2300,8 +2312,9 @@ kures ku_run(kuvm *vm) {
         if (!ku_bindmethod(vm, superclass, name)) {
           return KVM_ERR_RUNTIME;
         }
-        break;
       }
+        break;
+
       case OP_ADD: {
         if (IS_STR(ku_peek(vm, 0)) && IS_STR(ku_peek(vm, 1))) {
           ku_strcat(vm);
@@ -2315,8 +2328,9 @@ kures ku_run(kuvm *vm) {
           ku_err(vm, "numbers expected");
           return KVM_ERR_RUNTIME;
         }
-        break;
       }
+        break;
+
       case OP_SHL:
       case OP_SHR:
         if (IS_NUM(ku_peek(vm, 0)) && IS_NUM(ku_peek(vm, 1))) {
@@ -2329,8 +2343,9 @@ kures ku_run(kuvm *vm) {
           return KVM_ERR_RUNTIME;
         }
         break;
+
       case OP_BAND:
-      case OP_BOR: {
+      case OP_BOR:
         if (IS_NUM(ku_peek(vm, 0)) && IS_NUM(ku_peek(vm, 1))) {
           int b = (int)AS_NUM(ku_pop(vm));
           int a = (int)AS_NUM(ku_pop(vm));
@@ -2341,12 +2356,12 @@ kures ku_run(kuvm *vm) {
           return KVM_ERR_RUNTIME;
         }
         break;
-      }
+
       case OP_SUB: BIN_OP(vm,NUM_VAL, -); break;
       case OP_MUL: BIN_OP(vm,NUM_VAL, *); break;
       case OP_DIV: BIN_OP(vm,NUM_VAL, /); break;
       case OP_GT:
-      case OP_LT: {
+      case OP_LT:
         if (IS_NUM(ku_peek(vm, 0)) && IS_NUM((ku_peek(vm, 1)))) {
           double b = (int)AS_NUM(ku_pop(vm));
           double a = (int)AS_NUM(ku_pop(vm));
@@ -2363,13 +2378,12 @@ kures ku_run(kuvm *vm) {
             ku_push(vm, BOOL_VAL(res > 0));
           else
             ku_push(vm, BOOL_VAL(res < 0));
-        }
-        else {
+        } else {
           ku_err(vm, "numbers or strings expected");
           return KVM_ERR_RUNTIME;
         }
-        break;          
-      }
+        break;
+
 //      case OP_LT: BIN_OP(vm,BOOL_VAL, <); break;
       case OP_NOT:
         ku_push(vm, BOOL_VAL(ku_falsy(ku_pop(vm))));
@@ -2379,19 +2393,20 @@ kures ku_run(kuvm *vm) {
         if (ku_falsy(ku_peek(vm, 0))) {
           frame->ip += offset;
         }
-        break;
       }
-        
+        break;
+
       case OP_JUMP: {
         uint16_t offset = READ_SHORT(vm);
         frame->ip += offset;
-        break;
       }
+        break;
+
       case OP_LOOP: {
         uint16_t offset = READ_SHORT(vm);
         frame->ip -= offset;
-        break;
       }
+        break;
     }
     
 #ifdef TRACE_ENABLED
@@ -2660,9 +2675,8 @@ int ku_bytedis(kuvm *vm, kuchunk *chunk, int offset) {
         int index = chunk->code[offset++];
         ku_printf(vm, "%04d | %s %d\n", offset - 2, local ? "local" : "upval", index);
       }
-      
-      return offset;
     }
+      return offset;
     default:
       ku_printf(vm, "Unknown opcode %d\n", op);
       return offset + 1;
@@ -3515,63 +3529,67 @@ static void ku_traceobj(kuvm *vm, kuobj *o) {
     case OBJ_ARRAY: {
       kuaobj *ao = (kuaobj*)o;
       ku_markarray(vm, &ao->elements);
-      break;
     }
+      break;
+
     case OBJ_CINST: {
       kunobj *i = (kunobj*)o;
       ku_markobj(vm, (kuobj*)i->klass);
       if (i->klass->imark) {
         i->klass->imark(vm, o);
       }
-      break;
     }
+      break;
+
     case OBJ_UPVAL:
       ku_markval(vm, ((kuxobj*)o)->closed);
       break;
-      
+
     case OBJ_FUNC: {
       kufunc *fn = (kufunc*)o;
       ku_markobj(vm, (kuobj*)fn->name);
       ku_markarray(vm, &fn->chunk.constants);
-      break;
     }
-      
+      break;
+
     case OBJ_CCLASS: {
       kucclass *cc = (kucclass*)o;
       ku_markobj(vm, (kuobj*)cc->name);
       if (cc->smark) {
         cc->smark(vm, o);
       }
-      break;
     }
+      break;
+
     case OBJ_CLASS: {
       kuclass *c = (kuclass*)o;
       ku_markobj(vm, (kuobj*)c->name);
       ku_marktable(vm, &c->methods);
-      break;
     }
-      
+      break;
+
     case OBJ_INSTANCE: {
       kuiobj *i = (kuiobj*)o;
       ku_markobj(vm, (kuobj*)i->klass);
       ku_marktable(vm, &i->fields);
-      break;
     }
-      
+      break;
+
     case OBJ_BOUND_METHOD: {
       kubound *bm = (kubound*)o;
       ku_markval(vm, bm->receiver);
       ku_markobj(vm, (kuobj*)bm->method);
-      break;
     }
+      break;
+
     case OBJ_CLOSURE: {
       kuclosure *cl = (kuclosure*)o;
       ku_markobj(vm, (kuobj*)cl->func);
       for (int i = 0; i < cl->upcount; i++) {
         ku_markobj(vm, (kuobj*)cl->upvals[i]);
       }
-      break;
     }
+      break;
   }
 }
 
@@ -3776,14 +3794,14 @@ static void ku_printobj(kuvm* vm, kuval val) {
     case OBJ_CCLASS: {
       kucclass *cc = AS_CCLASS(val);
       ku_printf(vm, "<class %s>", cc->name->chars);
-      break;
     }
+      break;
     case OBJ_CLOSURE:
       ku_printfunc(vm, AS_CLOSURE(val)->func);
       break;
-  case OBJ_STR:
-    ku_printf(vm, "%s", AS_CSTR(val));
-    break;
+    case OBJ_STR:
+      ku_printf(vm, "%s", AS_CSTR(val));
+      break;
     case OBJ_CLASS:
       ku_printf(vm, "%s", AS_CLASS(val)->name->chars);
       break;
@@ -3814,7 +3832,7 @@ void ku_printval(kuvm *vm, kuval value) {
 #else
   switch (value.type) {
     case VAL_BOOL:
-    ku_printf(vm, "%s", (value.as.bval) ? "true": "false");
+      ku_printf(vm, "%s", (value.as.bval) ? "true": "false");
       break;
     case VAL_NIL:
       ku_printf(vm, "nil");
