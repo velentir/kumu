@@ -551,6 +551,7 @@ static kutok_t ku_keyword(kuvm *vm) {
         }
       }
     case 'i': return ku_lexkey(vm, 1,1,"f", TOK_IF);
+    case 'l': return ku_lexkey(vm, 1,2,"et", TOK_LET);
     case 'n': return ku_lexkey(vm, 1,2,"il", TOK_NIL);
     case 'o': return ku_lexkey(vm, 1,1,"r", TOK_OR);
     case 'r': return ku_lexkey(vm, 1,5,"eturn", TOK_RETURN);
@@ -562,7 +563,6 @@ static kutok_t ku_keyword(kuvm *vm) {
           case 'r': return ku_lexkey(vm, 2, 2, "ue", TOK_TRUE);
         }
       }
-    case 'v': return ku_lexkey(vm, 1,2,"ar", TOK_VAR);
     case 'w': return ku_lexkey(vm, 1,4,"hile", TOK_WHILE);
   }
   return TOK_IDENT;
@@ -1014,7 +1014,7 @@ static void ku_pskip(kuvm* vm) {
     switch (vm->parser.curr.type) {
     case TOK_CLASS:
     case TOK_FUN:
-    case TOK_VAR:
+    case TOK_LET:
     case TOK_FOR:
     case TOK_IF:
     case TOK_WHILE:
@@ -1038,9 +1038,9 @@ static uint8_t ku_strtoname(kuvm* vm, kutok* name) {
   return ku_pconst(vm, OBJ_VAL(ku_strfrom(vm, chars, len)));
 }
 
-static uint8_t ku_var(kuvm* vm, const char* msg) {
+static uint8_t ku_let(kuvm* vm, const char* msg) {
   ku_pconsume(vm, TOK_IDENT, msg);
-  ku_declare_var(vm);
+  ku_declare_let(vm);
   if (vm->compiler->depth > 0) {
     return 0;
   }
@@ -1058,7 +1058,7 @@ static void ku_vardef(kuvm* vm, uint8_t index) {
 static void ku_vardecl(kuvm* vm) {
   
   do {
-    uint8_t g = ku_var(vm, "name expected");
+    uint8_t g = ku_let(vm, "name expected");
     if (ku_pmatch(vm, TOK_EQ)) {
       ku_expr(vm);
     }
@@ -1088,7 +1088,7 @@ static void ku_params(kuvm *vm) {
       ku_perr(vm, "too many params");
     }
     
-    uint8_t constant = ku_var(vm, "expected parameter name");
+    uint8_t constant = ku_let(vm, "expected parameter name");
     ku_vardef(vm, constant);
   } while(ku_pmatch(vm, TOK_COMMA));
 }
@@ -1145,7 +1145,7 @@ static void ku_function(kuvm *vm, kufunc_t type) {
 
 
 static void ku_funcdecl(kuvm *vm) {
-  uint8_t global = ku_var(vm, "function name expected");
+  uint8_t global = ku_let(vm, "function name expected");
   ku_markinit(vm);
   ku_function(vm, FUNC_STD);
   ku_vardef(vm, global);
@@ -1177,7 +1177,7 @@ static void ku_classdecl(kuvm *vm) {
   ku_pconsume(vm, TOK_IDENT, "class name expected");
   kutok cname = vm->parser.prev;
   uint8_t name = ku_pidconst(vm, &vm->parser.prev);
-  ku_declare_var(vm);
+  ku_declare_let(vm);
   ku_emitbytes(vm, OP_CLASS, name);
   ku_vardef(vm, name);
   kuclasscomp cc;
@@ -1220,7 +1220,7 @@ static void ku_decl(kuvm* vm, kuloop *loop) {
     ku_classdecl(vm);
   } else if (ku_pmatch(vm, TOK_FUN)) {
     ku_funcdecl(vm);
-  } else if (ku_pmatch(vm, TOK_VAR)) {
+  } else if (ku_pmatch(vm, TOK_LET)) {
     ku_vardecl(vm);
   } else {
     ku_stmt(vm, loop);
@@ -1463,7 +1463,7 @@ void ku_forstmt(kuvm *vm, kuloop *loop) {
   ku_pconsume(vm, TOK_LPAR, "'(' expected after 'for'");
   if (ku_pmatch(vm, TOK_SEMI)) {
     // no init
-  } else if (ku_pmatch(vm, TOK_VAR)) {
+  } else if (ku_pmatch(vm, TOK_LET)) {
     ku_vardecl(vm);
   } else {
     ku_exprstmt(vm, loop);
@@ -1561,7 +1561,7 @@ kuprule ku_rules[] = {
   [TOK_SUPER] =       { ku_super,    NULL,     P_NONE },
   [TOK_THIS] =        { ku_this,     NULL,     P_NONE },
   [TOK_TRUE] =        { ku_lit,      NULL,     P_NONE },
-  [TOK_VAR] =         { NULL,        NULL,     P_NONE },
+  [TOK_LET] =         { NULL,        NULL,     P_NONE },
   [TOK_WHILE] =       { NULL,        NULL,     P_NONE },
   [TOK_ERR] =         { NULL,        NULL,     P_NONE },
   [TOK_EOF] =         { NULL,        NULL,     P_NONE },
@@ -2726,7 +2726,7 @@ void ku_endscope(kuvm *vm) {
     }
 }
 
-void ku_declare_var(kuvm *vm) {
+void ku_declare_let(kuvm *vm) {
   if (vm->compiler->depth == 0) {
     return;
   }
@@ -3178,7 +3178,7 @@ static kuval ku_eval(kuvm *vm, int argc, kuval *argv) {
     const char *line = AS_STR(argv[0])->chars;
     size_t len = strlen(line) + 8;
     char *buffer = malloc(len);
-    sprintf(buffer, "var _=%s;", line);
+    sprintf(buffer, "let _=%s;", line);
     kures res = ku_exec(temp, buffer);
     kuval ret = NIL_VAL;
     free(buffer);
