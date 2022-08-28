@@ -590,7 +590,7 @@ kutok ku_scan(kuvm *vm) {
   if (c == '0' && (ku_lexpeek(vm) == 'x' || ku_lexpeek(vm) == 'X')) {
     return ku_hexnum(vm);
   }
-  else if (ku_isdigit(c)) return ku_lexnum(vm);
+  if (ku_isdigit(c)) return ku_lexnum(vm);
   switch (c) {
     case '(': return ku_tokmake(vm, TOK_LPAR);
     case ')': return ku_tokmake(vm, TOK_RPAR);
@@ -977,7 +977,7 @@ static void ku_unary(kuvm *vm, bool lhs) {
   switch (optype) {
     case TOK_MINUS: ku_emitbyte(vm, OP_NEG); break;
     case TOK_BANG: ku_emitbyte(vm, OP_NOT); break;
-    default: return;
+    default: return; // unreachable
   }
 }
 
@@ -1391,7 +1391,7 @@ static void ku_bin(kuvm *vm, bool lhs) {
     case TOK_GE: ku_emitbytes(vm, OP_LT, OP_NOT); break;
     case TOK_LT: ku_emitbyte(vm, OP_LT); break;
     case TOK_LE: ku_emitbytes(vm, OP_GT, OP_NOT); break;
-    default: return;
+    default: return; // unreachable
   }
 }
 
