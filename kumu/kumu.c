@@ -613,7 +613,7 @@ kutok ku_scan(kuvm *vm) {
       return ku_tokmake(vm, ku_lexmatch(vm, '=') ? TOK_NE : TOK_BANG);
     case '=': {
       if (ku_lexmatch(vm, '=') && ku_lexmatch(vm, '=')) {
-        return ku_tokmake(vm, TOK_EQEQEQ);
+        return ku_tokmake(vm, TOK_EQUALITY);
       } else if (ku_lexmatch(vm, '>')) {
         return ku_tokmake(vm, TOK_ARROW);
       }
@@ -1388,7 +1388,7 @@ static void ku_bin(kuvm *vm, bool lhs) {
     case TOK_STAR: ku_emitbyte(vm, OP_MUL); break;
     case TOK_SLASH: ku_emitbyte(vm, OP_DIV); break;
     case TOK_NE: ku_emitbytes(vm, OP_EQ, OP_NOT); break;
-    case TOK_EQEQEQ: ku_emitbyte(vm, OP_EQ); break;
+    case TOK_EQUALITY: ku_emitbyte(vm, OP_EQ); break;
     case TOK_GT: ku_emitbyte(vm, OP_GT); break;
     case TOK_GE: ku_emitbytes(vm, OP_LT, OP_NOT); break;
     case TOK_LT: ku_emitbyte(vm, OP_LT); break;
@@ -1575,7 +1575,7 @@ kuprule ku_rules[] = {
   [TOK_BANG] =        { ku_unary,    NULL,     P_NONE },
   [TOK_NE] =          { NULL,        ku_bin,   P_EQ },
   [TOK_EQ] =          { NULL,        NULL,     P_NONE },
-  [TOK_EQEQEQ] =      { NULL,        ku_bin,   P_EQ },
+  [TOK_EQUALITY] =    { NULL,        ku_bin,   P_EQ },
   [TOK_GT] =          { NULL,        ku_bin,   P_COMP },
   [TOK_GE] =          { NULL,        ku_bin,   P_COMP },
   [TOK_LT] =          { NULL,        ku_bin,   P_COMP },

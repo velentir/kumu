@@ -410,7 +410,7 @@ void ku_test() {
   t = ku_scan(vm);
   EXPECT_INT(vm, t.type, TOK_LE, "[<=]");
   t = ku_scan(vm);
-  EXPECT_INT(vm, t.type, TOK_EQEQEQ, "[===]");
+  EXPECT_INT(vm, t.type, TOK_EQUALITY, "[===]");
   t = ku_scan(vm);
   EXPECT_INT(vm, t.type, TOK_ARROW, "[=>]");
   t = ku_scan(vm);
