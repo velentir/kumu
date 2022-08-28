@@ -425,7 +425,7 @@ typedef enum {
   TOK_DOT, TOK_MINUS, TOK_PLUS, TOK_SEMI, TOK_SLASH, TOK_STAR,
   TOK_LBRACKET, TOK_RBRACKET, TOK_AMP, TOK_PIPE,
   // One or two character tokens.
-  TOK_BANG, TOK_NE, TOK_EQ, TOK_EQEQ, TOK_GT, TOK_GE, TOK_LT,
+  TOK_BANG, TOK_NE, TOK_EQ, TOK_EQEQEQ, TOK_GT, TOK_GE, TOK_LT,
   TOK_LE, TOK_ARROW, TOK_LTLT, TOK_GTGT,
   // Literals.
   TOK_IDENT, TOK_STR, TOK_STRESC, TOK_NUM, TOK_HEX,
@@ -471,7 +471,7 @@ typedef struct kucomp {
   struct kucomp *enclosing;
   kufunc *function;
   kufunc_t type;
-  
+
   kulocal locals[LOCALS_MAX];
   int count;
   kuxval upvals[UPSTACK_MAX];
@@ -532,7 +532,7 @@ typedef enum {
 
 typedef struct kuvm {
   uint64_t flags;
-  
+
   int max_stack;
   int max_params;
   int max_const;
@@ -542,7 +542,7 @@ typedef struct kuvm {
   int max_frames;
   int max_locals;
   int max_patches;
-  
+
   bool err;
   size_t allocated;
 #ifdef TRACE_OBJ_COUNTS
@@ -559,20 +559,20 @@ typedef struct kuvm {
 #ifdef STACK_CHECK
   int underflow;
 #endif
-  
+
   kustr *initstr;
   kustr *countstr;
-  
+
   kuobj* objects;
   kutab strings;
   kutab globals;
 
   kuxobj *openupvals;
-  
+
   kucomp *compiler;
   kulex scanner;
   kuparser parser;
-  
+
   int gccount;      // gray object count
   int gccap;        // gray object capacity
   kuobj **gcstack;  // gray object stack
@@ -635,4 +635,3 @@ kures ku_nativecall(kuvm *vm, kuclosure *cl, int argc);
 #endif
 
 #endif /* KUMU_H */
-

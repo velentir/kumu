@@ -13,7 +13,7 @@ static int ktest_pass = 0;
 int ktest_fail = 0;
 int ktest_warn = 0;
 const char* last_test = "";
- 
+
 static void EXPECT_TRUE(kuvm* vm, bool b, const char* msg) {
   last_test = msg;
   if (b) {
@@ -46,7 +46,7 @@ static void EXPECT_VAL(kuvm* vm, kuval v1, kuval v2, const char *msg) {
     ktest_pass++;
     return;
   }
-  
+
   uint64_t f = vm->flags;
   vm->flags &= ~KVM_F_QUIET;
   ktest_fail++;
@@ -86,7 +86,7 @@ kuval ku_test_eval(kuvm* vm, const char* expr) {
 kuvm *kut_new(bool reglibs) {
   kuvm *vm = ku_new();
   vm->flags |= KVM_F_QUIET | KVM_F_LIST;
-  
+
   if (reglibs) {
     ku_reglibs(vm);
   }
@@ -218,7 +218,7 @@ void tclass_reset(kuvm *vm) {
 void tclass_init(kuvm *vm, uint64_t flags) {
   tclass_reset(vm);
   kucclass *cc = ku_cclassnew(vm, "test");
-  
+
   if (flags & SCALL) cc->scall = test_scall;
   if (flags & SGET) cc->sget = test_sget;
   if (flags & SPUT) cc->sput = test_sput;
@@ -229,7 +229,7 @@ void tclass_init(kuvm *vm, uint64_t flags) {
   if (flags & IPUT) cc->iput = test_iput;
   if (flags & IMARK) cc->imark = test_imark;
   if (flags & IFREE) cc->ifree = test_ifree;
-  
+
   ku_cclassdef(vm, cc);
 }
 
@@ -241,14 +241,14 @@ void kut_free(kuvm* vm) {
     printf(">>> [%s] warning stack at %d\n", last_test, (int)(vm->sp - vm->stack));
     ktest_warn++;
   }
-  
+
 #ifdef STACK_CHECK
   if (vm->underflow > 0) {
     printf(">>> [%s] warning stack underflow %d\n", last_test, vm->underflow);
     ktest_warn++;
   }
 #endif
-  
+
   ku_free(vm);
 }
 
@@ -269,18 +269,18 @@ void ku_test() {
   EXPECT_INT(vm, res, KVM_OK, "ku_run res");
   EXPECT_VAL(vm, ku_get_global(vm, "x"), NUM_VAL((-(1.0+2.0)-4.0)*5.0/6.0), "ku_run ret");
   kut_free(vm);
-  
+
   vm = kut_new(false);
   res = ku_exec(vm, "let x = 1+2;");
   EXPECT_INT(vm, res, KVM_OK, "ku_exec res");
   EXPECT_VAL(vm, ku_get_global(vm, "x"), NUM_VAL(3), "ku_exec ret");
   kut_free(vm);
-  
+
   vm = kut_new(false);
   ku_lexinit(vm, "let x = 12+3;");
   ku_lexdump(vm);
   kut_free(vm);
-  
+
   vm = kut_new(false);
   res = ku_exec(vm, "12+");
   EXPECT_INT(vm, res, KVM_ERR_SYNTAX, "12+");
@@ -301,7 +301,7 @@ void ku_test() {
   EXPECT_INT(vm, res, KVM_OK, "grouping res");
   EXPECT_VAL(vm, ku_get_global(vm, "x"), NUM_VAL(9), "grouping ret");
   kut_free(vm);
-  
+
   vm = kut_new(false);
   vm->flags |= KVM_F_LIST;
   res = ku_exec(vm, "(1+2)*3");
@@ -310,7 +310,7 @@ void ku_test() {
   vm = kut_new(false);
   ku_printmem(vm);
   kut_free(vm);
-  
+
   vm = kut_new(false);
   ku_lexinit(vm, "let x=30; \n  x=\"hello\";");
   ku_lexdump(vm);
@@ -343,14 +343,14 @@ void ku_test() {
   EXPECT_VAL(vm, v, NUM_VAL(5), "ku_print_val ret");
   ku_printval(vm, v);
   kut_free(vm);
-  
+
   vm = kut_new(false);
   res = ku_exec(vm, "let x = 12.3;");
   EXPECT_VAL(vm, ku_get_global(vm, "x"), NUM_VAL(12.3), "ku_lex_peeknext ret");
   kut_free(vm);
-  
+
   vm = kut_new(false);
-  ku_lexinit(vm, "and class else false for fun if nil or return super this true while {}[]!+-*/=!=><>=<= == => break continue far\ttrick\nart\rcool eek too fund");
+  ku_lexinit(vm, "and class else false for fun if nil or return super this true while {}[]!+-*/=!=><>=<= === => break continue far\ttrick\nart\rcool eek too fund");
   kutok t = ku_scan(vm);
   EXPECT_INT(vm, t.type, TOK_AND, "[and]");
   t = ku_scan(vm);
@@ -410,7 +410,7 @@ void ku_test() {
   t = ku_scan(vm);
   EXPECT_INT(vm, t.type, TOK_LE, "[<=]");
   t = ku_scan(vm);
-  EXPECT_INT(vm, t.type, TOK_EQEQ, "[==]");
+  EXPECT_INT(vm, t.type, TOK_EQEQEQ, "[===]");
   t = ku_scan(vm);
   EXPECT_INT(vm, t.type, TOK_ARROW, "[=>]");
   t = ku_scan(vm);
@@ -418,13 +418,13 @@ void ku_test() {
   t = ku_scan(vm);
   EXPECT_INT(vm, t.type, TOK_CONTINUE, "[continue]");
 
-  
+
   t = ku_scan(vm);
   EXPECT_INT(vm, t.type, TOK_IDENT, "[identifier]");
   t = ku_scan(vm);
   EXPECT_INT(vm, t.type, TOK_IDENT, "[identifier]");
   kut_free(vm);
-  
+
   vm = kut_new(false);
   ku_lexinit(vm, "// this is a comment");
   t = ku_scan(vm);
@@ -467,18 +467,18 @@ void ku_test() {
   kut_free(vm);
 
   vm = kut_new(false);
-  v = ku_test_eval(vm, "1==1");
-  EXPECT_VAL(vm, v, BOOL_VAL(true), "== true");
+  v = ku_test_eval(vm, "1===1");
+  EXPECT_VAL(vm, v, BOOL_VAL(true), "=== true");
   kut_free(vm);
 
   vm = kut_new(false);
-  v = ku_test_eval(vm, "1==false");
-  EXPECT_VAL(vm, v, BOOL_VAL(false), "== mismatch types");
+  v = ku_test_eval(vm, "1===false");
+  EXPECT_VAL(vm, v, BOOL_VAL(false), "=== mismatch types");
   kut_free(vm);
 
   vm = kut_new(false);
-  v = ku_test_eval(vm, "1==2");
-  EXPECT_VAL(vm, v, BOOL_VAL(false), "== false");
+  v = ku_test_eval(vm, "1===2");
+  EXPECT_VAL(vm, v, BOOL_VAL(false), "=== false");
   kut_free(vm);
 
   vm = kut_new(false);
@@ -495,7 +495,7 @@ void ku_test() {
   v = ku_test_eval(vm, "1<1");
   EXPECT_VAL(vm, v, BOOL_VAL(false), "< false");
   kut_free(vm);
-  
+
   vm = kut_new(false);
   v = ku_test_eval(vm, "1<2");
   EXPECT_VAL(vm, v, BOOL_VAL(true), "< true");
@@ -570,13 +570,13 @@ void ku_test() {
   kut_free(vm);
 
   vm = kut_new(false);
-  v = ku_test_eval(vm, "\"hello \" == \"world\"");
-  EXPECT_VAL(vm, v, BOOL_VAL(false), "str == false");
+  v = ku_test_eval(vm, "\"hello \" === \"world\"");
+  EXPECT_VAL(vm, v, BOOL_VAL(false), "str === false");
   kut_free(vm);
 
   vm = kut_new(false);
-  v = ku_test_eval(vm, "\"hello\" == \"hello\"");
-  EXPECT_VAL(vm, v, BOOL_VAL(true), "str == true");
+  v = ku_test_eval(vm, "\"hello\" === \"hello\"");
+  EXPECT_VAL(vm, v, BOOL_VAL(true), "str === true");
   kut_free(vm);
 
   vm = kut_new(false);
@@ -604,7 +604,7 @@ void ku_test() {
   found = ku_tabdel(vm, &map, k3);
   EXPECT_TRUE(vm, !found, "map del not found");
 
-  
+
   found = ku_tabget(vm, &map, k1, &v);
   EXPECT_TRUE(vm, !found, "map del not found");
   kutab map2;
@@ -636,7 +636,7 @@ void ku_test() {
   res = ku_exec(vm, "printf(\"hello\");");
   res = ku_exec(vm, "printf(true);");
   kut_free(vm);
-  
+
   vm = kut_new(false);
   res = ku_exec(vm, "let x = 20; let y = 0; { let a=x*20; y = a; }");
   EXPECT_INT(vm, res, KVM_OK, "local decl");
@@ -703,7 +703,7 @@ void ku_test() {
   res = ku_exec(vm, "let x = true and true;");
   EXPECT_VAL(vm, ku_get_global(vm, "x"), BOOL_VAL(true), "true and true");
   kut_free(vm);
-  
+
   vm = kut_new(false);
   res = ku_exec(vm, "let x = false or true;");
   EXPECT_VAL(vm, ku_get_global(vm, "x"), BOOL_VAL(true), "false or true");
@@ -905,7 +905,7 @@ void ku_test() {
   EXPECT_VAL(vm, ku_get_global(vm, "x"), NIL_VAL, "gcnext val");
   kut_free(vm);
 
-  
+
   vm = kut_new(true);
   res = ku_exec(vm, "printf(nil);");
   EXPECT_INT(vm, res, KVM_OK, "printf nil");
@@ -939,7 +939,7 @@ void ku_test() {
   res = ku_exec(vm, "let x=1; let y=x*2;");
   EXPECT_INT(vm, res, KVM_OK, "tracing and printing");
   kut_free(vm);
-  
+
   vm = kut_new(true);
   res = ku_exec(vm, "class Foo {}\nprintf(Foo);");
   EXPECT_INT(vm, res, KVM_OK, "class decl");
@@ -1193,7 +1193,7 @@ void ku_test() {
   kut_free(vm);
 
   vm = kut_new(false);
-  res = ku_exec(vm, "let x =3; break;"); 
+  res = ku_exec(vm, "let x =3; break;");
   EXPECT_INT(vm, res, KVM_ERR_SYNTAX, "global break");
   kut_free(vm);
 
@@ -1301,7 +1301,7 @@ void ku_test() {
   res = ku_exec(vm, "test.method(5,2,1);");
   EXPECT_INT(vm, res, KVM_ERR_RUNTIME, "class no scall res");
   kut_free(vm);
-  
+
   vm = kut_new(false);
   tclass_init(vm, SCALL);
   res = ku_exec(vm, "test.method(5,2,1);");
@@ -1657,7 +1657,7 @@ void ku_test() {
   EXPECT_VAL(vm, ku_get_global(vm, "x"), NIL_VAL, "array.invoke bogus");
   kut_free(vm);
 
-  
+
   vm = kut_new(true);
   res = ku_exec(vm, "let a=[1,3,4]; let x=a.map(e => f(e));");
   EXPECT_INT(vm, res, KVM_ERR_RUNTIME, "array.map arg err res");
@@ -1807,7 +1807,7 @@ void ku_test() {
   v = ku_cinstance(vm, "table");
   EXPECT_TRUE(vm, AS_CINST(v)->klass->iget == table_iget, "table new");
   kut_free(vm);
-  
+
   vm = kut_new(true);
   ku_exec(vm, "let t=0;");
   ku_exec(vm, "let samples=array(6);");
@@ -1983,7 +1983,7 @@ void ku_test() {
   res = ku_exec(vm, "let x = comp(9, 7);");
   EXPECT_VAL(vm, ku_get_global(vm, "x"), NUM_VAL(1), "tertiary comp ret");
   kut_free(vm);
-  
+
   vm = kut_new(true);
   res = ku_exec(vm, "let comp = (a, b) => ( (a < b) and -1 or ( (a > b) and 1 or 0)) ;");
   EXPECT_INT(vm, res, KVM_OK, "db comp res");
@@ -1996,8 +1996,8 @@ void ku_test() {
   res = ku_exec(vm, "let f = db.first.name;");
   EXPECT_STR(vm, ku_get_global(vm, "f"), "josh", "db sort first name");
   kut_free(vm);
-  
-  
+
+
   vm = kut_new(true);
   res = ku_exec(vm, "let x=eval(\"12/3\");");
   EXPECT_INT(vm, res, KVM_OK, "eval res");
