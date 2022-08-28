@@ -21,6 +21,7 @@
 #define CONST_READ(vm) (frame->closure->func->chunk.constants.values[BYTE_READ(vm)])
 #define READ_STRING(vm) AS_STR(CONST_READ(vm))
 
+// TODO: add code coverage of ku_err line below
 #define BIN_OP(v, vt, op) \
   do { \
   if (!IS_NUM(ku_peek(v,0)) || !IS_NUM(ku_peek(v,1))) { \
@@ -805,7 +806,7 @@ static void ku_lit(kuvm *vm, bool lhs) {
     case TOK_FALSE: ku_emitbyte(vm, OP_FALSE); break;
     case TOK_TRUE: ku_emitbyte(vm, OP_TRUE); break;
     case TOK_NIL: ku_emitbyte(vm, OP_NIL); break;
-    default: return; // unreachable
+    default: return; // unreachable - TODO: figure out code coverage
   }
 }
 
@@ -918,6 +919,7 @@ static bool ku_peek_lambda(kuvm *vm) {
   
   if (ku_isalpha(*vm->scanner.start)) {
     while (ku_isalpha(ku_lexpeek(vm)) || ku_isdigit(ku_lexpeek(vm))) {
+      // TODO: add code coverage
       ku_advance(vm);
     }
     kutok_t type = ku_keyword(vm);
@@ -977,7 +979,7 @@ static void ku_unary(kuvm *vm, bool lhs) {
   switch (optype) {
     case TOK_MINUS: ku_emitbyte(vm, OP_NEG); break;
     case TOK_BANG: ku_emitbyte(vm, OP_NOT); break;
-    default: return; // unreachable
+    default: return; // unreachable - TODO: figure out code coverage
   }
 }
 
@@ -1391,7 +1393,7 @@ static void ku_bin(kuvm *vm, bool lhs) {
     case TOK_GE: ku_emitbytes(vm, OP_LT, OP_NOT); break;
     case TOK_LT: ku_emitbyte(vm, OP_LT); break;
     case TOK_LE: ku_emitbytes(vm, OP_GT, OP_NOT); break;
-    default: return; // unreachable
+    default: return; // unreachable - TODO: figure out code coverage
   }
 }
 
@@ -1651,6 +1653,7 @@ kuval ku_peek(kuvm *vm, int distance) {
 kuvm *ku_newvm(int stack_max) {
   kuvm *vm = malloc(sizeof(kuvm) + stack_max*sizeof(kuval));
   if (!vm) {
+    // TODO: add code coverage
     return NULL;
   }
   vm->allocated = sizeof(kuvm);
@@ -1707,7 +1710,7 @@ void ku_free(kuvm *vm) {
   ku_tabfree(vm, &vm->strings);
   ku_tabfree(vm, &vm->globals);
   vm->allocated -= sizeof(kuvm);
-  assert(vm->allocated == 0);
+  assert(vm->allocated == 0); // TODO: figure out code coverage
   free(vm->gcstack);
   free(vm);
 }
@@ -1763,6 +1766,7 @@ kures ku_nativecall(kuvm *vm, kuclosure *cl, int argc) {
     vm->baseframe = oldbase;
     return res;
   }
+  // TODO: add code coverage
   vm->baseframe = oldbase;
   return KVM_ERR_RUNTIME;
 }
@@ -1779,6 +1783,7 @@ static bool ku_callvalue(kuvm *vm, kuval callee, int argc, bool *native) {
           ku_push(vm, res);
           *native = true;
           if (!ku_objis(res, OBJ_CINST)) {
+            // TODO: add code coverage
             ku_err(vm, "invalid instance");
           } else {
             kunobj *i = AS_CINST(res);
@@ -1819,6 +1824,7 @@ static bool ku_callvalue(kuvm *vm, kuval callee, int argc, bool *native) {
         
       case OBJ_FUNC: // not allowed anymore
       default:
+        // TODO: add code coverage
         break;
     }
   }
@@ -1829,6 +1835,7 @@ static bool ku_callvalue(kuvm *vm, kuval callee, int argc, bool *native) {
 #ifdef TRACE_ENABLED
 // We can't use vm->compiler at runtime
 static kuchunk *ku_chunk_runtime(kuvm *vm) {
+  // TODO: add code coverage
   return &vm->frames[vm->framecount-1].closure->func->chunk;
 }
 #endif // TRACE_ENABLED
@@ -1838,11 +1845,13 @@ static kuxobj *ku_capture(kuvm *vm, kuval *local) {
   kuxobj *uv = vm->openupvals;
   
   while (uv != NULL && uv->location > local) {
+    // TODO: add code coverage
     prev = uv;
     uv = uv->next;
   }
   
   if (uv != NULL && uv->location == local) {
+    // TODO: add code coverage
     return uv;
   }
   
@@ -1853,6 +1862,7 @@ static kuxobj *ku_capture(kuvm *vm, kuval *local) {
   if (prev == NULL) {
     vm->openupvals = created;
   } else {
+    // TODO: add code coverage
     prev->next = created;
   }
   return created;
@@ -1993,7 +2003,7 @@ kures ku_run(kuvm *vm) {
           frame = &vm->frames[vm->framecount - 1];
         }
       }
-        break;
+        break; // TODO: figure out code coverage
 
       case OP_CLASS:
         ku_push(vm, OBJ_VAL(ku_classnew(vm, READ_STRING(vm))));
@@ -2014,7 +2024,7 @@ kures ku_run(kuvm *vm) {
           frame = &vm->frames[vm->framecount - 1];
         }
       }
-        break;
+        break; // TODO: figure out code coverage
 
       case OP_SUPER_INVOKE: {
         kustr *method = READ_STRING(vm);
@@ -2025,7 +2035,7 @@ kures ku_run(kuvm *vm) {
         }
         frame = &vm->frames[vm->framecount - 1];
       }
-        break;
+        break; // TODO: figure out code coverage
 
       case OP_INHERIT: {
         kuval sc = ku_peek(vm, 1);
@@ -2040,7 +2050,7 @@ kures ku_run(kuvm *vm) {
         ku_tabcopy(vm, &superclass->methods, &subclass->methods);
         ku_pop(vm); // subclass
       }
-        break;
+        break; // TODO: figure out code coverage
 
       case OP_CLOSURE: {
         kufunc *fn = AS_FUNC(CONST_READ(vm));
@@ -2098,7 +2108,7 @@ kures ku_run(kuvm *vm) {
         ku_push(vm, v);
         frame = &vm->frames[vm->framecount - 1];
       }
-        break;
+        break; // TODO: figure out code coverage
 
       case OP_CONST: {
         kuval con = CONST_READ(vm);
@@ -2116,7 +2126,7 @@ kures ku_run(kuvm *vm) {
         kuval nv = NUM_VAL(-dv);
         ku_push(vm, nv);
       }
-        break;
+        break; // TODO: figure out code coverage
 
       case OP_DUP:
         ku_push(vm, ku_peek(vm, 0));
@@ -2136,7 +2146,7 @@ kures ku_run(kuvm *vm) {
         }
         ku_push(vm, value);
       }
-        break;
+        break; // TODO: figure out code coverage
 
       case OP_DEF_GLOBAL: {
         kustr* name = READ_STRING(vm);
@@ -2165,6 +2175,7 @@ kures ku_run(kuvm *vm) {
           return KVM_ERR_RUNTIME;
         }
         if (!IS_NUM(ival)) {
+          // TODO: add code coverage
           ku_err(vm, "number index expected");
           return KVM_ERR_RUNTIME;
         }
@@ -2173,7 +2184,7 @@ kures ku_run(kuvm *vm) {
         ku_pop(vm); // array
         ku_push(vm, val);
       }
-        break;
+        break; // TODO figure out code coverage
 
       case OP_AGET: {
         kuval ival = ku_pop(vm);
@@ -2197,6 +2208,7 @@ kures ku_run(kuvm *vm) {
           return KVM_ERR_RUNTIME;
         }
         if (!IS_NUM(ival)) {
+          // TODO: add code coverage
           ku_err(vm, "number index expected");
           return KVM_ERR_RUNTIME;
         }
@@ -2204,7 +2216,7 @@ kures ku_run(kuvm *vm) {
         ku_pop(vm);
         ku_push(vm, v);
       }
-        break;
+        break; // TODO: figure out code coverage
 
       case OP_GET_LOCAL: {
         uint8_t slot = BYTE_READ(vm);
@@ -2335,7 +2347,7 @@ kures ku_run(kuvm *vm) {
         ku_pop(vm); // instance
         ku_push(vm, val);
       }
-        break;
+        break; // TODO: figure out code coverage
 
       case OP_GET_SUPER: {
         kustr *name = READ_STRING(vm);
@@ -2550,7 +2562,7 @@ void ku_chunkwrite(kuvm *vm, kuchunk *chunk, uint8_t byte, int line) {
     chunk->capacity = CAPACITY_GROW(cap);
     chunk->code = ARRAY_GROW(vm, uint8_t, chunk->code, cap, chunk->capacity);
     chunk->lines = ARRAY_GROW(vm, int, chunk->lines, cap, chunk->capacity);
-    assert(chunk->code != NULL);
+    assert(chunk->code != NULL); // TODO: figure out code coverage
   }
   chunk->code[chunk->count] = byte;
   chunk->lines[chunk->count] = line;
@@ -2657,44 +2669,34 @@ int ku_bytedis(kuvm *vm, kuchunk *chunk, int offset) {
     case OP_CLASS: return ku_constdis(vm, "OP_CLASS", chunk, offset);
     case OP_METHOD: return ku_constdis(vm, "OP_METHOD", chunk, offset);
     case OP_INVOKE: return ku_invokedis(vm, "OP_INVOKE", chunk, offset);
-    case OP_SUPER_INVOKE: return ku_invokedis(vm, "OP_SUPER_INVOKE", chunk, offset);
+    case OP_SUPER_INVOKE:
+      // TODO: add code coverage
+      return ku_invokedis(vm, "OP_SUPER_INVOKE", chunk, offset);
     case OP_INHERIT: return ku_opdis(vm, "OP_INHERIT", offset);
-    case OP_CONST:
-      return ku_constdis(vm, "OP_CONST", chunk, offset);
-    case OP_DEF_GLOBAL:
-      return ku_constdis(vm, "OP_DEF_GLOBAL", chunk, offset);
-    case OP_GET_GLOBAL:
-      return ku_constdis(vm, "OP_GET_GLOBAL", chunk, offset);
-    case OP_SET_GLOBAL:
-      return ku_constdis(vm, "OP_SET_GLOBAL", chunk, offset);
-    case OP_GET_LOCAL:
-      return ku_opslotdis(vm, "OP_GET_LOCAL", chunk, offset);
-    case OP_SET_LOCAL:
-      return ku_opslotdis(vm, "OP_SET_LOCAL", chunk, offset);
+    case OP_CONST: return ku_constdis(vm, "OP_CONST", chunk, offset);
+    case OP_DEF_GLOBAL: return ku_constdis(vm, "OP_DEF_GLOBAL", chunk, offset);
+    case OP_GET_GLOBAL: return ku_constdis(vm, "OP_GET_GLOBAL", chunk, offset);
+    case OP_SET_GLOBAL: return ku_constdis(vm, "OP_SET_GLOBAL", chunk, offset);
+    case OP_GET_LOCAL: return ku_opslotdis(vm, "OP_GET_LOCAL", chunk, offset);
+    case OP_SET_LOCAL: return ku_opslotdis(vm, "OP_SET_LOCAL", chunk, offset);
     case OP_GET_UPVAL:
+      // TODO: add code coverage
       return ku_opslotdis(vm, "OP_GET_UPVAL", chunk, offset);
-    case OP_SET_PROP:
-      return ku_opslotdis(vm, "OP_SET_PROP", chunk, offset);
-    case OP_GET_PROP:
-      return ku_opslotdis(vm, "OP_GET_PROP", chunk, offset);
+    case OP_SET_PROP: return ku_opslotdis(vm, "OP_SET_PROP", chunk, offset);
+    case OP_GET_PROP: return ku_opslotdis(vm, "OP_GET_PROP", chunk, offset);
     case OP_SET_UPVAL:
+      // TODO: add code coverage
       return ku_opslotdis(vm, "OP_SET_UPVAL", chunk, offset);
     case OP_GET_SUPER:
+      // TODO: add code coverage
       return ku_constdis(vm, "OP_GET_SUPER", chunk, offset);
-    case OP_JUMP:
-      return ku_jumpdis(vm, "OP_JUMP", 1, chunk, offset);
-    case OP_JUMP_IF_FALSE:
-      return ku_jumpdis(vm, "OP_JUMP_IF_FALSE", 1, chunk, offset);
-    case OP_LOOP:
-      return ku_jumpdis(vm, "OP_LOOP", -1, chunk, offset);
-    case OP_CALL:
-      return ku_opslotdis(vm, "OP_CALL", chunk, offset);
-    case OP_ARRAY:
-      return ku_arraydis(vm, "OP_ARRAY", chunk, offset);
-    case OP_TABLE:
-      return ku_arraydis(vm, "OP_TABLE", chunk, offset);
-    case OP_CLOSE_UPVAL:
-      return ku_opdis(vm, "OP_CLOSE_UPVAL", offset);
+    case OP_JUMP: return ku_jumpdis(vm, "OP_JUMP", 1, chunk, offset);
+    case OP_JUMP_IF_FALSE: return ku_jumpdis(vm, "OP_JUMP_IF_FALSE", 1, chunk, offset);
+    case OP_LOOP: return ku_jumpdis(vm, "OP_LOOP", -1, chunk, offset);
+    case OP_CALL: return ku_opslotdis(vm, "OP_CALL", chunk, offset);
+    case OP_ARRAY: return ku_arraydis(vm, "OP_ARRAY", chunk, offset);
+    case OP_TABLE: return ku_arraydis(vm, "OP_TABLE", chunk, offset);
+    case OP_CLOSE_UPVAL: return ku_opdis(vm, "OP_CLOSE_UPVAL", offset);
     case OP_CLOSURE: {
       offset++;
       uint8_t con = chunk->code[offset++];
@@ -2784,6 +2786,7 @@ void ku_declare_let(kuvm *vm) {
     }
     
     if (ku_identeq(vm, name, &local->name)) {
+      // TODO: add code coverage
       ku_perr(vm, "local already defined");
     }
   }
@@ -2887,6 +2890,7 @@ static kuval ku_arraycons(kuvm *vm, int argc, kuval *argv) {
     ku_pop(vm); // for GC
     return OBJ_VAL(ao);
   }
+  // TODO: add code coverage
   return OBJ_VAL(ku_arrnew(vm, cap));
 }
 
@@ -2914,6 +2918,7 @@ int array_partition(kuvm *vm, kuval array[], int low, int high, kuclosure *cmp) 
       }
       compres = AS_NUM(ret);
     } else {
+      // TODO: add code coverage
       ku_err(vm, "sort invalid compare function");
       return 0;
     }
@@ -2973,6 +2978,7 @@ bool array_filter(kuvm *vm, kuaobj *src, int argc, kuval *argv, kuval *ret) {
         ku_arrset(vm, dest, j++, src->elements.values[i]);
       }      
     } else {
+      // TODO: add code coverage
       ku_pop(vm); // GC
       return false;
     }
@@ -3125,6 +3131,7 @@ static int arglen(kuvm *vm, const char *f, kuval arg) {
       }
       return -1;
   }
+  // TODO: add code coverage
   return len;
 }
 
@@ -3254,6 +3261,7 @@ static kuval ku_print(kuvm *vm, int argc, kuval *argv) {
   int needed;
   char *str = format_core(vm, argc, argv, &needed);
   if (!str) {
+    // TODO: add code coverage
     return NIL_VAL;
   }
   ku_printf(vm, str);
@@ -3310,10 +3318,12 @@ kuval table_cons(kuvm *vm, int argc, kuval *argv) {
 kuval ku_cinstance(kuvm *vm, const char *cname) {
   kuval tcv;
   if (!ku_tabget(vm, &vm->globals, ku_strfrom(vm, cname, 5), &tcv)) {
+    // TODO: add code coverage
     return NIL_VAL;
   }
   
   if (!IS_CCLASS(tcv)) {
+    // TODO: add code coverage
     return NIL_VAL;
   }
   
@@ -3650,9 +3660,8 @@ void ku_markobj(kuvm *vm, kuobj *o) {
     vm->gccap = CAPACITY_GROW(vm->gccap);
     // for VC++ C6308
     kuobj **temp = (kuobj**)realloc(vm->gcstack, sizeof(kuobj*) * vm->gccap);
-    assert(temp != NULL);
+    assert(temp != NULL); // TODO: figure out code coverage
     vm->gcstack = temp;
-    
   }
   vm->gcstack[vm->gccount++] = o;
 }
@@ -3821,8 +3830,8 @@ static void ku_printobj(kuvm* vm, kuval val) {
     case OBJ_CINST: {
       kunobj *i = AS_CINST(val);
       ku_printf(vm, "<%s instance>", i->klass->name->chars);
-      break;
     }
+      break;
     case OBJ_CCLASS: {
       kucclass *cc = AS_CCLASS(val);
       ku_printf(vm, "<class %s>", cc->name->chars);
@@ -3977,6 +3986,7 @@ void ku_arrset(kuvm* vm, kuaobj* arr, int index, kuval value) {
   kuarr *e = &arr->elements;
   
   if (arr == NULL) {
+    // TODO: add code coverage
     ku_err(vm, "null array");
     return;
   }
@@ -3997,6 +4007,7 @@ void ku_arrset(kuvm* vm, kuaobj* arr, int index, kuval value) {
 
 kuval ku_arrget(kuvm* vm, kuaobj* arr, int index) {
   if (arr == NULL) {
+    // TODO: add code coverage
     ku_err(vm, "null array");
     return NIL_VAL;
   }
