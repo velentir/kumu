@@ -64,7 +64,7 @@
 		82EE3AEE274EE08100D6B09E /* kumu */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = kumu; sourceTree = BUILT_PRODUCTS_DIR; };
 		82EE3AF1274EE08100D6B09E /* main.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = main.c; sourceTree = "<group>"; };
 		82EE3AF8274EE0B600D6B09E /* kumu.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = kumu.h; sourceTree = "<group>"; };
-		82EE3AF9274EE0B600D6B09E /* kumu.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = kumu.c; sourceTree = "<group>"; };
+		82EE3AF9274EE0B600D6B09E /* kumu.c */ = {isa = PBXFileReference; indentWidth = 2; lastKnownFileType = sourcecode.c.c; path = kumu.c; sourceTree = "<group>"; tabWidth = 2; };
 		82F283B627531F77008A1DBD /* tests_macOS.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = tests_macOS.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		82F283B827531F77008A1DBD /* tests_macOS.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = tests_macOS.m; sourceTree = "<group>"; };
 /* End PBXFileReference section */

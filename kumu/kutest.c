@@ -350,7 +350,7 @@ void ku_test() {
   kut_free(vm);
 
   vm = kut_new(false);
-  ku_lexinit(vm, "and class else false for fun if nil or return super this true while {}[]!+-*/=!=><>=<= === => break continue far\ttrick\nart\rcool eek too fund");
+  ku_lexinit(vm, "and class else false for fun if nil or return super this true while {}[]!+-*/=!==><>=<= === => break continue far\ttrick\nart\rcool eek too fund");
   kutok t = ku_scan(vm);
   EXPECT_INT(vm, t.type, TOK_AND, "[and]");
   t = ku_scan(vm);
@@ -400,7 +400,7 @@ void ku_test() {
   t = ku_scan(vm);
   EXPECT_INT(vm, t.type, TOK_EQ, "[=]");
   t = ku_scan(vm);
-  EXPECT_INT(vm, t.type, TOK_NE, "[!=]");
+  EXPECT_INT(vm, t.type, TOK_NE, "[!==]");
   t = ku_scan(vm);
   EXPECT_INT(vm, t.type, TOK_GT, "[>]");
   t = ku_scan(vm);
@@ -482,13 +482,13 @@ void ku_test() {
   kut_free(vm);
 
   vm = kut_new(false);
-  v = ku_test_eval(vm, "1!=2");
-  EXPECT_VAL(vm, v, BOOL_VAL(true), "!= true");
+  v = ku_test_eval(vm, "1!==2");
+  EXPECT_VAL(vm, v, BOOL_VAL(true), "!== true");
   kut_free(vm);
 
   vm = kut_new(false);
-  v = ku_test_eval(vm, "1!=1");
-  EXPECT_VAL(vm, v, BOOL_VAL(false), "!= false");
+  v = ku_test_eval(vm, "1!==1");
+  EXPECT_VAL(vm, v, BOOL_VAL(false), "!== false");
   kut_free(vm);
 
   vm = kut_new(false);
@@ -580,8 +580,8 @@ void ku_test() {
   kut_free(vm);
 
   vm = kut_new(false);
-  v = ku_test_eval(vm, "\"hello \" != \"world\"");
-  EXPECT_VAL(vm, v, BOOL_VAL(true), "str != true");
+  v = ku_test_eval(vm, "\"hello \" !== \"world\"");
+  EXPECT_VAL(vm, v, BOOL_VAL(true), "str !== true");
   kut_free(vm);
 
   vm = kut_new(false);

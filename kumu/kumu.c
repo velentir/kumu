@@ -610,7 +610,10 @@ kutok ku_scan(kuvm *vm) {
     case '/':
       return ku_tokmake(vm, TOK_SLASH);
     case '!':
-      return ku_tokmake(vm, ku_lexmatch(vm, '=') ? TOK_NE : TOK_BANG);
+      if (ku_lexmatch(vm, '=') && ku_lexmatch(vm, '=')) {
+        return ku_tokmake(vm, TOK_NE);
+      }
+      return ku_tokmake(vm, TOK_BANG);
     case '=': {
       if (ku_lexmatch(vm, '=') && ku_lexmatch(vm, '=')) {
         return ku_tokmake(vm, TOK_EQUALITY);
@@ -745,7 +748,7 @@ typedef enum {
   P_ASSIGN,     // =
   P_OR,         // or
   P_AND,        // and
-  P_EQ,         // == and !=
+  P_EQ,         // === and !==
   P_COMP,       // < > <= >=
   P_TERM,       // + -
   P_FACTOR,     // * /
