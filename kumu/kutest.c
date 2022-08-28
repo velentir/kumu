@@ -285,7 +285,17 @@ void ku_test() {
   res = ku_exec(vm, "12+");
   EXPECT_INT(vm, res, KVM_ERR_SYNTAX, "12+");
   kut_free(vm);
-  
+
+  vm = kut_new(false);
+  res = ku_exec(vm, "let x = $2");
+  EXPECT_INT(vm, res, KVM_ERR_SYNTAX, "12+");
+  kut_free(vm);
+
+  vm = kut_new(false);
+  res = ku_exec(vm, "2 = 14");
+  EXPECT_INT(vm, res, KVM_ERR_SYNTAX, "12+");
+  kut_free(vm);
+
   vm = kut_new(false);
   res = ku_exec(vm, "let x = (1+2)*3;");
   EXPECT_INT(vm, res, KVM_OK, "grouping res");
