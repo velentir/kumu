@@ -178,7 +178,6 @@ static kustr* ku_stralloc(kuvm* vm, char* chars, int len, uint32_t hash) {
   return str;
 }
 
-
 kustr* ku_strfrom(kuvm* vm, const char* chars, int len) {
   uint32_t hash = ku_strhash(chars, len);
 
@@ -242,7 +241,6 @@ bool ku_equal(kuval v1, kuval v2) {
   return false;
 #endif
 }
-
 
 // ********************** hash table **********************
 void ku_tabinit(kuvm* vm, kutab* map) {
@@ -394,7 +392,6 @@ static char ku_advance(kuvm *vm) {
   vm->scanner.curr++;
   return vm->scanner.curr[-1];
 }
-
 
 void ku_lexinit(kuvm *vm, const char *source) {
   vm->scanner.start = source;
@@ -730,7 +727,6 @@ static void ku_emitbytes(kuvm *vm, uint8_t b1, uint8_t b2) {
   ku_emitbyte(vm, b2);
 }
 
-
 static uint8_t ku_pconst(kuvm *vm, kuval val) {
   int cons = ku_chunkconst(vm, ku_chunk(vm), val);
   if (cons > vm->max_const) {
@@ -802,7 +798,6 @@ static void ku_prec(kuvm *vm, kup_precedence prec) {
     ku_perr(vm, "invalid assignment target");
   }
 }
-
 
 static void ku_lit(kuvm *vm, bool lhs) {
   switch (vm->parser.prev.type) {
@@ -2721,7 +2716,6 @@ int ku_bytedis(kuvm *vm, kuchunk *chunk, int offset) {
 #undef OP_DEF1
 }
 
-
 // ------------------------------------------------------------
 // Locals
 // ------------------------------------------------------------
@@ -2896,7 +2890,6 @@ static kuval ku_arraycons(kuvm *vm, int argc, kuval *argv) {
   // TODO: add code coverage
   return OBJ_VAL(ku_arrnew(vm, cap));
 }
-
 
 void array_swap(kuval *a, kuval *b) {
   kuval t = *a;
@@ -3225,7 +3218,6 @@ static kuval ku_parseFloat(kuvm *vm, int argc, kuval *argv) {
   return NIL_VAL;
 }
 
-
 static kuval ku_eval(kuvm *vm, int argc, kuval *argv) {
   if (argc > 0 && IS_STR(argv[0])) {
     int stack = (argc > 1 && IS_NUM(argv[1])) ? (int)AS_NUM(argv[1]) : 128;
@@ -3253,7 +3245,6 @@ static kuval ku_clock(kuvm *vm, int argc, kuval *argv) {
 }
 
 static kuval ku_print(kuvm *vm, int argc, kuval *argv) {
-
   if (argc > 0 && !IS_STR(argv[0])) {
     for (int i = 0; i < argc; i++) {
       ku_printval(vm, argv[i]);
@@ -3454,7 +3445,6 @@ kuval string_icall(kuvm *vm, kuobj *o, kustr *m, int argc, kuval *argv) {
     int end = s->len;
     bool empty = false;
 
-
     if (argc > 0 && IS_NUM(argv[0]))
       start = (int)AS_NUM(argv[0]);
 
@@ -3559,7 +3549,6 @@ static void ku_markarray(kuvm *vm, kuarr *array) {
 }
 
 static void ku_traceobj(kuvm *vm, kuobj *o) {
-
   if (vm->flags & KVM_F_GCLOG) {
     ku_printf(vm, "%p trace ", (void*)o);
     ku_printval(vm, OBJ_VAL(o));
@@ -3891,7 +3880,6 @@ void ku_printval(kuvm *vm, kuval value) {
 #endif
 }
 
-
 static void ku_printfunc(kuvm *vm, kufunc *fn) {
   if (fn->name) {
     ku_printf(vm, "<fn %.*s>", fn->name->len, fn->name);
@@ -3934,7 +3922,6 @@ void ku_patchall(kuvm *vm, kupatch *patch, uint16_t to, bool rev) {
     c->code[patch->offset[i]+1] = delta & 0xff;
   }
 }
-
 
 // ********************** native class **********************
 kucclass *ku_cclassnew(kuvm *vm, const char *name) {

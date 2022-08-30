@@ -32,7 +32,7 @@
 
 static char *ku_readfile(kuvm *vm, const char *path) {
   FILE * file = fopen(path , "rb");
-  
+
   if (file == NULL) {
     return NULL;
   }
@@ -47,7 +47,7 @@ static char *ku_readfile(kuvm *vm, const char *path) {
   }
 
   size_t read = fread(buffer , sizeof (char), fsize, file);
-  
+
   if (read < fsize) {
     free(buffer);
     return NULL;
@@ -59,7 +59,7 @@ static char *ku_readfile(kuvm *vm, const char *path) {
 
 kures ku_runfile(kuvm *vm, const char *file) {
   char *source = ku_readfile(vm, file);
-  
+
   if (source == NULL) {
     return KVM_FILE_NOTFOUND;
   }
@@ -73,7 +73,6 @@ typedef struct {
   uint64_t mask;
 } ku_repl_flag;
 
-
 static ku_repl_flag ku_repl_flags[] = {
   { "trace", KVM_F_TRACE },
   { "list", KVM_F_LIST },
@@ -84,13 +83,13 @@ static ku_repl_flag ku_repl_flags[] = {
 static bool ku_check_flag(kuvm *vm, char *line,
                        const char *name, uint64_t flag) {
   char buff[256];
-  
+
   sprintf(buff, ".%s", name);
   if (strcmp(line, buff) == 0) {
     printf("%s is %s\n", name, (vm->flags & flag) ? "on" : "off");
     return true;
   }
-  
+
   sprintf(buff, ".%s on", name);
   if (strcmp(line, buff) == 0) {
     vm->flags |= flag;
@@ -105,7 +104,6 @@ static bool ku_check_flag(kuvm *vm, char *line,
   }
   return false;
 }
-
 
 static bool ku_check_flags(kuvm *vm, char *line) {
   for (int i = 0; i < sizeof(ku_repl_flags)/sizeof(ku_repl_flag); i++) {
@@ -178,34 +176,32 @@ static void ku_printbuild(kuvm *vm) {
 #ifdef DEBUG
   printf("D");
 #endif
-  
+
 #ifdef NAN_BOX
   printf("N");
 #endif
-  
+
 #ifdef USE_READLINE
   printf("R");
 #endif
-  
+
 #ifdef TRACE_OBJ_COUNTS
   printf("O");
 #endif
-  
+
 #ifdef STACK_CHECK
   printf("S");
 #endif
-  
+
   double s = (double)(sizeof(kuvm)+vm->max_stack*sizeof(kuval))/1024.0;
   printf("] vmsize=%.2fkb ", s);
   printf(".quit to exit\n");
-  
+
 }
 static void ku_repl(kuvm *vm) {
   ku_printbuild(vm);
   kustr* under = ku_strfrom(vm, "_", 1);
   ku_tabset(vm, &vm->globals, under, NIL_VAL);
-
-  
 
   ku_initreadline(vm);
   while(true) {
@@ -224,13 +220,13 @@ static void ku_repl(kuvm *vm) {
 //      printf("\n");
 //      break;
 //    }
-    
+
     ku_saveline(vm, b);
 
     if (strcmp(b, ".quit") == 0) {
       break;
     }
-    
+
     if (strcmp(b, ".help") == 0) {
       for (int i = 0; i < sizeof(ku_repl_flags)/sizeof(ku_repl_flag); i++) {
         ku_repl_flag *flag = &ku_repl_flags[i];
@@ -245,7 +241,7 @@ static void ku_repl(kuvm *vm) {
       ku_printmem(vm);
       continue;
     }
-    
+
     if (strcmp(b, ".gc") == 0) {
       ku_gc(vm);
       continue;;
@@ -258,8 +254,8 @@ static void ku_repl(kuvm *vm) {
 int ku_main(int argc, const char * argv[]) {
   int stack = STACK_MAX;
   const char *file = NULL;
-  
-  
+
+
   for (int i = 1; i < argc; i++) {
     const char *a = argv[i];
     if (strncmp(a, "-s=", 3) == 0) {
@@ -268,9 +264,9 @@ int ku_main(int argc, const char * argv[]) {
       file = a;
     }
   }
-  
+
   kuvm *vm = ku_newvm(stack == 0 ? STACK_MAX : stack);
-  
+
   ku_reglibs(vm);
   if (file == NULL) {
     ku_repl(vm);

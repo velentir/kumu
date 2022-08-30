@@ -72,7 +72,6 @@ kuval ku_get_global(kuvm* vm, const char* name) {
   return value;
 }
 
-
 kuval ku_test_eval(kuvm* vm, const char* expr) {
   char buff[255];
   sprintf(buff, "let x = %s;", expr);
@@ -92,7 +91,6 @@ kuvm *kut_new(bool reglibs) {
   }
   return vm;
 }
-
 
 static kuval kutest_native_add(kuvm *vm, int argc, kuval *argv) {
   kuval b = argv[0];
