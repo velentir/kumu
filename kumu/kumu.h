@@ -485,7 +485,7 @@ typedef struct kucomp {
 void ku_compinit(kuvm *vm, kucomp *compiler, kufunc_t type);
 void ku_beginscope(kuvm *vm);
 void ku_endscope(kuvm *vm);
-void ku_declare_let(kuvm *vm);
+void ku_declare_let(kuvm *vm, bool isconst);
 void ku_addlocal(kuvm *vm, kutok name);
 bool ku_identeq(kuvm *vm, kutok *a, kutok *b);
 int ku_resolvelocal(kuvm *vm, kucomp *compiler, kutok *name);

@@ -1083,9 +1083,9 @@ static uint8_t ku_strtoname(kuvm* vm, kutok* name) {
   return ku_pconst(vm, OBJ_VAL(ku_strfrom(vm, chars, len)));
 }
 
-static uint8_t ku_let(kuvm* vm, const char* msg) {
+static uint8_t ku_let(kuvm* vm, bool isconst, const char* msg) {
   ku_pconsume(vm, TOK_IDENT, msg);
-  ku_declare_let(vm);
+  ku_declare_let(vm, isconst);
   if (vm->compiler->depth > 0) {
     return 0;
   }
@@ -1100,10 +1100,10 @@ static void ku_vardef(kuvm* vm, uint8_t index) {
   ku_emitbytes(vm, OP_DEF_GLOBAL, index);
 }
 
-static void ku_vardecl(kuvm* vm) {
+static void ku_vardecl(kuvm* vm, bool isconst) {
 
   do {
-    uint8_t g = ku_let(vm, "name expected");
+    uint8_t g = ku_let(vm, false, "name expected");
     if (ku_pmatch(vm, TOK_EQ)) {
       ku_expr(vm);
     }
@@ -1133,7 +1133,7 @@ static void ku_params(kuvm *vm) {
       ku_perr(vm, "too many params");
     }
 
-    uint8_t constant = ku_let(vm, "expected parameter name");
+    uint8_t constant = ku_let(vm, false, "expected parameter name");
     ku_vardef(vm, constant);
   } while(ku_pmatch(vm, TOK_COMMA));
 }
@@ -1182,7 +1182,7 @@ static void ku_function(kuvm *vm, kufunc_t type) {
 
 
 static void ku_funcdecl(kuvm *vm) {
-  uint8_t global = ku_let(vm, "function name expected");
+  uint8_t global = ku_let(vm, false, "function name expected");
   ku_markinit(vm);
   ku_function(vm, FUNC_STD);
   ku_vardef(vm, global);
@@ -1214,7 +1214,7 @@ static void ku_classdecl(kuvm *vm) {
   ku_pconsume(vm, TOK_IDENT, "class name expected");
   kutok cname = vm->parser.prev;
   uint8_t name = ku_pidconst(vm, &vm->parser.prev);
-  ku_declare_let(vm);
+  ku_declare_let(vm, false);
   ku_emitbytes(vm, OP_CLASS, name);
   ku_vardef(vm, name);
   kuclasscomp cc;
@@ -1258,7 +1258,7 @@ static void ku_decl(kuvm* vm, kuloop *loop) {
   } else if (ku_pmatch(vm, TOK_FUN)) {
     ku_funcdecl(vm);
   } else if (ku_pmatch(vm, TOK_LET)) {
-    ku_vardecl(vm);
+    ku_vardecl(vm, false);
   } else {
     ku_stmt(vm, loop);
   }
@@ -1501,7 +1501,7 @@ void ku_forstmt(kuvm *vm, kuloop *loop) {
   if (ku_pmatch(vm, TOK_SEMI)) {
     // no init
   } else if (ku_pmatch(vm, TOK_LET)) {
-    ku_vardecl(vm);
+    ku_vardecl(vm, false);
   } else {
     ku_exprstmt(vm, loop);
   }
@@ -2774,7 +2774,7 @@ void ku_endscope(kuvm *vm) {
     }
 }
 
-void ku_declare_let(kuvm *vm) {
+void ku_declare_let(kuvm *vm, bool isconst) {
   if (vm->compiler->depth == 0) {
     return;
   }
