@@ -1,5 +1,5 @@
 //
-// Based on https://craftinginterpreters.com/ and the associated book with many changes
+// Based on https://craftinginterpreters.com book with many changes
 //
 
 // ********************** kumu **********************
@@ -433,7 +433,7 @@ typedef enum {
   TOK_AND, TOK_CLASS, TOK_ELSE, TOK_FALSE, TOK_FOR, TOK_FUN,
   TOK_IF, TOK_NIL, TOK_OR, TOK_RETURN, TOK_SUPER,
   TOK_THIS, TOK_TRUE, TOK_LET, TOK_WHILE, TOK_ERR, TOK_EOF,
-  TOK_BREAK, TOK_CONTINUE,
+  TOK_BREAK, TOK_CONTINUE, TOK_CONST,
 } kutok_t;
 
 typedef struct {
@@ -454,11 +454,15 @@ void ku_lexdump(kuvm *vm);
 kutok ku_scan(kuvm *vm);
 
 // ********************** locals **********************
+#define KU_LOCAL_NONE     0x00000000
+#define KU_LOCAL_CAPTURED 0x00000001
+#define KU_LOCAL_CONST    0x00000002
+#define KU_IS_CAPTURED(l) ((((l).flags) & KU_LOCAL_CAPTURED) != 0)
 
 typedef struct {
   kutok name;
   int depth;
-  bool captured;
+  uint32_t flags;
 } kulocal;
 
 typedef struct {

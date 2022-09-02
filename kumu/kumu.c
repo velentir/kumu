@@ -536,7 +536,10 @@ static kutok_t ku_keyword(kuvm *vm) {
       if (vm->scanner.curr - vm->scanner.start > 1) {
         switch (vm->scanner.start[1]) {
           case 'l': return ku_lexkey(vm, 2, 3, "ass", TOK_CLASS);
-          case 'o': return ku_lexkey(vm, 2, 6, "ntinue", TOK_CONTINUE);
+          case 'o':
+            if (vm->scanner.start[2] == 'n' && vm->scanner.start[3] == 's')
+              return ku_lexkey(vm, 4, 1, "t", TOK_CONST);
+            return ku_lexkey(vm, 2, 6, "ntinue", TOK_CONTINUE);
         }
       }
       break;
@@ -1290,7 +1293,7 @@ static int ku_xvalresolve(kuvm *vm, kucomp *compiler, kutok *name) {
 
   int local = ku_resolvelocal(vm, compiler->enclosing, name);
   if (local != -1) {
-    compiler->enclosing->locals[local].captured = true;
+    compiler->enclosing->locals[local].flags |= KU_LOCAL_CAPTURED;
     return ku_xvaladd(vm, compiler, (uint8_t)local, true);
   }
 
@@ -2733,7 +2736,7 @@ void ku_compinit(kuvm *vm, kucomp *compiler, kufunc_t type) {
   }
   kulocal *local = &vm->compiler->locals[vm->compiler->count++];
   local->depth = 0;
-  local->captured = false;
+  local->flags = KU_LOCAL_NONE;
 
   if (type != FUNC_STD) {
     local->name.start = "this";
@@ -2762,7 +2765,7 @@ void ku_endscope(kuvm *vm) {
          vm->compiler->locals[vm->compiler->count - 1].depth >
          vm->compiler->depth) {
 
-    if (vm->compiler->locals[vm->compiler->count - 1].captured) {
+    if (KU_IS_CAPTURED(vm->compiler->locals[vm->compiler->count - 1])) {
       ku_emitbyte(vm, OP_CLOSE_UPVAL);
     } else {
       ku_emitbyte(vm, OP_POP);
@@ -2799,7 +2802,7 @@ void ku_addlocal(kuvm *vm, kutok name) {
   kulocal *local = &vm->compiler->locals[vm->compiler->count++];
   local->name = name;
   local->depth = -1;
-  local->captured = false;
+  local->flags = KU_LOCAL_NONE;
 }
 
 bool ku_identeq(kuvm *vm, kutok *a, kutok *b) {

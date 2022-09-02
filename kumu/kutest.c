@@ -348,7 +348,7 @@ void ku_test() {
   kut_free(vm);
 
   vm = kut_new(false);
-  ku_lexinit(vm, "and class else false for fun if nil or return super this true while {}[]!+-*/=!==><>=<= === => break continue far\ttrick\nart\rcool eek too fund");
+  ku_lexinit(vm, "and class else false for fun if nil or return super this true while {}[]!+-*/=!==><>=<= === => break continue const far\ttrick\nart\rcool eek too fund");
   kutok t = ku_scan(vm);
   EXPECT_INT(vm, t.type, TOK_AND, "[and]");
   t = ku_scan(vm);
@@ -415,6 +415,8 @@ void ku_test() {
   EXPECT_INT(vm, t.type, TOK_BREAK, "[break]");
   t = ku_scan(vm);
   EXPECT_INT(vm, t.type, TOK_CONTINUE, "[continue]");
+  t = ku_scan(vm);
+  EXPECT_INT(vm, t.type, TOK_CONST, "[const]");
 
 
   t = ku_scan(vm);
