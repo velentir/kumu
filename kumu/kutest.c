@@ -14,52 +14,73 @@ int ktest_fail = 0;
 int ktest_warn = 0;
 const char* last_test = "";
 
-static void EXPECT_TRUE(kuvm* vm, bool b, const char* msg) {
-  last_test = msg;
-  if (b) {
-    ktest_pass++;
-    return;
-  }
-  ktest_fail++;
-  printf(">>> expected true found false [%s]\n", msg);
-}
+#define print_failure() printf("[  FAILED  ]\n  (line %d)", __LINE__)
 
-static void EXPECT_INT(kuvm *vm, int v1, int v2, const char *m) {
-  last_test = m;
-  if (v1 == v2) {
-    ktest_pass++;
-    return;
-  }
-  ktest_fail++;
-  printf(">>> expected: %d found %d [%s]\n", v2, v1, m);
-}
+// EXPECT_TRUE(kuvm* vm, bool b, const char* m)
+#define EXPECT_TRUE(vm, b, m) \
+  do { \
+    last_test = (m); \
+    if (b) { \
+      ktest_pass++; \
+    } else { \
+      ktest_fail++; \
+      print_failure(); \
+      printf("expected true found false [%s]\n", (m)); \
+    } \
+  } while (0)
 
-static void EXPECT_STR(kuvm *vm, kuval v, const char *s, const char *msg) {
-  EXPECT_TRUE(vm, IS_STR(v), msg);
-  EXPECT_INT(vm, (int)strlen(AS_STR(v)->chars), (int)strlen(s), msg);
-  EXPECT_INT(vm, strcmp(AS_STR(v)->chars, s), 0, msg);
-}
+// EXPECT_INT(kuvm *vm, int v1, int v2, const char *m
+#define EXPECT_INT(vm, v1, v2, m) \
+  do { \
+    last_test = (m); \
+    if ((v1) == (v2)) { \
+      ktest_pass++; \
+    } else { \
+        ktest_fail++; \
+        print_failure(); \
+        printf("expected: %d found: %d [%s]\n", (v2), (v1), (m)); \
+    } \
+  } while (0)
 
-static void EXPECT_VAL(kuvm* vm, kuval v1, kuval v2, const char *msg) {
-  last_test = msg;
-  if (ku_equal(v1, v2)) {
-    ktest_pass++;
-    return;
-  }
+// EXPECT_STR(kuvm *vm, kuval v, const char *s, const char *m)
+#define EXPECT_STR(vm, v, s, m) \
+  do { \
+    last_test = (m); \
+    if (IS_STR(v) && \
+        (int)strlen(AS_STR(v)->chars) == (int)strlen(s) && \
+        strcmp(AS_STR(v)->chars, (s)) == 0) { \
+      ktest_pass++; \
+    } else { \
+      ktest_fail++; \
+      print_failure(); \
+      printf("expected: %s found: %s\n", (s), AS_STR(v)->chars); \
+    } \
+  } while (0)
 
-  uint64_t f = vm->flags;
-  vm->flags &= ~KVM_F_QUIET;
-  ktest_fail++;
-  printf(">>> expected: ");
-  ku_printval(vm, v2);
-  printf(" found: ");
-  ku_printval(vm, v1);
-  printf(" [%s]\n", msg);
-  vm->flags = f;
-}
+// EXPECT_VAL(kuvm* vm, kuval v1, kuval v2, const char *m)
+#define EXPECT_VAL(vm, v1, v2, m) \
+  do { \
+    last_test = m; \
+    if (ku_equal((v1), (v2))) { \
+      ktest_pass++; \
+    } else { \
+      uint64_t f = vm->flags; \
+      vm->flags &= ~KVM_F_QUIET; \
+      ktest_fail++; \
+      print_failure(); \
+      printf("expected: "); \
+      ku_printval((vm), (v2)); \
+      printf(" found: "); \
+      ku_printval((vm), (v1)); \
+      printf(" [%s]\n", (m)); \
+      vm->flags = f; \
+    } \
+  } while(0)
 
 static void ku_test_summary() {
-  printf(">>> tests: %d pass, %d warn, %d fail\n", ktest_pass, ktest_warn, ktest_fail);
+  printf("[  PASSED  ] %d test\n", ktest_pass);
+  printf("[   WARN   ] %d test\n", ktest_warn);
+  printf("[  FAILED  ] %d test\n", ktest_fail);
 }
 
 kuval ku_get_global(kuvm* vm, const char* name) {
@@ -2133,5 +2154,4 @@ void ku_test() {
   kut_free(vm);
 
   ku_test_summary();
-
 }
