@@ -2815,11 +2815,7 @@ void ku_addlocal(kuvm *vm, kutok name, bool isconst) {
     ku_perr(vm, "const already initialized");
   }
 
-  if (isconst) {
-    local->flags = KU_LOCAL_CONST;
-  } else {
-    local->flags = KU_LOCAL_NONE;
-  }
+  local->flags = (isconst) ? KU_LOCAL_CONST : KU_LOCAL_NONE;
 }
 
 bool ku_identeq(kuvm *vm, kutok *a, kutok *b) {
