@@ -550,7 +550,7 @@ static kutok_t ku_keyword(kuvm *vm) {
         switch (vm->scanner.start[1]) {
           case 'a': return ku_lexkey(vm, 2, 3, "lse", TOK_FALSE);
           case 'o': return ku_lexkey(vm, 2, 1, "r", TOK_FOR);
-          case 'u': return ku_lexkey(vm, 2, 1, "n", TOK_FUN);
+          case 'u': return ku_lexkey(vm, 2, 6, "nction", TOK_FUN);
         }
       }
     case 'i': return ku_lexkey(vm, 1,1,"f", TOK_IF);
