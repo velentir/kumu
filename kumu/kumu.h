@@ -457,6 +457,7 @@ kutok ku_scan(kuvm *vm);
 #define KU_LOCAL_NONE     0x00000000
 #define KU_LOCAL_CAPTURED 0x00000001
 #define KU_LOCAL_CONST    0x00000002
+#define KU_LOCAL_INIT     0x00000004
 #define KU_IS_CAPTURED(l) ((((l).flags) & KU_LOCAL_CAPTURED) != 0)
 
 typedef struct {
@@ -486,7 +487,7 @@ void ku_compinit(kuvm *vm, kucomp *compiler, kufunc_t type);
 void ku_beginscope(kuvm *vm);
 void ku_endscope(kuvm *vm);
 void ku_declare_let(kuvm *vm, bool isconst);
-void ku_addlocal(kuvm *vm, kutok name);
+void ku_addlocal(kuvm *vm, kutok name, bool isconst);
 bool ku_identeq(kuvm *vm, kutok *a, kutok *b);
 int ku_resolvelocal(kuvm *vm, kucomp *compiler, kutok *name);
 void ku_markinit(kuvm *vm);

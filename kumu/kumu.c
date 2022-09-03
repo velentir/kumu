@@ -1060,6 +1060,7 @@ static void ku_pskip(kuvm* vm) {
     case TOK_CLASS:
     case TOK_FUN:
     case TOK_LET:
+    case TOK_CONST:
     case TOK_FOR:
     case TOK_IF:
     case TOK_WHILE:
@@ -1103,7 +1104,7 @@ static void ku_vardef(kuvm* vm, uint8_t index) {
 static void ku_vardecl(kuvm* vm, bool isconst) {
 
   do {
-    uint8_t g = ku_let(vm, false, "name expected");
+    uint8_t g = ku_let(vm, isconst, "name expected");
     if (ku_pmatch(vm, TOK_EQ)) {
       ku_expr(vm);
     }
@@ -1231,7 +1232,7 @@ static void ku_classdecl(kuvm *vm) {
     }
 
     ku_beginscope(vm);
-    ku_addlocal(vm, ku_maketok(vm, "super"));
+    ku_addlocal(vm, ku_maketok(vm, "super"), false);
     ku_vardef(vm, 0);
     ku_namedvar(vm, cname, false);
     ku_emitbyte(vm, OP_INHERIT);
@@ -1259,7 +1260,10 @@ static void ku_decl(kuvm* vm, kuloop *loop) {
     ku_funcdecl(vm);
   } else if (ku_pmatch(vm, TOK_LET)) {
     ku_vardecl(vm, false);
-  } else {
+  } else if (ku_pmatch(vm, TOK_CONST)) {
+    ku_vardecl(vm, true);
+  }
+  else {
     ku_stmt(vm, loop);
   }
   if (vm->parser.panic) {
@@ -1308,7 +1312,7 @@ static void ku_lambda(kuvm *vm, kutok name) {
   kucomp compiler;
   ku_compinit(vm, &compiler, FUNC_STD);
   ku_beginscope(vm);
-  ku_addlocal(vm, name);
+  ku_addlocal(vm, name, false);
   ku_markinit(vm);
   ku_lbody(vm, &compiler);
   compiler.function->arity = 1;
@@ -1322,6 +1326,11 @@ static void ku_namedvar(kuvm* vm, kutok name, bool lhs) {
   if (arg != -1) {
     get = OP_GET_LOCAL;
     set = OP_SET_LOCAL;
+    if (lhs) {
+      if (vm->compiler->locals[arg].flags & KU_LOCAL_CONST) {
+        vm->compiler->locals[arg].flags |= KU_LOCAL_INIT;
+      }
+    }
   } else if ((arg = ku_xvalresolve(vm, vm->compiler, &name)) != -1) {
     get = OP_GET_UPVAL;
     set = OP_SET_UPVAL;
@@ -2790,10 +2799,10 @@ void ku_declare_let(kuvm *vm, bool isconst) {
       ku_perr(vm, "local already defined");
     }
   }
-  ku_addlocal(vm, *name);
+  ku_addlocal(vm, *name, isconst);
 }
 
-void ku_addlocal(kuvm *vm, kutok name) {
+void ku_addlocal(kuvm *vm, kutok name, bool isconst) {
   if (vm->compiler->count == vm->max_locals) {
     ku_perr(vm, "too many locals");
     return;
@@ -2802,7 +2811,15 @@ void ku_addlocal(kuvm *vm, kutok name) {
   kulocal *local = &vm->compiler->locals[vm->compiler->count++];
   local->name = name;
   local->depth = -1;
-  local->flags = KU_LOCAL_NONE;
+  if ((local->flags & KU_LOCAL_CONST) && (local->flags & KU_LOCAL_INIT)) {
+    ku_perr(vm, "const already initialized");
+  }
+
+  if (isconst) {
+    local->flags = KU_LOCAL_CONST;
+  } else {
+    local->flags = KU_LOCAL_NONE;
+  }
 }
 
 bool ku_identeq(kuvm *vm, kutok *a, kutok *b) {

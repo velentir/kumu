@@ -644,6 +644,17 @@ void ku_test() {
   kut_free(vm);
 
   vm = kut_new(false);
+  res = ku_exec(vm, "const x = 20; let y = 0; { const a=x*20; y = a; }");
+  EXPECT_INT(vm, res, KVM_OK, "const decl");
+  EXPECT_VAL(vm, ku_get_global(vm, "y"), NUM_VAL(400), "const local init");
+  kut_free(vm);
+
+  vm = kut_new(false);
+  res = ku_exec(vm, "const x = 20; let y = 0; { const a=x*20; a = 7; }");
+  EXPECT_INT(vm, res, KVM_ERR_SYNTAX, "const late assign");
+  kut_free(vm);
+
+  vm = kut_new(false);
   res = ku_exec(vm, "{ let a = a; }");
   EXPECT_INT(vm, res, KVM_ERR_SYNTAX, "local own init");
   kut_free(vm);
