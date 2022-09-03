@@ -348,7 +348,7 @@ void ku_test() {
   kut_free(vm);
 
   vm = kut_new(false);
-  ku_lexinit(vm, "and class else false for fun if nil or return super this true while {}[]!+-*/=!==><>=<= === => break continue const far\ttrick\nart\rcool eek too fund");
+  ku_lexinit(vm, "and class else false for function if nil or return super this true while {}[]!+-*/=!==><>=<= === => break continue const far\ttrick\nart\rcool eek too functiond");
   kutok t = ku_scan(vm);
   EXPECT_INT(vm, t.type, TOK_AND, "[and]");
   t = ku_scan(vm);
@@ -360,7 +360,7 @@ void ku_test() {
   t = ku_scan(vm);
   EXPECT_INT(vm, t.type, TOK_FOR, "[for]");
   t = ku_scan(vm);
-  EXPECT_INT(vm, t.type, TOK_FUN, "[fun]");
+  EXPECT_INT(vm, t.type, TOK_FUN, "[function]");
   t = ku_scan(vm);
   EXPECT_INT(vm, t.type, TOK_IF, "[if]");
   t = ku_scan(vm);
@@ -776,32 +776,32 @@ void ku_test() {
   kut_free(vm);
 
   vm = kut_new(true);
-  res = ku_exec(vm, "fun foo(a) { print(\"ok\"); }");
-  EXPECT_INT(vm, res, KVM_OK, "fun def");
+  res = ku_exec(vm, "function foo(a) { print(\"ok\"); }");
+  EXPECT_INT(vm, res, KVM_OK, "function def");
   v = ku_get_global(vm, "foo");
-  EXPECT_INT(vm, IS_OBJ(v),true, "fun object");
+  EXPECT_INT(vm, IS_OBJ(v),true, "function object");
   kut_free(vm);
 
   vm = kut_new(true);
   vm->max_params = 1;
-  res = ku_exec(vm, "fun foo(a,b) { printf(555); }; foo(4,5,6);");
+  res = ku_exec(vm, "function foo(a,b) { printf(555); }; foo(4,5,6);");
   EXPECT_INT(vm, res, KVM_ERR_SYNTAX, "too many params");
   kut_free(vm);
 
   vm = kut_new(true);
-  res = ku_exec(vm, "fun foo(a,b) { printf(2); }");
-  EXPECT_INT(vm, res, KVM_OK, "func call def");
+  res = ku_exec(vm, "function foo(a,b) { printf(2); }");
+  EXPECT_INT(vm, res, KVM_OK, "function call def");
   res = ku_exec(vm, "foo(1,2,3);");
-  EXPECT_INT(vm, res, KVM_ERR_RUNTIME, "func call mismatch");
+  EXPECT_INT(vm, res, KVM_ERR_RUNTIME, "function call mismatch");
   kut_free(vm);
 
   vm = kut_new(false);
   res = ku_exec(vm, "a=7; a();");
-  EXPECT_INT(vm, res, KVM_ERR_RUNTIME, "non-func call");
+  EXPECT_INT(vm, res, KVM_ERR_RUNTIME, "non-function call");
   kut_free(vm);
 
   vm = kut_new(false);
-  res = ku_exec(vm, "fun a() { b(); }\nfun b() { b(12); }\na();");
+  res = ku_exec(vm, "function a() { b(); }\nfunction b() { b(12); }\na();");
   EXPECT_INT(vm, res, KVM_ERR_RUNTIME, "too many args print");
   kut_free(vm);
 
@@ -811,13 +811,13 @@ void ku_test() {
   kut_free(vm);
 
   vm = kut_new(false);
-  res = ku_exec(vm, "let x=2 return fun foo()");
+  res = ku_exec(vm, "let x=2 return function foo()");
   EXPECT_INT(vm, res, KVM_ERR_SYNTAX, "parse_skip return");
   kut_free(vm);
 
   vm = kut_new(false);
-  res = ku_exec(vm, "let x=2 fun foo()");
-  EXPECT_INT(vm, res, KVM_ERR_SYNTAX, "parse_skip fun");
+  res = ku_exec(vm, "let x=2 function foo()");
+  EXPECT_INT(vm, res, KVM_ERR_SYNTAX, "parse_skip function");
   kut_free(vm);
 
   vm = kut_new(false);
@@ -846,13 +846,13 @@ void ku_test() {
   kut_free(vm);
 
   vm = kut_new(false);
-  res = ku_exec(vm, "fun f(a) { return a*2; }\nlet x = f(3);");
+  res = ku_exec(vm, "function f(a) { return a*2; }\nlet x = f(3);");
   EXPECT_INT(vm, res, KVM_OK, "return expr res");
   EXPECT_VAL(vm, ku_get_global(vm, "x"), NUM_VAL(6), "return expr val");
   kut_free(vm);
 
   vm = kut_new(false);
-  res = ku_exec(vm, "fun f(a) { let z = 2; }\nlet x = f(3);");
+  res = ku_exec(vm, "function f(a) { let z = 2; }\nlet x = f(3);");
   EXPECT_INT(vm, res, KVM_OK, "implicit return res");
   EXPECT_VAL(vm, ku_get_global(vm, "x"), NIL_VAL, "implicit return val");
   kut_free(vm);
@@ -860,8 +860,8 @@ void ku_test() {
   vm = kut_new(false);
   ku_cfuncdef(vm, "nadd", kutest_native_add);
   res = ku_exec(vm, "let x = nadd(3,4);");
-  EXPECT_INT(vm, res, KVM_OK, "cfunc res");
-  EXPECT_VAL(vm, ku_get_global(vm, "x"), NUM_VAL(7), "cfunc return");
+  EXPECT_INT(vm, res, KVM_OK, "cfunction res");
+  EXPECT_VAL(vm, ku_get_global(vm, "x"), NUM_VAL(7), "cfunction return");
   kut_free(vm);
 
   vm = kut_new(true);
@@ -877,25 +877,25 @@ void ku_test() {
   kut_free(vm);
 
   vm = kut_new(false);
-  res = ku_exec(vm, "fun M(x) { let m = x; fun e(n) { return m*n; } return e; }\n let z = M(5); let x = z(3);");
+  res = ku_exec(vm, "function M(x) { let m = x; function e(n) { return m*n; } return e; }\n let z = M(5); let x = z(3);");
   EXPECT_INT(vm, res, KVM_OK, "closure res");
   EXPECT_VAL(vm, ku_get_global(vm, "x"), NUM_VAL(15), "closure val");
   kut_free(vm);
 
   vm = kut_new(false);
-  res = ku_exec(vm, "fun o() { let a=7; let b=8; fun i() { return a+b; } return i; }\n let z = o(); let x = z();");
+  res = ku_exec(vm, "function o() { let a=7; let b=8; function i() { return a+b; } return i; }\n let z = o(); let x = z();");
   EXPECT_INT(vm, res, KVM_OK, "closure2 res");
   EXPECT_VAL(vm, ku_get_global(vm, "x"), NUM_VAL(15), "closure2 val");
   kut_free(vm);
 
   vm = kut_new(false);
-  res = ku_exec(vm, "fun f1(){let a1=1; fun f2() {let a2=2; fun f3(){ return a1+a2; } return f3; } return f2; }\n let v1=f1(); let v2=v1(); let v3=v2();");
+  res = ku_exec(vm, "function f1(){let a1=1; function f2() {let a2=2; function f3(){ return a1+a2; } return f3; } return f2; }\n let v1=f1(); let v2=v1(); let v3=v2();");
   EXPECT_INT(vm, res, KVM_OK, "closure3 res");
   EXPECT_VAL(vm, ku_get_global(vm, "v3"), NUM_VAL(3), "closure3 val");
   kut_free(vm);
 
   vm = kut_new(false);
-  res = ku_exec(vm, "fun M(x) { let m = x; fun e() { return m*m; } return e; }\n let z = M(5); let x = z();");
+  res = ku_exec(vm, "function M(x) { let m = x; function e() { return m*m; } return e; }\n let z = M(5); let x = z();");
   EXPECT_INT(vm, res, KVM_OK, "closure4 res");
   EXPECT_VAL(vm, ku_get_global(vm, "x"), NUM_VAL(25), "closure4 val");
   kut_free(vm);
@@ -924,7 +924,7 @@ void ku_test() {
 
   vm = kut_new(false);
   vm->flags = KVM_F_GCSTRESS | KVM_F_GCLOG | KVM_F_QUIET;
-  res = ku_exec(vm, "fun M(x) { let m = x; fun e() { return m*m; } return e; }\n let z = M(5); let x = z(); x = nil;");
+  res = ku_exec(vm, "function M(x) { let m = x; function e() { return m*m; } return e; }\n let z = M(5); let x = z(); x = nil;");
   ku_gc(vm);
   EXPECT_INT(vm, res, KVM_OK, "gc closure res");
   EXPECT_VAL(vm, ku_get_global(vm, "x"), NIL_VAL, "gc closure val");
@@ -932,7 +932,7 @@ void ku_test() {
 
   vm = kut_new(false);
   vm->flags = KVM_F_GCSTRESS | KVM_F_GCLOG | KVM_F_QUIET;
-  res = ku_exec(vm, "fun M(x) { let m = x; let mm=x*2; fun e(n) { return m*n*mm; } return e; }\n let z = M(5); let x = z(3); x = nil;");
+  res = ku_exec(vm, "function M(x) { let m = x; let mm=x*2; function e(n) { return m*n*mm; } return e; }\n let z = M(5); let x = z(3); x = nil;");
   EXPECT_INT(vm, res, KVM_OK, "gc closure2 res");
   EXPECT_VAL(vm, ku_get_global(vm, "x"), NIL_VAL, "gc closure2 val");
   kut_free(vm);
@@ -1017,7 +1017,7 @@ void ku_test() {
   kut_free(vm);
 
   vm = kut_new(false);
-  res = ku_exec(vm, "let x=1; class C { init() { fun f() { x=8; } this.f = f; } }\nlet c = C(); c.f();");
+  res = ku_exec(vm, "let x=1; class C { init() { function f() { x=8; } this.f = f; } }\nlet c = C(); c.f();");
   EXPECT_INT(vm, res, KVM_OK, "field invoke res");
   EXPECT_VAL(vm, ku_get_global(vm, "x"), NUM_VAL(8), "field invoke ret");
   kut_free(vm);
@@ -1073,18 +1073,18 @@ void ku_test() {
   kut_free(vm);
 
   vm = kut_new(false);
-  res = ku_exec(vm, "fun=7; ");
+  res = ku_exec(vm, "function=7; ");
   EXPECT_INT(vm, res, KVM_ERR_SYNTAX, "invalid assign");
   kut_free(vm);
 
   vm = kut_new(false);
-  res = ku_exec(vm, "fun f() { return; }");
+  res = ku_exec(vm, "function f() { return; }");
   EXPECT_INT(vm, res, KVM_OK, "simple ret");
   kut_free(vm);
 
   vm = kut_new(false);
   vm->max_closures = 1;
-  res = ku_exec(vm, "fun O() { let a=1; let b=2; fun I() { return a*b; } return e; }\n let z=M(); let x=z();");
+  res = ku_exec(vm, "function O() { let a=1; let b=2; function I() { return a*b; } return e; }\n let z=M(); let x=z();");
   EXPECT_INT(vm, res, KVM_ERR_RUNTIME, "too many closures res");
   kut_free(vm);
 
@@ -1102,7 +1102,7 @@ void ku_test() {
 
   vm = kut_new(false);
   vm->max_frames = 1;
-  res = ku_exec(vm, "fun a(){} fun b(){a();} fun c(){b();} c();");
+  res = ku_exec(vm, "function a(){} function b(){a();} function c(){b();} c();");
   EXPECT_INT(vm, res, KVM_ERR_RUNTIME, "stack overflow");
   kut_free(vm);
 
@@ -1127,7 +1127,7 @@ void ku_test() {
   kut_free(vm);
 
   vm = kut_new(false);
-  res = ku_exec(vm, "fun O() { let a=1; let b=2; fun e() { a=9; return a*b; } return e; }\n let z=O(); let x=z();");
+  res = ku_exec(vm, "function O() { let a=1; let b=2; function e() { a=9; return a*b; } return e; }\n let z=O(); let x=z();");
   EXPECT_INT(vm, res, KVM_OK, "closure set res");
   EXPECT_VAL(vm, ku_get_global(vm, "x"), NUM_VAL(18), "closure set ret");
   kut_free(vm);
@@ -1145,7 +1145,7 @@ void ku_test() {
 
   vm = kut_new(false);
   vm->max_locals = 1;
-  res = ku_exec(vm, "fun f() { let x=9; let m=2; }");
+  res = ku_exec(vm, "function f() { let x=9; let m=2; }");
   EXPECT_INT(vm, res, KVM_ERR_SYNTAX, "max_locals");
   kut_free(vm);
 
@@ -1158,15 +1158,15 @@ void ku_test() {
   kut_free(vm);
 
   vm = kut_new(false);
-  res = ku_exec(vm, "let f=fun(a) {return a*2;}; let x=f(3);");
+  res = ku_exec(vm, "let f=function(a) {return a*2;}; let x=f(3);");
   EXPECT_INT(vm, res, KVM_OK, "anonymous function res");
-  EXPECT_VAL(vm, ku_get_global(vm, "x"), NUM_VAL(6), "anonymous func ret");
+  EXPECT_VAL(vm, ku_get_global(vm, "x"), NUM_VAL(6), "anonymous function ret");
   kut_free(vm);
 
   vm = kut_new(false);
-  res = ku_exec(vm, "fun f(x) { return x(7);} let x=f(fun(a) { return a*2; });");
-  EXPECT_INT(vm, res, KVM_OK, "fun arg res");
-  EXPECT_VAL(vm, ku_get_global(vm, "x"), NUM_VAL(14), "fun arg ret");
+  res = ku_exec(vm, "function f(x) { return x(7);} let x=f(function(a) { return a*2; });");
+  EXPECT_INT(vm, res, KVM_OK, "function arg res");
+  EXPECT_VAL(vm, ku_get_global(vm, "x"), NUM_VAL(14), "function arg ret");
   kut_free(vm);
 
   ku_lexinit(vm, "let x = 12+3;\nlet m=2;\nlet mm=99;");
@@ -1179,7 +1179,7 @@ void ku_test() {
   kut_free(vm);
 
   vm = kut_new(false);
-  res = ku_exec(vm, "fun f(x) { return x(2); } let x = f(a => a*3);");
+  res = ku_exec(vm, "function f(x) { return x(2); } let x = f(a => a*3);");
   EXPECT_INT(vm, res, KVM_OK, "lambda arg res");
   EXPECT_VAL(vm, ku_get_global(vm, "x"), NUM_VAL(6), "lambda arg ret");
   kut_free(vm);
@@ -1886,14 +1886,14 @@ void ku_test() {
   kut_free(vm);
 
   vm = kut_new(true);
-  res = ku_exec(vm, "fun F() { let a=array(2); a[0]=1; a[1]=2; a[2]=3; return a[2]; } let x=F();");
+  res = ku_exec(vm, "function F() { let a=array(2); a[0]=1; a[1]=2; a[2]=3; return a[2]; } let x=F();");
   EXPECT_INT(vm, res, KVM_OK, "arr nogc res");
   EXPECT_VAL(vm, ku_get_global(vm, "x"), NUM_VAL(3), "arr no gc ret");
   kut_free(vm);
 
   vm = kut_new(true);
   vm->flags = KVM_F_GCSTRESS;
-  res = ku_exec(vm, "fun F() { let a=array(2); a[0]=1; a[1]=2; a[2]=3; return a[2]; } let x=F();");
+  res = ku_exec(vm, "function F() { let a=array(2); a[0]=1; a[1]=2; a[2]=3; return a[2]; } let x=F();");
   EXPECT_INT(vm, res, KVM_OK, "arr gc res");
   EXPECT_VAL(vm, ku_get_global(vm, "x"), NUM_VAL(3), "arr gc ret");
   kut_free(vm);
