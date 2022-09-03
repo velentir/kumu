@@ -34,7 +34,7 @@ static kuval NVGTextOrBoxBounds(kuvm *vm, NVGcontext *ctx, int argc, kuval *args
   double y = N(1);
   int adj = (box) ? 1 : 0;
   double breakRowWidth = (box) ? N(2) : 0;
-  
+
   const char *text = S(2 + adj);
   int istart = (int)N(3 + adj);
   int iend = (int)N(4 + adj);
@@ -42,15 +42,15 @@ static kuval NVGTextOrBoxBounds(kuvm *vm, NVGcontext *ctx, int argc, kuval *args
   const char *start = text + istart;
   const char *end = text + iend;
   float bounds[4];
-  float ret = NIL_VAL;
-  
+  float ret = NULL_VAL;
+
   if (box) {
     nvgTextBoxBounds(ctx, x, y, breakRowWidth, start, (iend >= 0) ? end : NULL, bounds);
   }
   else {
     ret = nvgTextBounds(ctx, x, y, start, (iend >= 0) ? end: NULL, bounds);
   }
-  
+
   if (IS_ARRAY(args[5 + adj])) {
     for (int i = 0; i < 4; i++) {
       ku_arrset(vm, ao, i, NUM_VAL(bounds[i]));
@@ -99,13 +99,13 @@ static void NVGpaintFromArray(kuvm *vm, NVGpaint *p, kuaobj *arr) {
   p->xform[3] = AS_NUM(ku_arrget(vm, arr, 3));
   p->xform[4] = AS_NUM(ku_arrget(vm, arr, 4));
   p->xform[5] = AS_NUM(ku_arrget(vm, arr, 5));
-  
+
   p->extent[0] = AS_NUM(ku_arrget(vm, arr, 6));
   p->extent[1] = AS_NUM(ku_arrget(vm, arr, 7));
 
   p->radius = AS_NUM(ku_arrget(vm, arr, 8));
   p->feather = AS_NUM(ku_arrget(vm, arr, 9));
-  
+
   p->innerColor = NVGColorFromInt(AS_NUM(ku_arrget(vm, arr, 10)));
   p->outerColor = NVGColorFromInt(AS_NUM(ku_arrget(vm, arr, 11)));
   p->image = (int)AS_NUM(ku_arrget(vm, arr, 12));
@@ -114,7 +114,7 @@ static void NVGpaintFromArray(kuvm *vm, NVGpaint *p, kuaobj *arr) {
 kuval nanovg_cons(kuvm *vm, int argc, kuval *args) {
   if (argc < 2 || !IS_INSTANCE(args[0]) || !IS_STR(args[1])) {
     ku_err(vm, "expected nanovg(object, key)");
-    return NIL_VAL;
+    return NULL_VAL;
   }
   kunvobj *no = (kunvobj*)ku_objalloc(vm, sizeof(kunvobj), OBJ_CINST);
   ku_push(vm, OBJ_VAL(no)); // for GC
@@ -140,7 +140,7 @@ static inline uint64_t nanovg_args2intcolor(kuval *args) {
 
 kuval nanovg_icall(kuvm *vm, kuobj *o, kustr *m, int argc, kuval *args) {
   kunvobj *no = (kunvobj*)o;
-  
+
   if (strcmp(m->chars, "beginFrame") == 0 && argc == 3) {
     nvgBeginFrame(no->ctx, N(0), N(1), N(2));
   } else if (strcmp(m->chars, "endFrame") == 0) {
@@ -307,7 +307,7 @@ kuval nanovg_icall(kuvm *vm, kuobj *o, kustr *m, int argc, kuval *args) {
     nvgIntersectScissor(no->ctx, N(0), N(1), N(2), N(3));
   } else if (strcmp(m->chars, "fontBlur") == 0 && argc == 1) {
     nvgFontBlur(no->ctx, N(0));
-  } else if (strcmp(m->chars, "createImage") == 0 && argc == 2) {    
+  } else if (strcmp(m->chars, "createImage") == 0 && argc == 2) {
     return NUM_VAL(nvgCreateImage(no->ctx, S(0), (int)N(1)));
   } else if (strcmp(m->chars, "imageSize") == 0 && argc == 2 && IS_ARRAY(args[1])) {
     int w, h;
@@ -326,7 +326,7 @@ kuval nanovg_icall(kuvm *vm, kuobj *o, kustr *m, int argc, kuval *args) {
     int start = (int)N(3);
     int end = (int)N(4);
     kuaobj *ao = AS_ARRAY(args[5]);
-    
+
     int maxpos = ao->elements.count;
     NVGglyphPosition *positions = (NVGglyphPosition*)malloc(sizeof(NVGglyphPosition)*maxpos);
     int nglypes = nvgTextGlyphPositions(no->ctx, x, y, text + start, text + end, positions, maxpos);
@@ -347,7 +347,7 @@ kuval nanovg_icall(kuvm *vm, kuobj *o, kustr *m, int argc, kuval *args) {
   else {
     ku_err(vm, "unexpected method %s\n", m->chars);
   }
-  return NIL_VAL;
+  return NULL_VAL;
 }
 
 kuval nanovg_sget(kuvm *vm, kustr *p) {
@@ -380,7 +380,7 @@ kuval nanovg_sget(kuvm *vm, kustr *p) {
   } else if (strcmp(p->chars, "BUTT") == 0) {
     return NUM_VAL(NVG_BUTT);
   }
-  return NIL_VAL;
+  return NULL_VAL;
 }
 
 kuval nanovg_ifree(kuvm *vm, kuobj *o) {
@@ -388,13 +388,13 @@ kuval nanovg_ifree(kuvm *vm, kuobj *o) {
   nvgDeleteInternal(no->ctx);
   no->ctx = NULL;
   ku_alloc(vm, no, sizeof(kunvobj), 0);
-  return NIL_VAL;
+  return NULL_VAL;
 }
 
 kuval nanovg_imark(kuvm *vm, kuobj *o) {
   kunvobj *no = (kunvobj*)o;
   ku_markobj(vm, AS_OBJ(no->target));
-  return NIL_VAL;
+  return NULL_VAL;
 }
 
 void kuvg_reg(kuvm *vm) {
