@@ -1093,16 +1093,24 @@ static uint8_t ku_let(kuvm* vm, bool isconst, const char* msg) {
   return ku_pidconst(vm, &vm->parser.prev);
 }
 
-static void ku_vardef(kuvm* vm, uint8_t index) {
+static void ku_vardef(kuvm* vm, uint8_t index, bool isconst) {
   if (vm->compiler->depth > 0) {
     ku_markinit(vm);
     return;
+  }
+  if (isconst) {
+    kustr *key = AS_STR(ku_chunk(vm)->constants.values[index]);
+    kuval cinit;
+    if (ku_tabget(vm, &vm->gconst, key, &cinit)) {
+        ku_perr(vm, "const already defined");
+    } else {
+      ku_tabset(vm, &vm->gconst, key, NIL_VAL);
+    }
   }
   ku_emitbytes(vm, OP_DEF_GLOBAL, index);
 }
 
 static void ku_vardecl(kuvm* vm, bool isconst) {
-
   do {
     uint8_t g = ku_let(vm, isconst, "name expected");
     if (ku_pmatch(vm, TOK_EQ)) {
@@ -1111,7 +1119,7 @@ static void ku_vardecl(kuvm* vm, bool isconst) {
     else {
       ku_emitbyte(vm, OP_NIL);
     }
-    ku_vardef(vm, g);
+    ku_vardef(vm, g, isconst);
   } while(ku_pmatch(vm, TOK_COMMA));
 
   ku_pconsume(vm, TOK_SEMI, "; expected");
@@ -1135,7 +1143,7 @@ static void ku_params(kuvm *vm) {
     }
 
     uint8_t constant = ku_let(vm, false, "expected parameter name");
-    ku_vardef(vm, constant);
+    ku_vardef(vm, constant, false);
   } while(ku_pmatch(vm, TOK_COMMA));
 }
 
@@ -1186,7 +1194,7 @@ static void ku_funcdecl(kuvm *vm) {
   uint8_t global = ku_let(vm, false, "function name expected");
   ku_markinit(vm);
   ku_function(vm, FUNC_STD);
-  ku_vardef(vm, global);
+  ku_vardef(vm, global, false);
 }
 
 static void ku_method(kuvm *vm) {
@@ -1217,7 +1225,7 @@ static void ku_classdecl(kuvm *vm) {
   uint8_t name = ku_pidconst(vm, &vm->parser.prev);
   ku_declare_let(vm, false);
   ku_emitbytes(vm, OP_CLASS, name);
-  ku_vardef(vm, name);
+  ku_vardef(vm, name, false);
   kuclasscomp cc;
   cc.enclosing = vm->curclass;
   cc.hassuper = false;
@@ -1233,7 +1241,7 @@ static void ku_classdecl(kuvm *vm) {
 
     ku_beginscope(vm);
     ku_addlocal(vm, ku_maketok(vm, "super"), false);
-    ku_vardef(vm, 0);
+    ku_vardef(vm, 0, false);
     ku_namedvar(vm, cname, false);
     ku_emitbyte(vm, OP_INHERIT);
     cc.hassuper = true;
@@ -1322,6 +1330,7 @@ static void ku_lambda(kuvm *vm, kutok name) {
 static void ku_namedvar(kuvm* vm, kutok name, bool lhs) {
   int arg = ku_resolvelocal(vm, vm->compiler, &name);
   uint8_t set, get;
+  bool isglobal = false;
 
   if (arg != -1) {
     get = OP_GET_LOCAL;
@@ -1338,8 +1347,16 @@ static void ku_namedvar(kuvm* vm, kutok name, bool lhs) {
     arg = ku_pidconst(vm, &name);
     get = OP_GET_GLOBAL;
     set = OP_SET_GLOBAL;
+    isglobal = true;
   }
   if (lhs && ku_pmatch(vm, TOK_EQ)) {
+    if (isglobal) {
+        kustr *key = AS_STR(ku_chunk(vm)->constants.values[arg]);
+        kuval cinit;
+        if (ku_tabget(vm, &vm->gconst, key, &cinit)) {
+            ku_perr(vm, "const cannot be assigned");
+        }
+    }
     ku_expr(vm);
     ku_emitbytes(vm, set, (uint8_t)arg);
   } else if (ku_pmatch(vm, TOK_ARROW)) {
@@ -1689,6 +1706,7 @@ kuvm *ku_newvm(int stack_max) {
   vm->compiler = NULL;
   ku_tabinit(vm, &vm->strings);
   ku_tabinit(vm, &vm->globals);
+  ku_tabinit(vm, &vm->gconst);
   ku_reset(vm);
   vm->initstr = NULL; // GC can run when we do str_copy below
   vm->countstr = NULL;
@@ -1719,6 +1737,7 @@ void ku_free(kuvm *vm) {
   ku_freeobjects(vm);
   ku_tabfree(vm, &vm->strings);
   ku_tabfree(vm, &vm->globals);
+  ku_tabfree(vm, &vm->gconst);
   vm->allocated -= sizeof(kuvm);
   assert(vm->allocated == 0); // TODO: figure out code coverage
   free(vm->gcstack);
@@ -2784,10 +2803,11 @@ void ku_endscope(kuvm *vm) {
 }
 
 void ku_declare_let(kuvm *vm, bool isconst) {
+  kutok *name = &vm->parser.prev;
+  
   if (vm->compiler->depth == 0) {
     return;
   }
-  kutok *name = &vm->parser.prev;
   for (int i = vm->compiler->count - 1; i >= 0; i--) {
     kulocal *local = &vm->compiler->locals[i];
     if (local->depth != -1 && local->depth < vm->compiler->depth) {

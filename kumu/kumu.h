@@ -571,6 +571,7 @@ typedef struct kuvm {
   kuobj* objects;
   kutab strings;
   kutab globals;
+  kutab gconst;      // value is initialized state
 
   kuxobj *openupvals;
 
