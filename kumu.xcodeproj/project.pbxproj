@@ -58,7 +58,7 @@
 		826DC6B5278B7656006EF87A /* kunvg.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = kunvg.h; sourceTree = "<group>"; };
 		826DC6B6278B7656006EF87A /* Roboto-Regular.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Roboto-Regular.ttf"; sourceTree = "<group>"; };
 		82E8AB81275FC069003A7A54 /* kutest.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = kutest.h; sourceTree = "<group>"; };
-		82E8AB82275FC069003A7A54 /* kutest.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = kutest.c; sourceTree = "<group>"; };
+		82E8AB82275FC069003A7A54 /* kutest.c */ = {isa = PBXFileReference; indentWidth = 2; lastKnownFileType = sourcecode.c.c; path = kutest.c; sourceTree = "<group>"; tabWidth = 2; };
 		82E8AB85275FCA23003A7A54 /* kumain.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = kumain.h; sourceTree = "<group>"; };
 		82E8AB86275FCA23003A7A54 /* kumain.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = kumain.c; sourceTree = "<group>"; };
 		82EE3AEE274EE08100D6B09E /* kumu */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = kumu; sourceTree = BUILT_PRODUCTS_DIR; };
