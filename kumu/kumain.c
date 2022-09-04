@@ -78,6 +78,7 @@ static ku_repl_flag ku_repl_flags[] = {
   { "list", KVM_F_LIST },
   { "stack", KVM_F_STACK },
   { "noexec", KVM_F_NOEXEC },
+  { "debug", KVM_F_DEBUG }
 };
 
 static bool ku_check_flag(kuvm *vm, char *line,

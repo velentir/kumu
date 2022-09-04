@@ -227,6 +227,7 @@ typedef enum {
   OP_SHR,
   OP_TABLE,
   OP_DUP,
+  OP_DBG_BREAK,
 } k_op;
 
 // ********************** code chunks **********************
@@ -485,6 +486,8 @@ typedef enum {
   KVM_FILE_NOTFOUND,
 } kures;
 
+typedef kures(*debugcallback)(kuvm* vm);
+
 #define KVM_F_TRACE     0x00000001   // trace each instruction as it runs
 #define KVM_F_STACK     0x00000002   // print stack in repl
 #define KVM_F_LIST      0x00000004   // list instructions after compile
@@ -494,7 +497,7 @@ typedef enum {
 #define KVM_F_NOEXEC    0x00000040   // Disable execution only compile
 #define KVM_F_GCSTRESS  0x00000080   // GC every alloc increase
 #define KVM_F_GCLOG     0x00000100   // Log GC action
-
+#define KVM_F_DEBUG     0x00000200   // Produce debug build
 
 typedef struct kuvm {
   uint64_t flags;
@@ -508,6 +511,8 @@ typedef struct kuvm {
   int max_frames;
   int max_locals;
   int max_patches;
+
+  debugcallback debugger;
 
   bool err;
   size_t allocated;

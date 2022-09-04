@@ -684,22 +684,31 @@ kuchunk *ku_chunk(kuvm *vm) {
   return &vm->compiler->function->chunk;
 }
 
-static void ku_emitbyte(kuvm *vm, uint8_t byte) {
+static void ku_emitbyte(kuvm* vm, uint8_t byte) {
+  ku_chunkwrite(vm, ku_chunk(vm), byte, vm->parser.prev.line);
+}
+
+static void ku_emitop(kuvm *vm, uint8_t byte) {
+  if (vm->flags & KVM_F_DEBUG) {
+    ku_emitbyte(vm, OP_DBG_BREAK);
+  }
   ku_chunkwrite(vm, ku_chunk(vm), byte, vm->parser.prev.line);
 }
 
 static void ku_emitbytes(kuvm *vm, uint8_t b1, uint8_t b2);
+static void ku_emitop2(kuvm* vm, uint8_t b1, uint8_t b2);
+
 static void ku_emitret(kuvm *vm, bool lambda) {
   if (lambda) {
-    ku_emitbyte(vm, OP_RET);
+    ku_emitop(vm, OP_RET);
     return;
   }
   if (vm->compiler->type == FUNC_INIT) {
-    ku_emitbytes(vm, OP_GET_LOCAL, 0);
+    ku_emitop2(vm, OP_GET_LOCAL, 0);
   } else {
-    ku_emitbyte(vm, OP_NIL);
+    ku_emitop(vm, OP_NIL);
   }
-  ku_emitbyte(vm, OP_RET);
+  ku_emitop(vm, OP_RET);
 }
 
 static kufunc *ku_pend(kuvm *vm, bool lambda) {
@@ -714,6 +723,15 @@ static void ku_emitbytes(kuvm *vm, uint8_t b1, uint8_t b2) {
   ku_emitbyte(vm, b2);
 }
 
+static void ku_emitop2(kuvm* vm, uint8_t b1, uint8_t b2) {
+  if (vm->flags & KVM_F_DEBUG) {
+    ku_emitbyte(vm, OP_DBG_BREAK);
+  }
+
+  ku_emitbyte(vm, b1);
+  ku_emitbyte(vm, b2);
+}
+
 static uint8_t ku_pconst(kuvm *vm, kuval val) {
   int cons = ku_chunkconst(vm, ku_chunk(vm), val);
   if (cons > vm->max_const) {
@@ -723,7 +741,7 @@ static uint8_t ku_pconst(kuvm *vm, kuval val) {
   return (uint8_t)cons;
 }
 static void ku_emitconst(kuvm *vm, kuval val) {
-  ku_emitbytes(vm, OP_CONST, ku_pconst(vm, val));
+  ku_emitop2(vm, OP_CONST, ku_pconst(vm, val));
 }
 
 typedef enum {
@@ -788,9 +806,9 @@ static void ku_prec(kuvm *vm, kup_precedence prec) {
 
 static void ku_lit(kuvm *vm, bool lhs) {
   switch (vm->parser.prev.type) {
-    case TOK_FALSE: ku_emitbyte(vm, OP_FALSE); break;
-    case TOK_TRUE: ku_emitbyte(vm, OP_TRUE); break;
-    case TOK_NIL: ku_emitbyte(vm, OP_NIL); break;
+    case TOK_FALSE: ku_emitop(vm, OP_FALSE); break;
+    case TOK_TRUE: ku_emitop(vm, OP_TRUE); break;
+    case TOK_NIL: ku_emitop(vm, OP_NIL); break;
     default: return; // unreachable - TODO: figure out code coverage
   }
 }
@@ -889,7 +907,7 @@ static uint8_t ku_arglist(kuvm *vm, kutok_t right) {
 
 static void ku_call(kuvm *vm, bool lhs) {
   uint8_t argc = ku_arglist(vm, TOK_RPAR);
-  ku_emitbytes(vm, OP_CALL, argc);
+  ku_emitop2(vm, OP_CALL, argc);
 }
 
 static void ku_grouping(kuvm *vm, bool lhs) {
@@ -940,7 +958,7 @@ static void ku_lambda_or_group(kuvm *vm, bool lhs) {
 
 static void ku_array(kuvm *vm, bool lhs) {
   int count = ku_arglist(vm, TOK_RBRACKET);
-  ku_emitbyte(vm, OP_ARRAY);
+  ku_emitop(vm, OP_ARRAY);
   ku_emitbyte(vm, (count >> 8) & 0xff);
   ku_emitbyte(vm, count & 0xff);
 }
@@ -950,9 +968,9 @@ static void ku_index(kuvm *vm, bool lhs) {
   ku_pconsume(vm, TOK_RBRACKET, "']' expected");
   if (lhs && ku_pmatch(vm, TOK_EQ)) {
     ku_expr(vm);
-    ku_emitbyte(vm, OP_ASET);
+    ku_emitop(vm, OP_ASET);
   } else {
-    ku_emitbyte(vm, OP_AGET);
+    ku_emitop(vm, OP_AGET);
   }
 }
 
@@ -962,8 +980,8 @@ static void ku_unary(kuvm *vm, bool lhs) {
   ku_prec(vm, P_UNARY);
 
   switch (optype) {
-    case TOK_MINUS: ku_emitbyte(vm, OP_NEG); break;
-    case TOK_BANG: ku_emitbyte(vm, OP_NOT); break;
+    case TOK_MINUS: ku_emitop(vm, OP_NEG); break;
+    case TOK_BANG: ku_emitop(vm, OP_NOT); break;
     default: return; // unreachable - TODO: figure out code coverage
   }
 }
@@ -971,7 +989,7 @@ static void ku_unary(kuvm *vm, bool lhs) {
 static void ku_exprstmt(kuvm* vm, kuloop *loop) {
   ku_expr(vm);
   ku_pconsume(vm, TOK_SEMI, "; expected");
-  ku_emitbyte(vm, OP_POP);
+  ku_emitop(vm, OP_POP);
 }
 
 static void ku_return(kuvm *vm, kuloop *loop) {
@@ -988,7 +1006,7 @@ static void ku_return(kuvm *vm, kuloop *loop) {
     }
     ku_expr(vm);
     ku_pconsume(vm, TOK_SEMI, "';' expected");
-    ku_emitbyte(vm, OP_RET);
+    ku_emitop(vm, OP_RET);
   }
 }
 
@@ -1091,7 +1109,7 @@ static void ku_vardef(kuvm* vm, uint8_t index, bool isconst) {
       ku_tabset(vm, &vm->gconst, key, NIL_VAL);
     }
   }
-  ku_emitbytes(vm, OP_DEF_GLOBAL, index);
+  ku_emitop2(vm, OP_DEF_GLOBAL, index);
 }
 
 static void ku_vardecl(kuvm* vm, bool isconst) {
@@ -1101,7 +1119,7 @@ static void ku_vardecl(kuvm* vm, bool isconst) {
       ku_expr(vm);
     }
     else {
-      ku_emitbyte(vm, OP_NIL);
+      ku_emitop(vm, OP_NIL);
     }
     ku_vardef(vm, g, isconst);
   } while(ku_pmatch(vm, TOK_COMMA));
@@ -1143,15 +1161,15 @@ static void ku_lbody(kuvm *vm, kucomp *compiler) {
 
 static void ku_lblock(kuvm *vm, bool lhs) {
   if (ku_pcheck(vm, TOK_STR)) {
-    ku_emitbyte(vm, OP_TABLE);
+    ku_emitop(vm, OP_TABLE);
     do {
-      ku_emitbyte(vm, OP_DUP);
+      ku_emitop(vm, OP_DUP);
       ku_pconsume(vm, TOK_STR, "string expected");
       uint8_t name = ku_strtoname(vm, &vm->parser.prev);
       ku_pconsume(vm, TOK_EQ, "table '=' expected");
       ku_expr(vm);
-      ku_emitbytes(vm, OP_SET_PROP, name);
-      ku_emitbyte(vm, OP_POP); // remove the value
+      ku_emitop2(vm, OP_SET_PROP, name);
+      ku_emitop(vm, OP_POP); // remove the value
     } while (ku_pmatch(vm, TOK_COMMA));
     ku_pconsume(vm, TOK_RBRACE, "'}' expected");
     // leave table on the stack
@@ -1190,7 +1208,7 @@ static void ku_method(kuvm *vm) {
     type = FUNC_INIT;
   }
   ku_function(vm, type);
-  ku_emitbytes(vm, OP_METHOD, name);
+  ku_emitop2(vm, OP_METHOD, name);
 }
 
 static void ku_namedvar(kuvm* vm, kutok name, bool lhs);
@@ -1208,7 +1226,7 @@ static void ku_classdecl(kuvm *vm) {
   kutok cname = vm->parser.prev;
   uint8_t name = ku_pidconst(vm, &vm->parser.prev);
   ku_declare_let(vm, false);
-  ku_emitbytes(vm, OP_CLASS, name);
+  ku_emitop2(vm, OP_CLASS, name);
   ku_vardef(vm, name, false);
   kuclasscomp cc;
   cc.enclosing = vm->curclass;
@@ -1227,7 +1245,7 @@ static void ku_classdecl(kuvm *vm) {
     ku_addlocal(vm, ku_maketok(vm, "super"), false);
     ku_vardef(vm, 0, false);
     ku_namedvar(vm, cname, false);
-    ku_emitbyte(vm, OP_INHERIT);
+    ku_emitop(vm, OP_INHERIT);
     cc.hassuper = true;
   }
 
@@ -1237,7 +1255,7 @@ static void ku_classdecl(kuvm *vm) {
     ku_method(vm);
   }
   ku_pconsume(vm, TOK_RBRACE, "'}' expected");
-  ku_emitbyte(vm, OP_POP);
+  ku_emitop(vm, OP_POP);
 
   if (cc.hassuper) {
     ku_endscope(vm);
@@ -1343,11 +1361,11 @@ static void ku_namedvar(kuvm* vm, kutok name, bool lhs) {
       }
     }
     ku_expr(vm);
-    ku_emitbytes(vm, set, (uint8_t)arg);
+    ku_emitop2(vm, set, (uint8_t)arg);
   } else if (ku_pmatch(vm, TOK_ARROW)) {
     ku_lambda(vm, name);
   } else {
-    ku_emitbytes(vm, get, (uint8_t)arg);
+    ku_emitop2(vm, get, (uint8_t)arg);
   }
 }
 
@@ -1377,11 +1395,11 @@ static void ku_super(kuvm *vm, bool lhs) {
   if (ku_pmatch(vm, TOK_LPAR)) {
     uint8_t argc = ku_arglist(vm, TOK_RPAR);
     ku_namedvar(vm, ku_maketok(vm, "super"), false);
-    ku_emitbytes(vm, OP_SUPER_INVOKE, name);
+    ku_emitop2(vm, OP_SUPER_INVOKE, name);
     ku_emitbyte(vm, argc);
   } else {
     ku_namedvar(vm, ku_maketok(vm, "super"), false); // [ ... GET_UPVAL <0> ]
-    ku_emitbytes(vm, OP_GET_SUPER, name);
+    ku_emitop2(vm, OP_GET_SUPER, name);
   }
 }
 
@@ -1391,20 +1409,20 @@ static void ku_bin(kuvm *vm, bool lhs) {
   ku_prec(vm, (kup_precedence)(rule->precedence + 1));
 
   switch (optype) {
-    case TOK_LTLT: ku_emitbyte(vm, OP_SHL); break;
-    case TOK_GTGT: ku_emitbyte(vm, OP_SHR); break;
-    case TOK_AMP: ku_emitbyte(vm, OP_BAND); break;
-    case TOK_PIPE: ku_emitbyte(vm, OP_BOR); break;
-    case TOK_PLUS: ku_emitbyte(vm, OP_ADD); break;
-    case TOK_MINUS: ku_emitbyte(vm, OP_SUB); break;
-    case TOK_STAR: ku_emitbyte(vm, OP_MUL); break;
-    case TOK_SLASH: ku_emitbyte(vm, OP_DIV); break;
-    case TOK_NE: ku_emitbytes(vm, OP_EQ, OP_NOT); break;
-    case TOK_EQUALITY: ku_emitbyte(vm, OP_EQ); break;
-    case TOK_GT: ku_emitbyte(vm, OP_GT); break;
-    case TOK_GE: ku_emitbytes(vm, OP_LT, OP_NOT); break;
-    case TOK_LT: ku_emitbyte(vm, OP_LT); break;
-    case TOK_LE: ku_emitbytes(vm, OP_GT, OP_NOT); break;
+    case TOK_LTLT: ku_emitop(vm, OP_SHL); break;
+    case TOK_GTGT: ku_emitop(vm, OP_SHR); break;
+    case TOK_AMP: ku_emitop(vm, OP_BAND); break;
+    case TOK_PIPE: ku_emitop(vm, OP_BOR); break;
+    case TOK_PLUS: ku_emitop(vm, OP_ADD); break;
+    case TOK_MINUS: ku_emitop(vm, OP_SUB); break;
+    case TOK_STAR: ku_emitop(vm, OP_MUL); break;
+    case TOK_SLASH: ku_emitop(vm, OP_DIV); break;
+    case TOK_NE: ku_emitop2(vm, OP_EQ, OP_NOT); break;
+    case TOK_EQUALITY: ku_emitop(vm, OP_EQ); break;
+    case TOK_GT: ku_emitop(vm, OP_GT); break;
+    case TOK_GE: ku_emitop2(vm, OP_LT, OP_NOT); break;
+    case TOK_LT: ku_emitop(vm, OP_LT); break;
+    case TOK_LE: ku_emitop2(vm, OP_GT, OP_NOT); break;
     default: return; // unreachable - TODO: figure out code coverage
   }
 }
@@ -1414,13 +1432,13 @@ static void ku_dot(kuvm *vm, bool lhs) {
   uint8_t name = ku_pidconst(vm, &vm->parser.prev);
   if (lhs && ku_pmatch(vm, TOK_EQ)) {
     ku_expr(vm);
-    ku_emitbytes(vm, OP_SET_PROP, name);
+    ku_emitop2(vm, OP_SET_PROP, name);
   } else if (ku_pmatch(vm, TOK_LPAR)) {
     uint8_t argc = ku_arglist(vm, TOK_RPAR);
-    ku_emitbytes(vm, OP_INVOKE, name);
+    ku_emitop2(vm, OP_INVOKE, name);
     ku_emitbyte(vm, argc);
   } else {
-    ku_emitbytes(vm, OP_GET_PROP, name);
+    ku_emitop2(vm, OP_GET_PROP, name);
   }
 }
 
@@ -1445,11 +1463,11 @@ void ku_ifstmt(kuvm *vm, kuloop *loop) {
   ku_expr(vm);
   ku_pconsume(vm, TOK_RPAR, "'R' expected after condition");
   int then_jump = ku_emitjump(vm, OP_JUMP_IF_FALSE);
-  ku_emitbyte(vm, OP_POP);
+  ku_emitop(vm, OP_POP);
   ku_stmt(vm, loop);
   int else_jump = ku_emitjump(vm, OP_JUMP);
   ku_patchjump(vm, then_jump);
-  ku_emitbyte(vm, OP_POP);
+  ku_emitop(vm, OP_POP);
   if (ku_pmatch(vm, TOK_ELSE)) {
     ku_stmt(vm, loop);
   }
@@ -1457,7 +1475,7 @@ void ku_ifstmt(kuvm *vm, kuloop *loop) {
 }
 
 int ku_emitjump(kuvm *vm, k_op op) {
-  ku_emitbyte(vm, op);
+  ku_emitop(vm, op);
   ku_emitbyte(vm, 0xff);
   ku_emitbyte(vm, 0xff);
   return ku_chunk(vm)->count - 2;
@@ -1475,7 +1493,7 @@ void ku_patchjump(kuvm *vm, int offset) {
 }
 
 void ku_emitloop(kuvm *vm, int start) {
-  ku_emitbyte(vm, OP_LOOP);
+  ku_emitop(vm, OP_LOOP);
   int offset = ku_chunk(vm)->count - start + 2;
   if (offset > vm->max_body) {
     ku_perr(vm, "loop body too large");
@@ -1490,7 +1508,7 @@ void ku_whilestmt(kuvm *vm, kuloop *loop) {
   ku_expr(vm);
   ku_pconsume(vm, TOK_RPAR, "')' expected after 'while'");
   int jump_exit = ku_emitjump(vm, OP_JUMP_IF_FALSE);
-  ku_emitbyte(vm, OP_POP);
+  ku_emitop(vm, OP_POP);
   kuloop inner;
   ku_loopinit(vm, &inner);
   ku_stmt(vm, &inner);
@@ -1501,7 +1519,7 @@ void ku_whilestmt(kuvm *vm, kuloop *loop) {
   //       |                      v See #37
   // POP; JUMP ; .... LOOP; POP; NIL; RET;
   uint16_t loop_end = ku_chunk(vm)->count - 1;
-  ku_emitbyte(vm, OP_POP);
+  ku_emitop(vm, OP_POP);
   ku_patchall(vm, &inner.continuepatch, loop_start, true);
   ku_patchall(vm, &inner.breakpatch, loop_end, false);
 }
@@ -1523,14 +1541,14 @@ void ku_forstmt(kuvm *vm, kuloop *loop) {
     ku_expr(vm);
     ku_pconsume(vm, TOK_SEMI, "';' expected");
     exit_jump = ku_emitjump(vm, OP_JUMP_IF_FALSE);
-    ku_emitbyte(vm, OP_POP);
+    ku_emitop(vm, OP_POP);
   }
 
   if (!ku_pmatch(vm, TOK_RPAR)) {
     int body_jump = ku_emitjump(vm, OP_JUMP);
     int inc_start = ku_chunk(vm)->count;
     ku_expr(vm);
-    ku_emitbyte(vm, OP_POP);
+    ku_emitop(vm, OP_POP);
     ku_pconsume(vm, TOK_RPAR, "')' expected");
     ku_emitloop(vm, loop_start);
     loop_start = inc_start;
@@ -1544,7 +1562,7 @@ void ku_forstmt(kuvm *vm, kuloop *loop) {
 
   if (exit_jump != -1) {
     ku_patchjump(vm, exit_jump);
-    ku_emitbyte(vm, OP_POP);
+    ku_emitop(vm, OP_POP);
   }
 
   uint16_t loop_end = ku_chunk(vm)->count;
@@ -1556,7 +1574,7 @@ void ku_forstmt(kuvm *vm, kuloop *loop) {
 
 void ku_and(kuvm *vm, bool lhs) {
   int end_jump = ku_emitjump(vm, OP_JUMP_IF_FALSE);
-  ku_emitbyte(vm, OP_POP);
+  ku_emitop(vm, OP_POP);
   ku_prec(vm, P_AND);
   ku_patchjump(vm, end_jump);
 }
@@ -1565,7 +1583,7 @@ void ku_or(kuvm *vm, bool lhs) {
   int else_jump = ku_emitjump(vm, OP_JUMP_IF_FALSE);
   int end_jump = ku_emitjump(vm, OP_JUMP);
   ku_patchjump(vm, else_jump);
-  ku_emitbyte(vm, OP_POP);
+  ku_emitop(vm, OP_POP);
   ku_prec(vm, P_OR);
   ku_patchjump(vm, end_jump);
 }
@@ -2142,6 +2160,11 @@ kures ku_run(kuvm *vm) {
       }
         break; // TODO: figure out code coverage
 
+      case OP_DBG_BREAK: 
+        if (vm->debugger) {
+          res = vm->debugger(vm);
+        }
+        break;
       case OP_DUP:
         ku_push(vm, ku_peek(vm, 0));
         break;
@@ -2660,6 +2683,7 @@ int ku_bytedis(kuvm *vm, kuchunk *chunk, int offset) {
   }
   uint8_t op = chunk->code[offset];
   switch (op) {
+    case OP_DBG_BREAK: return ku_opdis(vm, "OP_DBG_BREAK", offset);
     case OP_RET: return ku_opdis(vm, "OP_RET", offset);
     case OP_NEG: return ku_opdis(vm, "OP_NEG", offset);
     case OP_ADD: return ku_opdis(vm, "OP_ADD", offset);
@@ -2779,9 +2803,9 @@ void ku_endscope(kuvm *vm) {
          vm->compiler->depth) {
 
     if (KU_IS_CAPTURED(vm->compiler->locals[vm->compiler->count - 1])) {
-      ku_emitbyte(vm, OP_CLOSE_UPVAL);
+      ku_emitop(vm, OP_CLOSE_UPVAL);
     } else {
-      ku_emitbyte(vm, OP_POP);
+      ku_emitop(vm, OP_POP);
     }
     vm->compiler->count--;
     }
