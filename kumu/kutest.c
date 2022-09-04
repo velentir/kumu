@@ -130,6 +130,18 @@ static int kut_table_count(kuvm *vm, kutab *tab) {
   return count;
 }
 
+int debug_call_count = 0;
+
+kures test_debugger_stop(kuvm* vm) {
+  debug_call_count++;
+  return KVM_OK;
+}
+
+kures test_debugger_cont(kuvm* vm) {
+  debug_call_count++;
+  return KVM_CONT;
+}
+
 int tclass_cons = 0;
 int tclass_scall = 0;
 int tclass_sget = 0;
@@ -2161,6 +2173,22 @@ void ku_test() {
   res = ku_exec(vm, "let x = math.round(3.767);");
   EXPECT_INT(vm, res, KVM_OK, "round res");
   EXPECT_VAL(vm, ku_get_global(vm, "x"), NUM_VAL(round(3.767)), "round ret");
+  kut_free(vm);
+
+  debug_call_count = 0;
+  vm = kut_new(true);
+  vm->flags = KVM_F_DEBUG;
+  vm->debugger = test_debugger_stop;
+  res = ku_exec(vm, "let x = 2;");
+  EXPECT_INT(vm, debug_call_count, 1, "debug stop count");
+  kut_free(vm);
+
+  debug_call_count = 0;
+  vm = kut_new(true);
+  vm->flags = KVM_F_DEBUG;
+  vm->debugger = test_debugger_cont;
+  res = ku_exec(vm, "let x = 2;");
+  EXPECT_INT(vm, debug_call_count, 4, "debug cont count");
   kut_free(vm);
 
   ku_test_summary();
