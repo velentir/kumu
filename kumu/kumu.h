@@ -18,7 +18,6 @@ extern "C" {
 #define KVM_MAJOR          0
 #define KVM_MINOR          88
 
-#define NAN_BOX
 //#define TRACE_ENABLED 1
 //#define STACK_CHECK 1
 //#define TRACE_OBJ_COUNTS 1
@@ -92,8 +91,6 @@ typedef enum {
   VAL_OBJ,
 } kuval_t;
 
-#ifdef NAN_BOX
-
 #define QNAN ((uint64_t)0x7ffc000000000000)
 #define SIGN_BIT ((uint64_t)0x8000000000000000)
 
@@ -105,22 +102,9 @@ typedef enum {
 
 typedef uint64_t kuval;
 
-#else
-
-typedef struct {
-  kuval_t type;
-  union {
-    bool bval;
-    double dval;
-    kuobj* oval;
-  } as;
-} kuval;
-
-#endif
 
 bool ku_objis(kuval v, kuobj_t ot);
 
-#ifdef NAN_BOX
 
 #define NUM_VAL(v) ku_num2val(v)
 static inline kuval ku_num2val(double d) {
@@ -132,30 +116,14 @@ static inline kuval ku_num2val(double d) {
 #define NIL_VAL ((kuval)(uint64_t) (QNAN | TAG_NIL))
 #define BOOL_VAL(b) ((b) ? TRUE_VAL : FALSE_VAL)
 #define OBJ_VAL(o) (kuval)(SIGN_BIT | QNAN | (uint64_t)(uintptr_t)(o))
-#else
 
-#define BOOL_VAL(v) ((kuval){ VAL_BOOL, { .bval = v }})
-#define NIL_VAL ((kuval) { VAL_NIL, { .dval = 0 }})
-#define NUM_VAL(v) ((kuval) { VAL_NUM, { .dval = v }})
-#define OBJ_VAL(v) ((kuval) { VAL_OBJ, { .oval = (kuobj*)v} })
 
-#endif
-
-#ifdef NAN_BOX
 
 #define IS_NUM(v) (((v) & QNAN) != QNAN)
 #define IS_NIL(v) ((v) == NIL_VAL)
 #define IS_BOOL(v) (((v) | 1) == TRUE_VAL)
 #define IS_OBJ(v) (((v) & (QNAN | SIGN_BIT)) == (QNAN | SIGN_BIT))
 
-#else
-
-#define IS_BOOL(v) ((v).type == VAL_BOOL)
-#define IS_NIL(v) ((v).type == VAL_NIL)
-#define IS_NUM(v) ((v).type == VAL_NUM)
-#define IS_OBJ(v) ((v).type == VAL_OBJ)
-
-#endif
 
 #define IS_STR(v) (ku_objis(v, OBJ_STR))
 #define IS_FUNC(v) (ku_objis(v, OBJ_FUNC))
@@ -168,7 +136,6 @@ static inline kuval ku_num2val(double d) {
 #define IS_ARRAY(v) (ku_objis(v, OBJ_ARRAY))
 #define IS_BOUND_METHOD(v) (ku_objis(v, OBJ_BOUND_METHOD))
 
-#ifdef NAN_BOX
 
 #define AS_NUM(v) ku_val2num(v)
 static inline double ku_val2num(kuval v) {
@@ -179,13 +146,7 @@ static inline double ku_val2num(kuval v) {
 
 #define AS_BOOL(v) ((v) == TRUE_VAL)
 #define AS_OBJ(v) ((kuobj*)(uintptr_t)((v) & ~(SIGN_BIT | QNAN)))
-#else
 
-#define AS_BOOL(v) ((v).as.bval)
-#define AS_NUM(v) ((v).as.dval)
-#define AS_OBJ(v) ((v).as.oval)
-
-#endif
 
 #define AS_STR(v) ((kustr*)AS_OBJ(v))
 #define AS_CSTR(v) (((kustr*)AS_OBJ(v))->chars)

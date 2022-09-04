@@ -177,10 +177,6 @@ static void ku_printbuild(kuvm *vm) {
   printf("D");
 #endif
 
-#ifdef NAN_BOX
-  printf("N");
-#endif
-
 #ifdef USE_READLINE
   printf("R");
 #endif

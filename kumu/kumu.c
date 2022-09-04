@@ -220,26 +220,10 @@ static void ku_strcat(kuvm* vm) {
 // ********************** value **********************
 bool ku_equal(kuval v1, kuval v2) {
 
-#ifdef NAN_BOX
-#ifdef NAN_BOX_COMPARE
   if (IS_NUM(v1) && IS_NUM(v2)) {
-    return AS_NUM(v1) == AS_NUM(v2)
+    return AS_NUM(v1) == AS_NUM(v2);
   }
-#endif
   return v1 == v2;
-#else
-  if (v1.type != v2.type) {
-    return false;
-  }
-  switch (v1.type) {
-    case VAL_NIL: return true;
-    case VAL_BOOL: return v1.as.bval == v2.as.bval;
-    case VAL_NUM: return v1.as.dval == v2.as.dval;
-    case VAL_OBJ: return AS_OBJ(v1) == AS_OBJ(v2);
-    default: break;
-  }
-  return false;
-#endif
 }
 
 // ********************** hash table **********************
@@ -3892,7 +3876,6 @@ static void ku_printobj(kuvm* vm, kuval val) {
 
 void ku_printval(kuvm *vm, kuval value) {
 
-#ifdef NAN_BOX
   if (IS_BOOL(value)) {
     ku_printf(vm, AS_BOOL(value) ? "true" : "false");
   } else if (IS_NIL(value)) {
@@ -3902,22 +3885,6 @@ void ku_printval(kuvm *vm, kuval value) {
   } else if (IS_OBJ(value)) {
     ku_printobj(vm, value);
   }
-#else
-  switch (value.type) {
-    case VAL_BOOL:
-      ku_printf(vm, "%s", (value.as.bval) ? "true": "false");
-      break;
-    case VAL_NIL:
-      ku_printf(vm, "nil");
-      break;
-    case VAL_NUM:
-      ku_printf(vm, "%f", value.as.dval);
-      break;
-    case VAL_OBJ:
-      ku_printobj(vm, value);
-      break;
-  }
-#endif
 }
 
 static void ku_printfunc(kuvm *vm, kufunc *fn) {
