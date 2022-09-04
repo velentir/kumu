@@ -1335,11 +1335,6 @@ static void ku_namedvar(kuvm* vm, kutok name, bool lhs) {
   if (arg != -1) {
     get = OP_GET_LOCAL;
     set = OP_SET_LOCAL;
-    if (lhs) {
-      if (vm->compiler->locals[arg].flags & KU_LOCAL_CONST) {
-        vm->compiler->locals[arg].flags |= KU_LOCAL_INIT;
-      }
-    }
   } else if ((arg = ku_xvalresolve(vm, vm->compiler, &name)) != -1) {
     get = OP_GET_UPVAL;
     set = OP_SET_UPVAL;
@@ -1356,6 +1351,12 @@ static void ku_namedvar(kuvm* vm, kutok name, bool lhs) {
         if (ku_tabget(vm, &vm->gconst, key, &cinit)) {
             ku_perr(vm, "const cannot be assigned");
         }
+    }
+    else {
+      kulocal* local = &vm->compiler->locals[arg];
+      if (local->flags & KU_LOCAL_CONST && local->flags & KU_LOCAL_INIT) {
+        ku_perr(vm, "const cannot be assigned");
+      }
     }
     ku_expr(vm);
     ku_emitbytes(vm, set, (uint8_t)arg);
@@ -2864,7 +2865,9 @@ void ku_markinit(kuvm *vm) {
   // variables which can't use their own value in their
   // initialization
   if (vm->compiler->depth == 0) return;
-  vm->compiler->locals[vm->compiler->count - 1].depth = vm->compiler->depth;
+  kulocal *local = &vm->compiler->locals[vm->compiler->count - 1];
+  local->depth = vm->compiler->depth;
+  local->flags |= KU_LOCAL_INIT;
 }
 
 int ku_opslotdis(kuvm *vm, const char *name, kuchunk *chunk, int offset) {
