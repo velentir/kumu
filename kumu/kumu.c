@@ -141,7 +141,7 @@ void ku_objfree(kuvm* vm, kuobj* obj) {
 
     case OBJ_STR: {
       kustr* str = (kustr*)obj;
-      ARRAY_FREE(vm, char, str->chars, str->len + 1);
+      ARRAY_FREE(vm, char, str->chars, (size_t)str->len + 1);
       FREE(vm, kustr, obj);
     }
       break;
@@ -186,7 +186,7 @@ kustr* ku_strfrom(kuvm* vm, const char* chars, int len) {
     return interned;
   }
 
-  char* buff = KALLOC(vm, char, len + 1);
+  char* buff = KALLOC(vm, char, (size_t)len + 1);
   memcpy(buff, chars, len);
   buff[len] = '\0';
   return ku_stralloc(vm, buff, len, hash);
@@ -196,7 +196,7 @@ static kustr* ku_strtake(kuvm* vm, char* buff, int len) {
   uint32_t hash = ku_strhash(buff, len);
   kustr* interned = ku_tabfindc(vm, &vm->strings, buff, len, hash);
   if (interned != NULL) {
-    ARRAY_FREE(vm, char, buff, len + 1);
+    ARRAY_FREE(vm, char, buff, (size_t)len + 1);
     return interned;
   }
 
@@ -207,7 +207,7 @@ static void ku_strcat(kuvm* vm) {
   kustr *b = AS_STR(ku_peek(vm,0)); // for GC
   kustr* a = AS_STR(ku_peek(vm,1)); // for GC
   int len = a->len + b->len;
-  char* buff = KALLOC(vm, char, len + 1);
+  char* buff = KALLOC(vm, char, (size_t)len + 1);
   memcpy(buff, a->chars, a->len);
   memcpy(buff + a->len, b->chars, b->len);
   buff[len] = '\0';
@@ -313,7 +313,7 @@ static void ku_tabadjust(kuvm* vm, kutab* map, int capacity) {
 }
 
 bool ku_tabset(kuvm* vm, kutab* map, kustr* key, kuval value) {
-  if (map->count + 1 > map->capacity * MAP_MAX_LOAD) {
+  if ((size_t)map->count + 1 > map->capacity * MAP_MAX_LOAD) {
     int capacity = CAPACITY_GROW(map->capacity);
     ku_tabadjust(vm, map, capacity);
   }
@@ -521,7 +521,7 @@ static kutok ku_lexstr(kuvm *vm) {
 
 static kutok_t ku_lexkey(kuvm *vm, int start, int len,
                         const char *rest, kutok_t type) {
-  if (vm->scanner.curr - vm->scanner.start == start + len &&
+  if (vm->scanner.curr - vm->scanner.start == (size_t)start + len &&
       memcmp(vm->scanner.start + start, rest, len) == 0) {
     return type;
   }
@@ -859,7 +859,7 @@ static void ku_hex(kuvm *vm, bool lhs) {
 
   double val = 0;
   for (int i = 0; i < len; i++) {
-    char ch = start[i];
+    unsigned char ch = start[i];
     if (ch >= '0' && ch <= '9') {
       val = val*16 + (double)(ch - '0');
     } else if (ch >= 'a' && ch <= 'f') {
@@ -951,7 +951,7 @@ static void ku_lambda_or_group(kuvm *vm, bool lhs) {
     return;
   }
 
-  return ku_grouping(vm, lhs);
+  ku_grouping(vm, lhs);
 }
 
 static void ku_array(kuvm *vm, bool lhs) {
@@ -1808,7 +1808,7 @@ static bool ku_callvalue(kuvm *vm, kuval callee, int argc, bool *native) {
         kucclass *cc = AS_CCLASS(callee);
         if (cc->cons) {
           kuval res = cc->cons(vm, argc, vm->sp - argc);
-          vm->sp -= argc + 1;
+          vm->sp -= (size_t)argc + 1;
           ku_push(vm, res);
           *native = true;
           if (!ku_objis(res, OBJ_CINST)) {
@@ -1825,7 +1825,7 @@ static bool ku_callvalue(kuvm *vm, kuval callee, int argc, bool *native) {
       case OBJ_CFUNC: {
         cfunc cf = AS_CFUNC(callee);
         kuval res = cf(vm, argc, vm->sp - argc);
-        vm->sp -= argc + 1;
+        vm->sp -= (size_t)argc + 1;
         ku_push(vm, res);
         *native = true;
         return !vm->err;
@@ -1943,7 +1943,7 @@ bool ku_invoke(kuvm *vm, kustr *name, int argc, bool *native) {
     if (cc->scall) {
       *native = true;
       kuval v = cc->scall(vm, name, argc, vm->sp - argc);
-      vm->sp -= argc +1;
+      vm->sp -= (size_t)argc +1;
       ku_push(vm, v);
       return !vm->err;
     }
@@ -1953,7 +1953,7 @@ bool ku_invoke(kuvm *vm, kustr *name, int argc, bool *native) {
   if (IS_STR(receiver)) {
     *native = true;
     kuval v = string_icall(vm, AS_OBJ(receiver), name, argc,vm->sp - argc);
-    vm->sp -= argc + 1;
+    vm->sp -= (size_t)argc + 1;
     ku_push(vm, v);
     return true;
   }
@@ -1963,7 +1963,7 @@ bool ku_invoke(kuvm *vm, kustr *name, int argc, bool *native) {
     if (no->klass->icall) {
       *native = true;
       kuval v = no->klass->icall(vm, (kuobj*)no, name, argc, vm->sp - argc);
-      vm->sp -= argc + 1;
+      vm->sp -= (size_t)argc + 1;
       ku_push(vm, v);
       return true;
     }
@@ -2948,7 +2948,7 @@ int array_partition(kuvm *vm, kuval array[], int low, int high, kuclosure *cmp) 
         ku_err(vm, "sort compare non-number return");
         return 0;
       }
-      compres = AS_NUM(ret);
+      compres = (int)AS_NUM(ret);
     } else {
       // TODO: add code coverage
       ku_err(vm, "sort invalid compare function");
@@ -3262,6 +3262,7 @@ static kuval ku_eval(kuvm *vm, int argc, kuval *argv) {
     const char *line = AS_STR(argv[0])->chars;
     size_t len = strlen(line) + 8;
     char *buffer = malloc(len);
+    assert(buffer);
     sprintf(buffer, "let _=%s;", line);
     kures res = ku_exec(temp, buffer);
     kuval ret = NIL_VAL;
@@ -3448,7 +3449,7 @@ kuval string_format(kuvm *vm, int argc, kuval *argv) {
 
 static kuval string_frombytes(kuvm *vm, kuaobj *arr) {
   int len = arr->elements.count;
-  char* buff = KALLOC(vm, char, len + 1);
+  char* buff = KALLOC(vm, char, (size_t)len + 1);
   for (int i = 0; i < len; i++) {
     buff[i] = (int)AS_NUM(ku_arrget(vm, arr, i));
   }
@@ -3503,7 +3504,7 @@ kuval string_icall(kuvm *vm, kuobj *o, kustr *m, int argc, kuval *argv) {
     }
 
     int len = end - start + 1;
-    char* buff = KALLOC(vm, char, len + 1);
+    char* buff = KALLOC(vm, char, (size_t)len + 1);
     for (int i = 0; i < len; i++) {
       buff[i] = s->chars[start + i];
     }
