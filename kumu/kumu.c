@@ -689,10 +689,7 @@ static void ku_emitbyte(kuvm* vm, uint8_t byte) {
 }
 
 static void ku_emitop(kuvm *vm, uint8_t byte) {
-  if (vm->flags & KVM_F_DEBUG) {
-    ku_emitbyte(vm, OP_DBG_BREAK);
-  }
-  ku_chunkwrite(vm, ku_chunk(vm), byte, vm->parser.prev.line);
+  ku_emitbyte(vm, byte);
 }
 
 static void ku_emitbytes(kuvm *vm, uint8_t b1, uint8_t b2);
@@ -724,12 +721,7 @@ static void ku_emitbytes(kuvm *vm, uint8_t b1, uint8_t b2) {
 }
 
 static void ku_emitop2(kuvm* vm, uint8_t b1, uint8_t b2) {
-  if (vm->flags & KVM_F_DEBUG) {
-    ku_emitbyte(vm, OP_DBG_BREAK);
-  }
-
-  ku_emitbyte(vm, b1);
-  ku_emitbyte(vm, b2);
+  ku_emitbytes(vm, b1, b2);
 }
 
 static uint8_t ku_pconst(kuvm *vm, kuval val) {
@@ -1686,6 +1678,8 @@ kuvm *ku_newvm(int stack_max) {
     // TODO: add code coverage
     return NULL;
   }
+  
+  vm->debugger = NULL;
   vm->allocated = sizeof(kuvm);
   vm->max_params = 255;
   vm->max_const = UINT8_MAX;
@@ -1866,7 +1860,7 @@ static bool ku_callvalue(kuvm *vm, kuval callee, int argc, bool *native) {
 
 #ifdef TRACE_ENABLED
 // We can't use vm->compiler at runtime
-static kuchunk *ku_chunk_runtime(kuvm *vm) {
+kuchunk *ku_chunk_runtime(kuvm *vm) {
   // TODO: add code coverage
   return &vm->frames[vm->framecount-1].closure->func->chunk;
 }
@@ -1998,6 +1992,12 @@ kures ku_run(kuvm *vm) {
   kures res = KVM_CONT;
   while (res == KVM_CONT) {
     uint8_t op;
+    
+    if (vm->debugger) {
+      if (vm->debugger(vm) != KVM_CONT) {
+        return KVM_OK;
+      }
+    }
 
 #ifdef TRACE_ENABLED
     if (vm->flags & KVM_F_TRACE) {
@@ -2160,11 +2160,6 @@ kures ku_run(kuvm *vm) {
       }
         break; // TODO: figure out code coverage
 
-      case OP_DBG_BREAK: 
-        if (vm->debugger) {
-          res = vm->debugger(vm);
-        }
-        break;
       case OP_DUP:
         ku_push(vm, ku_peek(vm, 0));
         break;
@@ -2683,7 +2678,6 @@ int ku_bytedis(kuvm *vm, kuchunk *chunk, int offset) {
   }
   uint8_t op = chunk->code[offset];
   switch (op) {
-    case OP_DBG_BREAK: return ku_opdis(vm, "OP_DBG_BREAK", offset);
     case OP_RET: return ku_opdis(vm, "OP_RET", offset);
     case OP_NEG: return ku_opdis(vm, "OP_NEG", offset);
     case OP_ADD: return ku_opdis(vm, "OP_ADD", offset);

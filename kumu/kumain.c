@@ -30,6 +30,40 @@
 
 #endif
 
+void trim_line(char *buffer) {
+  size_t l = strlen(buffer);
+  if (l > 0 && buffer[l-1] == '\n') {
+    buffer[l-1] = '\0';
+  }
+}
+
+kuchunk *ku_chunk_runtime(kuvm *vm);
+int ku_bytedis(kuvm *vm, kuchunk *chunk, int offset);
+
+kures debugger(kuvm *vm) {
+  
+  kuframe *frame = &vm->frames[vm->framecount - 1];
+
+  kuchunk *ck = ku_chunk_runtime(vm);
+  ku_bytedis(vm, ck, (int) (frame->ip - ck->code));
+
+  char line[KU_MAXINPUT];
+  char *b = line;
+  int readstatus = ku_readline(vm, b, "\ndbg: ");
+  if (readstatus == 0)
+    return KVM_CONT;
+  trim_line(b);
+  ku_saveline(vm, b);
+
+  if (strcmp(b, "c") == 0) {
+    return KVM_CONT;
+  } else if (strcmp(b, "x") == 0) {
+    return KVM_OK;
+  }
+  
+  return KVM_CONT;
+}
+
 static char *ku_readfile(kuvm *vm, const char *path) {
   FILE * file = fopen(path , "rb");
 
@@ -78,7 +112,6 @@ static ku_repl_flag ku_repl_flags[] = {
   { "list", KVM_F_LIST },
   { "stack", KVM_F_STACK },
   { "noexec", KVM_F_NOEXEC },
-  { "debug", KVM_F_DEBUG }
 };
 
 static bool ku_check_flag(kuvm *vm, char *line,
@@ -207,23 +240,27 @@ static void ku_repl(kuvm *vm) {
     int readstatus = ku_readline(vm, b, "> ");
     if (readstatus == 0)
       continue;
-
-    size_t l = strlen(b);
-    if (l > 0 && b[l-1] == '\n') {
-      b[l-1] = '\0';
-    }
-//    printf("> ");
-//    if (!fgets(line, sizeof(line), stdin)) {
-//      printf("\n");
-//      break;
-//    }
+    trim_line(b);
 
     ku_saveline(vm, b);
 
     if (strcmp(b, ".quit") == 0) {
       break;
     }
-
+    
+    if (strcmp(b, ".debug on") == 0) {
+      vm->debugger = debugger;
+      printf("debugging on\n");
+      continue;
+    } else if (strcmp(b, ".debug off") == 0) {
+      vm->debugger = NULL;
+      printf("debugging off\n");
+      continue;
+    } else if (strcmp(b, ".debug") == 0) {
+      printf("debugging %s\n", (vm->debugger) ? "on" : "off");
+      continue;
+    }
+    
     if (strcmp(b, ".help") == 0) {
       for (int i = 0; i < sizeof(ku_repl_flags)/sizeof(ku_repl_flag); i++) {
         ku_repl_flag *flag = &ku_repl_flags[i];
@@ -263,7 +300,6 @@ int ku_main(int argc, const char * argv[]) {
   }
 
   kuvm *vm = ku_newvm(stack == 0 ? STACK_MAX : stack);
-
   ku_reglibs(vm);
   if (file == NULL) {
     ku_repl(vm);

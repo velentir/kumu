@@ -2177,7 +2177,6 @@ void ku_test() {
 
   debug_call_count = 0;
   vm = kut_new(true);
-  vm->flags = KVM_F_DEBUG;
   vm->debugger = test_debugger_stop;
   res = ku_exec(vm, "let x = 2;");
   EXPECT_INT(vm, debug_call_count, 1, "debug stop count");
@@ -2185,7 +2184,6 @@ void ku_test() {
 
   debug_call_count = 0;
   vm = kut_new(true);
-  vm->flags = KVM_F_DEBUG;
   vm->debugger = test_debugger_cont;
   res = ku_exec(vm, "let x = 2;");
   EXPECT_INT(vm, debug_call_count, 4, "debug cont count");

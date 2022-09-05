@@ -227,7 +227,6 @@ typedef enum {
   OP_SHR,
   OP_TABLE,
   OP_DUP,
-  OP_DBG_BREAK,
 } k_op;
 
 // ********************** code chunks **********************
@@ -497,7 +496,6 @@ typedef kures(*debugcallback)(kuvm* vm);
 #define KVM_F_NOEXEC    0x00000040   // Disable execution only compile
 #define KVM_F_GCSTRESS  0x00000080   // GC every alloc increase
 #define KVM_F_GCLOG     0x00000100   // Log GC action
-#define KVM_F_DEBUG     0x00000200   // Produce debug build
 
 typedef struct kuvm {
   uint64_t flags;
