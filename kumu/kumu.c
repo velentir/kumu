@@ -3267,7 +3267,7 @@ static kuval ku_eval(kuvm *vm, int argc, kuval *argv) {
     const char *line = AS_STR(argv[0])->chars;
     size_t len = strlen(line) + 8;
     char *buffer = malloc(len);
-    assert(buffer);
+    assert(buffer); // TODO: figure out code coverage
     sprintf(buffer, "let _=%s;", line);
     kures res = ku_exec(temp, buffer);
     kuval ret = NIL_VAL;
