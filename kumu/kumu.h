@@ -12,7 +12,7 @@
 
 #ifdef __cplusplus
 extern "C" {
-#endif
+#endif // __cplusplus
 
 // ********************** macros **********************
 #define KVM_MAJOR          0
@@ -516,7 +516,7 @@ typedef struct kuvm {
   size_t allocated;
 #ifdef TRACE_OBJ_COUNTS
   size_t alloc_counts[OBJ_BOUND_METHOD+1];
-#endif
+#endif // TRACE_OBJ_COUNTS
   size_t gcnext;
   kuclasscomp *curclass;
 
@@ -527,7 +527,7 @@ typedef struct kuvm {
 
 #ifdef STACK_CHECK
   int underflow;
-#endif
+#endif // STACK_CHECK
 
   kustr *initstr;
   kustr *countstr;
@@ -602,6 +602,6 @@ bool ku_invoke(kuvm *vm, kustr *name, int argc, bool *native);
 kures ku_nativecall(kuvm *vm, kuclosure *cl, int argc);
 #ifdef __cplusplus
 }
-#endif
+#endif // __cplusplus
 
-#endif /* KUMU_H */
+#endif // KUMU_H

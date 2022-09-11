@@ -55,7 +55,7 @@ static void ku_marktable(kuvm *vm, kutab *tab);
 kuobj* ku_objalloc(kuvm* vm, size_t size, kuobj_t type) {
 #ifdef  TRACE_OBJ_COUNTS
   vm->alloc_counts[type]++;
-#endif
+#endif // TRACE_OBJ_COUNTS
   kuobj* obj = (kuobj*)ku_alloc(vm, NULL, 0, size);
   obj->type = type;
   obj->marked = false;
@@ -74,7 +74,7 @@ void ku_objfree(kuvm* vm, kuobj* obj) {
 
 #ifdef TRACE_OBJ_COUNTS
   vm->alloc_counts[obj->type]--;
-#endif
+#endif // TRACE_OBJ_COUNTS
   switch (obj->type) {
     case OBJ_FUNC: {
       kufunc *fn = (kufunc*)obj;
@@ -1639,8 +1639,7 @@ void ku_reset(kuvm *vm) {
   vm->framecount = 0;
 #ifdef STACK_CHECK
   vm->underflow = 0;
-#endif
-
+#endif // STACK_CHECK
 }
 
 void ku_push(kuvm *vm, kuval val) {
@@ -1648,7 +1647,7 @@ void ku_push(kuvm *vm, kuval val) {
   if (vm->sp >= vm->stack + vm->max_stack) {
     assert(false);
   }
-#endif
+#endif // STACK_CHECK
 
   *(vm->sp) = val;
   vm->sp++;
@@ -1659,7 +1658,7 @@ kuval ku_pop(kuvm *vm) {
   if (vm->sp <= vm->stack) {
     vm->underflow++;
   }
-#endif
+#endif // STACK_CHECK
   vm->sp--;
   return *(vm->sp);
 }
@@ -3267,7 +3266,7 @@ static kuval ku_eval(kuvm *vm, int argc, kuval *argv) {
     const char *line = AS_STR(argv[0])->chars;
     size_t len = strlen(line) + 8;
     char *buffer = malloc(len);
-    assert(buffer);
+    assert(buffer); // TODO: figure out code coverage
     sprintf(buffer, "let _=%s;", line);
     kures res = ku_exec(temp, buffer);
     kuval ret = NULL_VAL;
@@ -3847,7 +3846,7 @@ void ku_printmem(kuvm *vm) {
   ku_printf(vm, "  OBJ_INSTANCE:      %d\n", vm->alloc_counts[OBJ_INSTANCE]);
   ku_printf(vm, "  OBJ_CINST:         %d\n", vm->alloc_counts[OBJ_CINST]);
   ku_printf(vm, "  OBJ_BOUND_METHOD:  %d\n", vm->alloc_counts[OBJ_BOUND_METHOD]);
-#endif
+#endif // TRACE_OBJ_COUNTS
 }
 
 static void ku_printobj(kuvm* vm, kuval val) {

@@ -5,9 +5,11 @@
 //  Created by Mohsen Agsen on 12/7/21.
 //
 
-#ifndef kutest_h
-#define kutest_h
+#ifndef KUTEST_H
+#define KUTEST_H
 
 #include <stdio.h>
-void ku_test(void);
-#endif /* kutest_h */
+
+int ku_test(void);
+
+#endif // KUTEST_H

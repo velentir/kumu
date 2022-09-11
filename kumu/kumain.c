@@ -10,7 +10,7 @@
 
 #define KU_MAXINPUT 1024
 
-#if defined(USE_READLINE)
+#ifdef USE_READLINE
 
 #include <readline/readline.h>
 #include <readline/history.h>
@@ -19,7 +19,7 @@
 #define ku_saveline(K,line)  ((void)K, add_history(line))
 #define ku_freeline(K,b)  ((void)K, free(b))
 
-#else
+#else // USE_READLINE
 
 #define ku_initreadline(K)  ((void)K)
 #define ku_readline(K,b,p) \
@@ -28,7 +28,7 @@
 #define ku_saveline(K,line)  { (void)K; (void)line; }
 #define ku_freeline(K,b)  { (void)K; (void)b; }
 
-#endif
+#endif // USE_READLINE
 
 void trim_line(char *buffer) {
   size_t l = strlen(buffer);
@@ -37,15 +37,19 @@ void trim_line(char *buffer) {
   }
 }
 
+#ifdef TRACE_ENABLED
 kuchunk *ku_chunk_runtime(kuvm *vm);
 int ku_bytedis(kuvm *vm, kuchunk *chunk, int offset);
+#endif // TRACE_ENABLED
 
 kures debugger(kuvm *vm) {
 
+#ifdef TRACE_ENABLED
   kuframe *frame = &vm->frames[vm->framecount - 1];
 
   kuchunk *ck = ku_chunk_runtime(vm);
   ku_bytedis(vm, ck, (int) (frame->ip - ck->code));
+#endif // TRACE_ENABLED
 
   char line[KU_MAXINPUT];
   char *b = line;
@@ -209,19 +213,19 @@ static void ku_printbuild(kuvm *vm) {
   printf("kumu v%d.%d [", KVM_MAJOR, KVM_MINOR);
 #ifdef DEBUG
   printf("D");
-#endif
+#endif // DEBUG
 
 #ifdef USE_READLINE
   printf("R");
-#endif
+#endif // USE_READLINE
 
 #ifdef TRACE_OBJ_COUNTS
   printf("O");
-#endif
+#endif // TRACE_OBJ_COUNTS
 
 #ifdef STACK_CHECK
   printf("S");
-#endif
+#endif // STACK_CHECK
 
   double s = (double)(sizeof(kuvm)+vm->max_stack*sizeof(kuval))/1024.0;
   printf("] vmsize=%.2fkb ", s);

@@ -1,10 +1,10 @@
 
-#ifndef kunvg_h
-#define kunvg_h
+#ifndef KUNVG_H
+#define KUNVG_H
 
 #ifdef __cplusplus
 extern "C" {
-#endif
+#endif // __cplusplus
 
 #include <stdio.h>
 #include "kumu.h"
@@ -30,6 +30,6 @@ void kuvg_touchescanceled(kuvm *vm, kunvobj *obj, double x0, double y0, double x
 
 #ifdef __cplusplus
 }
-#endif
+#endif // __cplusplus
 
-#endif
+#endif // KUNVG_H

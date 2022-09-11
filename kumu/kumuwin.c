@@ -2,17 +2,24 @@
 //
 
 #include <stdio.h>
+
+#ifdef KVM_MAIN
 #include "kumu.h"
+#endif // KVM_MAIN
+
+#ifdef KVM_TEST
+#include "kutest.h"
+#endif // KVM_TEST
 
 int main(int argc, char **argv)
 {
 #ifdef KVM_MAIN
 	return ku_main(argc, argv);
-#endif
+#endif // KVM_MAIN
 
 #ifdef KVM_TEST
-	ku_test();
-#endif
+	return ku_test();
+#endif // KVM_TEST
 }
 
 // Run program: Ctrl + F5 or Debug > Start Without Debugging menu
