@@ -420,6 +420,9 @@
 					"-Wall",
 					"-Wextra",
 					"-Werror",
+					"-pedantic",
+					"-Wno-gnu-statement-expression",
+					"-Wno-gnu-zero-variadic-macro-arguments",
 				);
 			};
 			name = Debug;
@@ -477,6 +480,9 @@
 					"-Wall",
 					"-Wextra",
 					"-Werror",
+					"-pedantic",
+					"-Wno-gnu-statement-expression",
+					"-Wno-gnu-zero-variadic-macro-arguments",
 				);
 			};
 			name = Release;

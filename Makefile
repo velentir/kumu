@@ -20,8 +20,9 @@ ifndef CC
 CC=clang
 endif # CC
 C_STD?=c11
-CFLAGS+=-Wall -Wextra -Werror -std=$(C_STD)
-# TODO: add "-pedantic"
+CFLAGS+=-std=$(C_STD)
+CFLAGS+=-Wall -Wextra -Werror -pedantic
+CFLAGS+=-Wno-gnu-statement-expression -Wno-gnu-zero-variadic-macro-arguments
 LLVMCOVFLAGS=-fprofile-instr-generate -fcoverage-mapping
 LLVMCOVLDFLAGS=-fprofile-instr-generate
 LLVM_PROFRAW_FILE=build/debug/kumu.profraw

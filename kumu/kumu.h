@@ -548,7 +548,7 @@ typedef struct kuvm {
   int gccount;      // gray object count
   int gccap;        // gray object capacity
   kuobj **gcstack;  // gray object stack
-  kuval stack[0];
+  kuval stack[];
 
 } kuvm;
 
