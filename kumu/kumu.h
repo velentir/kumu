@@ -86,7 +86,7 @@ kustr* ku_strfrom(kuvm* vm, const char* chars, int len);
 // ********************** value types **********************
 typedef enum {
   VAL_BOOL,
-  VAL_NIL,
+  VAL_NULL,
   VAL_NUM,
   VAL_OBJ,
 } kuval_t;
@@ -94,7 +94,7 @@ typedef enum {
 #define QNAN ((uint64_t)0x7ffc000000000000)
 #define SIGN_BIT ((uint64_t)0x8000000000000000)
 
-#define TAG_NIL 1
+#define TAG_NULL 1
 #define TAG_FALSE 2
 #define TAG_TRUE 3
 #define FALSE_VAL ((kuval)(uint64_t)(QNAN | TAG_FALSE))
@@ -113,14 +113,14 @@ static inline kuval ku_num2val(double d) {
   return val;
 }
 
-#define NIL_VAL ((kuval)(uint64_t) (QNAN | TAG_NIL))
+#define NULL_VAL ((kuval)(uint64_t) (QNAN | TAG_NULL))
 #define BOOL_VAL(b) ((b) ? TRUE_VAL : FALSE_VAL)
 #define OBJ_VAL(o) (kuval)(SIGN_BIT | QNAN | (uint64_t)(uintptr_t)(o))
 
 
 
 #define IS_NUM(v) (((v) & QNAN) != QNAN)
-#define IS_NIL(v) ((v) == NIL_VAL)
+#define IS_NULL(v) ((v) == NULL_VAL)
 #define IS_BOOL(v) (((v) | 1) == TRUE_VAL)
 #define IS_OBJ(v) (((v) & (QNAN | SIGN_BIT)) == (QNAN | SIGN_BIT))
 
@@ -210,7 +210,7 @@ typedef enum {
   OP_METHOD,
   OP_MUL,
   OP_NEG,
-  OP_NIL,
+  OP_NULL,
   OP_NOT,
   OP_POP,
   OP_RET,
@@ -392,7 +392,7 @@ typedef enum {
   TOK_IDENT, TOK_STR, TOK_STRESC, TOK_NUM, TOK_HEX,
   // Keywords.
   TOK_AND, TOK_CLASS, TOK_ELSE, TOK_FALSE, TOK_FOR, TOK_FUN,
-  TOK_IF, TOK_NIL, TOK_OR, TOK_RETURN, TOK_SUPER,
+  TOK_IF, TOK_NULL, TOK_OR, TOK_RETURN, TOK_SUPER,
   TOK_THIS, TOK_TRUE, TOK_LET, TOK_WHILE, TOK_ERR, TOK_EOF,
   TOK_BREAK, TOK_CONTINUE, TOK_CONST,
 } kutok_t;

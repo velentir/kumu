@@ -43,6 +43,7 @@ int ku_bytedis(kuvm *vm, kuchunk *chunk, int offset);
 #endif // TRACE_ENABLED
 
 kures debugger(kuvm *vm) {
+
 #ifdef TRACE_ENABLED
   kuframe *frame = &vm->frames[vm->framecount - 1];
 
@@ -63,7 +64,7 @@ kures debugger(kuvm *vm) {
   } else if (strcmp(b, "x") == 0) {
     return KVM_OK;
   }
-  
+
   return KVM_CONT;
 }
 
@@ -234,7 +235,7 @@ static void ku_printbuild(kuvm *vm) {
 static void ku_repl(kuvm *vm) {
   ku_printbuild(vm);
   kustr* under = ku_strfrom(vm, "_", 1);
-  ku_tabset(vm, &vm->globals, under, NIL_VAL);
+  ku_tabset(vm, &vm->globals, under, NULL_VAL);
 
   ku_initreadline(vm);
   while(true) {
@@ -250,7 +251,7 @@ static void ku_repl(kuvm *vm) {
     if (strcmp(b, ".quit") == 0) {
       break;
     }
-    
+
     if (strcmp(b, ".debug on") == 0) {
       vm->debugger = debugger;
       printf("debugging on\n");
@@ -263,7 +264,7 @@ static void ku_repl(kuvm *vm) {
       printf("debugging %s\n", (vm->debugger) ? "on" : "off");
       continue;
     }
-    
+
     if (strcmp(b, ".help") == 0) {
       for (int i = 0; i < sizeof(ku_repl_flags)/sizeof(ku_repl_flag); i++) {
         ku_repl_flag *flag = &ku_repl_flags[i];

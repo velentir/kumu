@@ -87,7 +87,7 @@ kuval ku_get_global(kuvm* vm, const char* name) {
   kuval value;
   kustr* key = ku_strfrom(vm, name, (int)strlen(name));
   if (!ku_tabget(vm, &vm->globals, key, &value)) {
-    return NIL_VAL;
+    return NULL_VAL;
   }
 
   return value;
@@ -98,7 +98,7 @@ kuval ku_test_eval(kuvm* vm, const char* expr) {
   sprintf(buff, "let x = %s;", expr);
   kures res = ku_exec(vm, buff);
   if (res != KVM_OK) {
-    return NIL_VAL;
+    return NULL_VAL;
   }
   return ku_get_global(vm, "x");
 }
@@ -168,31 +168,31 @@ kuval test_cons(kuvm *vm, int argc, kuval *argv) {
 
 kuval test_scall(kuvm *vm, kustr *m, int argc, kuval *argv) {
   tclass_scall = argc;
-  return NIL_VAL;
+  return NULL_VAL;
 }
 
 kuval test_sget(kuvm *vm, kustr *p) {
   tclass_sget++;
-  return NIL_VAL;
+  return NULL_VAL;
 }
 kuval test_sput(kuvm *vm, kustr *p, kuval v) {
   tclass_sput = (int)AS_NUM(v);
-  return NIL_VAL;
+  return NULL_VAL;
 }
 
 kuval test_sfree(kuvm *vm, kuobj *cc) {
   tclass_sfree++;
-  return NIL_VAL;
+  return NULL_VAL;
 }
 
 kuval test_smark(kuvm *vm, kuobj *cc) {
   tclass_smark++;
-  return NIL_VAL;
+  return NULL_VAL;
 }
 
 kuval test_icall(kuvm *vm, kuobj *o, kustr *m, int argc, kuval *argv) {
   tclass_icall++;
-  return NIL_VAL;
+  return NULL_VAL;
 }
 
 kuval test_iget(kuvm *vm, kuobj *o, kustr *p) {
@@ -205,18 +205,18 @@ kuval test_iput(kuvm *vm, kuobj *o, kustr *p, kuval v) {
   tclass_iput++;
   test_inst *ti = (test_inst*)o;
   ti->value = AS_NUM(v);
-  return NIL_VAL;
+  return NULL_VAL;
 }
 
 kuval test_ifree(kuvm *vm, kuobj *o) {
   tclass_ifree++;
   ku_alloc(vm, o, sizeof(test_inst), 0);
-  return NIL_VAL;
+  return NULL_VAL;
 }
 
 kuval test_imark(kuvm *vm, kuobj *cc) {
   tclass_imark++;
-  return NIL_VAL;
+  return NULL_VAL;
 }
 
 void tclass_reset(kuvm *vm) {
@@ -381,7 +381,7 @@ int ku_test() {
   kut_free(vm);
 
   vm = kut_new(false);
-  ku_lexinit(vm, "and class else false for function if nil or return super this true while {}[]!+-*/=!==><>=<= === => break continue const far\ttrick\nart\rcool eek too functiond");
+  ku_lexinit(vm, "and class else false for function if null or return super this true while {}[]!+-*/=!==><>=<= === => break continue const far\ttrick\nart\rcool eek too functiond");
   kutok t = ku_scan(vm);
   EXPECT_INT(vm, t.type, TOK_AND, "[and]");
   t = ku_scan(vm);
@@ -397,7 +397,7 @@ int ku_test() {
   t = ku_scan(vm);
   EXPECT_INT(vm, t.type, TOK_IF, "[if]");
   t = ku_scan(vm);
-  EXPECT_INT(vm, t.type, TOK_NIL, "[nil]");
+  EXPECT_INT(vm, t.type, TOK_NULL, "[null]");
   t = ku_scan(vm);
   EXPECT_INT(vm, t.type, TOK_OR, "[or]");
   t = ku_scan(vm);
@@ -485,8 +485,8 @@ int ku_test() {
   kut_free(vm);
 
   vm = kut_new(false);
-  v = ku_test_eval(vm, "nil");
-  EXPECT_VAL(vm, v, NIL_VAL, "nil literal eval");
+  v = ku_test_eval(vm, "null");
+  EXPECT_VAL(vm, v, NULL_VAL, "null literal eval");
   kut_free(vm);
 
   vm = kut_new(false);
@@ -897,7 +897,7 @@ int ku_test() {
   vm = kut_new(false);
   res = ku_exec(vm, "function f(a) { let z = 2; }\nlet x = f(3);");
   EXPECT_INT(vm, res, KVM_OK, "implicit return res");
-  EXPECT_VAL(vm, ku_get_global(vm, "x"), NIL_VAL, "implicit return val");
+  EXPECT_VAL(vm, ku_get_global(vm, "x"), NULL_VAL, "implicit return val");
   kut_free(vm);
 
   vm = kut_new(false);
@@ -945,39 +945,39 @@ int ku_test() {
 
   vm = kut_new(false);
   vm->flags = KVM_F_GCSTRESS | KVM_F_GCLOG | KVM_F_QUIET;
-  res = ku_exec(vm, "let x = \"hello\"; x=nil;");
+  res = ku_exec(vm, "let x = \"hello\"; x=null;");
   ku_gc(vm);
   EXPECT_INT(vm, res, KVM_OK, "gc res");
-  EXPECT_VAL(vm, ku_get_global(vm, "x"), NIL_VAL, "gc val");
+  EXPECT_VAL(vm, ku_get_global(vm, "x"), NULL_VAL, "gc val");
   kut_free(vm);
 
   vm = kut_new(false);
   vm->flags = KVM_F_GCLOG | KVM_F_QUIET;
   vm->gcnext = 0;
-  res = ku_exec(vm, "let x = \"hello\"; x=nil;");
+  res = ku_exec(vm, "let x = \"hello\"; x=null;");
   EXPECT_INT(vm, res, KVM_OK, "gcnext res");
-  EXPECT_VAL(vm, ku_get_global(vm, "x"), NIL_VAL, "gcnext val");
+  EXPECT_VAL(vm, ku_get_global(vm, "x"), NULL_VAL, "gcnext val");
   kut_free(vm);
 
 
   vm = kut_new(true);
-  res = ku_exec(vm, "printf(nil);");
-  EXPECT_INT(vm, res, KVM_OK, "printf nil");
+  res = ku_exec(vm, "printf(null);");
+  EXPECT_INT(vm, res, KVM_OK, "printf null");
   kut_free(vm);
 
   vm = kut_new(false);
   vm->flags = KVM_F_GCSTRESS | KVM_F_GCLOG | KVM_F_QUIET;
-  res = ku_exec(vm, "function M(x) { let m = x; function e() { return m*m; } return e; }\n let z = M(5); let x = z(); x = nil;");
+  res = ku_exec(vm, "function M(x) { let m = x; function e() { return m*m; } return e; }\n let z = M(5); let x = z(); x = null;");
   ku_gc(vm);
   EXPECT_INT(vm, res, KVM_OK, "gc closure res");
-  EXPECT_VAL(vm, ku_get_global(vm, "x"), NIL_VAL, "gc closure val");
+  EXPECT_VAL(vm, ku_get_global(vm, "x"), NULL_VAL, "gc closure val");
   kut_free(vm);
 
   vm = kut_new(false);
   vm->flags = KVM_F_GCSTRESS | KVM_F_GCLOG | KVM_F_QUIET;
-  res = ku_exec(vm, "function M(x) { let m = x; let mm=x*2; function e(n) { return m*n*mm; } return e; }\n let z = M(5); let x = z(3); x = nil;");
+  res = ku_exec(vm, "function M(x) { let m = x; let mm=x*2; function e(n) { return m*n*mm; } return e; }\n let z = M(5); let x = z(3); x = null;");
   EXPECT_INT(vm, res, KVM_OK, "gc closure2 res");
-  EXPECT_VAL(vm, ku_get_global(vm, "x"), NIL_VAL, "gc closure2 val");
+  EXPECT_VAL(vm, ku_get_global(vm, "x"), NULL_VAL, "gc closure2 val");
   kut_free(vm);
 
   vm = kut_new(false);
@@ -1194,10 +1194,10 @@ int ku_test() {
 
   vm = kut_new(false);
   vm->flags = KVM_F_GCSTRESS | KVM_F_GCLOG | KVM_F_QUIET;
-  res = ku_exec(vm, "class A{ f(){}} let a=A(); let z=a.f; a=nil;");
+  res = ku_exec(vm, "class A{ f(){}} let a=A(); let z=a.f; a=null;");
   ku_gc(vm);
   EXPECT_INT(vm, res, KVM_OK, "gc class res");
-  EXPECT_VAL(vm, ku_get_global(vm, "a"), NIL_VAL, "gc class val");
+  EXPECT_VAL(vm, ku_get_global(vm, "a"), NULL_VAL, "gc class val");
   kut_free(vm);
 
   vm = kut_new(false);
@@ -1288,7 +1288,7 @@ int ku_test() {
 
   vm = kut_new(true);
   res = ku_exec(vm, "let x=v.count;");
-  EXPECT_INT(vm, res, KVM_ERR_RUNTIME, "string.count nil");
+  EXPECT_INT(vm, res, KVM_ERR_RUNTIME, "string.count null");
   kut_free(vm);
 
   vm = kut_new(true);
@@ -1386,7 +1386,7 @@ int ku_test() {
   res = ku_exec(vm, "let x=test;");
   ku_gc(vm);
   EXPECT_INT(vm, tclass_smark, 1, "class smark false");
-  res = ku_exec(vm, "x=nil;");
+  res = ku_exec(vm, "x=null;");
   ku_gc(vm);
   EXPECT_TRUE(vm, tclass_smark > 1, "class smark false");
   kut_free(vm);
@@ -1498,32 +1498,32 @@ int ku_test() {
   vm = kut_new(true);
   res = ku_exec(vm, "let x=string.format(12);");
   EXPECT_INT(vm, res, KVM_OK, "string.format num res");
-  EXPECT_TRUE(vm, IS_NIL(ku_get_global(vm, "x")), "string.format ret");
+  EXPECT_TRUE(vm, IS_NULL(ku_get_global(vm, "x")), "string.format ret");
   kut_free(vm);
 
   vm = kut_new(true);
   res = ku_exec(vm, "let x=string.bogus(12);");
   EXPECT_INT(vm, res, KVM_OK, "string.bogus num res");
-  EXPECT_TRUE(vm, IS_NIL(ku_get_global(vm, "x")), "string.bogus ret");
+  EXPECT_TRUE(vm, IS_NULL(ku_get_global(vm, "x")), "string.bogus ret");
   kut_free(vm);
 
   vm = kut_new(true);
   res = ku_exec(vm, "let s=\"123\"; let x=s.bogus;");
   EXPECT_INT(vm, res, KVM_OK, "s.bogus res");
-  EXPECT_TRUE(vm, IS_NIL(ku_get_global(vm, "x")), "s.bogus ret");
+  EXPECT_TRUE(vm, IS_NULL(ku_get_global(vm, "x")), "s.bogus ret");
   kut_free(vm);
 
 
   vm = kut_new(true);
   res = ku_exec(vm, "let x=math.bogus(12);");
   EXPECT_INT(vm, res, KVM_OK, "math.bogus scall res");
-  EXPECT_TRUE(vm, IS_NIL(ku_get_global(vm, "x")), "math.bogus scall ret");
+  EXPECT_TRUE(vm, IS_NULL(ku_get_global(vm, "x")), "math.bogus scall ret");
   kut_free(vm);
 
   vm = kut_new(true);
   res = ku_exec(vm, "let x=math.bogus;");
   EXPECT_INT(vm, res, KVM_OK, "math.bogus sget res");
-  EXPECT_TRUE(vm, IS_NIL(ku_get_global(vm, "x")), "math.bogus sget ret");
+  EXPECT_TRUE(vm, IS_NULL(ku_get_global(vm, "x")), "math.bogus sget ret");
   kut_free(vm);
 
   vm = kut_new(true);
@@ -1574,9 +1574,9 @@ int ku_test() {
   v = ku_arrget(vm, ao, 5);
   EXPECT_VAL(vm, v, NUM_VAL(12), "array(0) set(5) get (5)");
   v = ku_arrget(vm, ao, 1);
-  EXPECT_VAL(vm, v, NIL_VAL, "array(0) set(5) get (1)");
+  EXPECT_VAL(vm, v, NULL_VAL, "array(0) set(5) get (1)");
   v = ku_arrget(vm, ao, 1000);
-  EXPECT_VAL(vm, v, NIL_VAL, "array(0) set(5) get (1000)");
+  EXPECT_VAL(vm, v, NULL_VAL, "array(0) set(5) get (1000)");
   ku_printval(vm, OBJ_VAL(ao));
   kut_free(vm);
 
@@ -1667,7 +1667,7 @@ int ku_test() {
 
   vm = kut_new(true);
   res = ku_exec(vm, "let a=[1,3,4]; let x=a.map();");
-  EXPECT_INT(vm, res, KVM_ERR_RUNTIME, "array.map nil");
+  EXPECT_INT(vm, res, KVM_ERR_RUNTIME, "array.map null");
   kut_free(vm);
 
   vm = kut_new(true);
@@ -1698,7 +1698,7 @@ int ku_test() {
 
   vm = kut_new(true);
   res = ku_exec(vm, "let sum=[1,3,4].reduce();");
-  EXPECT_INT(vm, res, KVM_ERR_RUNTIME, "array.reduce nil");
+  EXPECT_INT(vm, res, KVM_ERR_RUNTIME, "array.reduce null");
   kut_free(vm);
 
   vm = kut_new(true);
@@ -1708,7 +1708,7 @@ int ku_test() {
 
   vm = kut_new(true);
   res = ku_exec(vm, "let a=[1,3,4]; let x =a.bogus();");
-  EXPECT_VAL(vm, ku_get_global(vm, "x"), NIL_VAL, "array.invoke bogus");
+  EXPECT_VAL(vm, ku_get_global(vm, "x"), NULL_VAL, "array.invoke bogus");
   kut_free(vm);
 
 
@@ -1743,7 +1743,7 @@ int ku_test() {
   vm = kut_new(true);
   res = ku_exec(vm, "let t=table(); t.x=1; t.y=2; let x=t.z;");
   EXPECT_INT(vm, res, KVM_OK, "table res");
-  EXPECT_VAL(vm, ku_get_global(vm, "x"), NIL_VAL, "table nil ret");
+  EXPECT_VAL(vm, ku_get_global(vm, "x"), NULL_VAL, "table null ret");
   kut_free(vm);
 
   vm = kut_new(true);
@@ -1754,20 +1754,20 @@ int ku_test() {
 
   vm = kut_new(true);
   res = ku_exec(vm, "let t=table(); t.set(1,1); let x=t.get(\"x\");");
-  EXPECT_INT(vm, res, KVM_OK, "table set(nil) res");
-  EXPECT_VAL(vm, ku_get_global(vm, "x"), NIL_VAL, "table set(nil)");
+  EXPECT_INT(vm, res, KVM_OK, "table set(null) res");
+  EXPECT_VAL(vm, ku_get_global(vm, "x"), NULL_VAL, "table set(null)");
   kut_free(vm);
 
   vm = kut_new(true);
   res = ku_exec(vm, "let t=table(); t.set(\"x\",1); let x=t.get(1);");
-  EXPECT_INT(vm, res, KVM_OK, "table get(nil) res");
-  EXPECT_VAL(vm, ku_get_global(vm, "x"), NIL_VAL, "table get(nil)");
+  EXPECT_INT(vm, res, KVM_OK, "table get(null) res");
+  EXPECT_VAL(vm, ku_get_global(vm, "x"), NULL_VAL, "table get(null)");
   kut_free(vm);
 
   vm = kut_new(true);
   res = ku_exec(vm, "let t=table(); let x = t.bogus();");
   EXPECT_INT(vm, res, KVM_OK, "table bogus res");
-  EXPECT_VAL(vm, ku_get_global(vm, "x"), NIL_VAL, "table bogus");
+  EXPECT_VAL(vm, ku_get_global(vm, "x"), NULL_VAL, "table bogus");
   kut_free(vm);
 
   vm = kut_new(true);
@@ -1787,7 +1787,7 @@ int ku_test() {
 
   vm = kut_new(true);
   res = ku_exec(vm, "let t=table(); t.iter();");
-  EXPECT_INT(vm, res, KVM_OK, "table iter nil res");
+  EXPECT_INT(vm, res, KVM_OK, "table iter null res");
   kut_free(vm);
 
   vm = kut_new(true);
@@ -1821,7 +1821,7 @@ int ku_test() {
 
   vm = kut_new(true);
   res = ku_exec(vm, "let x = int(true);");
-  EXPECT_VAL(vm, ku_get_global(vm, "x"), NIL_VAL, "int(bool) ret");
+  EXPECT_VAL(vm, ku_get_global(vm, "x"), NULL_VAL, "int(bool) ret");
   kut_free(vm);
 
   vm = kut_new(true);
@@ -1832,7 +1832,7 @@ int ku_test() {
 
   vm = kut_new(true);
   res = ku_exec(vm, "let x = parseFloat(true);");
-  EXPECT_VAL(vm, ku_get_global(vm, "x"), NIL_VAL, "parseFloat(bool) ret");
+  EXPECT_VAL(vm, ku_get_global(vm, "x"), NULL_VAL, "parseFloat(bool) ret");
   kut_free(vm);
 
   vm = kut_new(true);
@@ -1879,9 +1879,9 @@ int ku_test() {
 
   vm = kut_new(true);
   ku_exec(vm, "let x,y;");
-  EXPECT_INT(vm, res, KVM_OK, "multi-let nil res");
-  EXPECT_VAL(vm, ku_get_global(vm, "x"), NIL_VAL, "multi-let nil x");
-  EXPECT_VAL(vm, ku_get_global(vm, "y"), NIL_VAL, "multi-let nil y");
+  EXPECT_INT(vm, res, KVM_OK, "multi-let null res");
+  EXPECT_VAL(vm, ku_get_global(vm, "x"), NULL_VAL, "multi-let null x");
+  EXPECT_VAL(vm, ku_get_global(vm, "y"), NULL_VAL, "multi-let null y");
   kut_free(vm);
 
   vm = kut_new(true);
@@ -1944,7 +1944,7 @@ int ku_test() {
   vm = kut_new(true);
   res = ku_exec(vm, "let a = []; let x = a.first;");
   EXPECT_INT(vm, res, KVM_OK, "arr empty first res");
-  EXPECT_VAL(vm, ku_get_global(vm, "x"), NIL_VAL, "arr empty first ret");
+  EXPECT_VAL(vm, ku_get_global(vm, "x"), NULL_VAL, "arr empty first ret");
   kut_free(vm);
 
   vm = kut_new(true);
@@ -1956,7 +1956,7 @@ int ku_test() {
   vm = kut_new(true);
   res = ku_exec(vm, "let a = []; let x = a.last;");
   EXPECT_INT(vm, res, KVM_OK, "arr empty last res");
-  EXPECT_VAL(vm, ku_get_global(vm, "x"), NIL_VAL, "arr empty last ret");
+  EXPECT_VAL(vm, ku_get_global(vm, "x"), NULL_VAL, "arr empty last ret");
   kut_free(vm);
 
   vm = kut_new(true);
@@ -1982,7 +1982,7 @@ int ku_test() {
 
   vm = kut_new(true);
   res = ku_exec(vm, "let a=[1,3,4]; let x=a.filter();");
-  EXPECT_INT(vm, res, KVM_ERR_RUNTIME, "array.filter nil");
+  EXPECT_INT(vm, res, KVM_ERR_RUNTIME, "array.filter null");
   kut_free(vm);
 
   vm = kut_new(true);
@@ -2014,7 +2014,7 @@ int ku_test() {
 
   vm = kut_new(true);
   res = ku_exec(vm, "let x=[7,3,4]; x.sort();");
-  EXPECT_INT(vm, res, KVM_ERR_RUNTIME, "array.sort nil res");
+  EXPECT_INT(vm, res, KVM_ERR_RUNTIME, "array.sort null res");
   kut_free(vm);
 
   vm = kut_new(true);
@@ -2061,7 +2061,7 @@ int ku_test() {
   vm = kut_new(true);
   res = ku_exec(vm, "let x=eval();");
   EXPECT_INT(vm, res, KVM_OK, "eval arg res");
-  EXPECT_VAL(vm, ku_get_global(vm, "x"), NIL_VAL, "eval arg ret");
+  EXPECT_VAL(vm, ku_get_global(vm, "x"), NULL_VAL, "eval arg ret");
   kut_free(vm);
 
   vm = kut_new(true);
@@ -2115,7 +2115,7 @@ int ku_test() {
   vm = kut_new(true);
   res = ku_exec(vm, "let s=\"012345678\"; let x=s.bogus(-1,55);");
   EXPECT_INT(vm, res, KVM_OK, "string.bogus res");
-  EXPECT_VAL(vm, ku_get_global(vm, "x"), NIL_VAL, "string.bogus ret");
+  EXPECT_VAL(vm, ku_get_global(vm, "x"), NULL_VAL, "string.bogus ret");
   kut_free(vm);
 
   vm = kut_new(true);
