@@ -113,13 +113,14 @@ kuvm *kut_new(bool reglibs) {
   return vm;
 }
 
-static kuval kutest_native_add(kuvm *vm, int argc, kuval *argv) {
+static kuval kutest_native_add(KU_UNUSED kuvm *vm, int argc, KU_UNUSED kuval *argv) {
+  assert(argc == 2);
   kuval b = argv[0];
   kuval a = argv[1];
   return NUM_VAL(AS_NUM(a) + AS_NUM(b));
 }
 
-static int kut_table_count(kuvm *vm, kutab *tab) {
+static int kut_table_count(KU_UNUSED kuvm *vm, kutab *tab) {
   int count = 0;
   for (int i=0; i < tab->capacity; i++) {
     kuentry *s = &tab->entries[i];
@@ -132,12 +133,12 @@ static int kut_table_count(kuvm *vm, kutab *tab) {
 
 int debug_call_count = 0;
 
-kures test_debugger_stop(kuvm* vm) {
+kures test_debugger_stop(KU_UNUSED kuvm* vm) {
   debug_call_count++;
   return KVM_OK;
 }
 
-kures test_debugger_cont(kuvm* vm) {
+kures test_debugger_cont(KU_UNUSED kuvm* vm) {
   debug_call_count++;
   return KVM_CONT;
 }
@@ -159,49 +160,50 @@ typedef struct {
   double value;
 } test_inst;
 
-kuval test_cons(kuvm *vm, int argc, kuval *argv) {
+kuval test_cons(kuvm *vm, KU_UNUSED int argc, kuval *argv) {
+  assert(argc == 1);
   tclass_cons++;
   test_inst *i = (test_inst*)ku_objalloc(vm, sizeof(test_inst), OBJ_CINST);
   i->value = AS_NUM(argv[0]);
   return OBJ_VAL(i);
 }
 
-kuval test_scall(kuvm *vm, kustr *m, int argc, kuval *argv) {
+kuval test_scall(KU_UNUSED kuvm *vm, KU_UNUSED kustr *m, int argc, KU_UNUSED kuval *argv) {
   tclass_scall = argc;
   return NULL_VAL;
 }
 
-kuval test_sget(kuvm *vm, kustr *p) {
+kuval test_sget(KU_UNUSED kuvm *vm, KU_UNUSED kustr *p) {
   tclass_sget++;
   return NULL_VAL;
 }
-kuval test_sput(kuvm *vm, kustr *p, kuval v) {
+kuval test_sput(KU_UNUSED kuvm *vm, KU_UNUSED kustr *p, kuval v) {
   tclass_sput = (int)AS_NUM(v);
   return NULL_VAL;
 }
 
-kuval test_sfree(kuvm *vm, kuobj *cc) {
+kuval test_sfree(KU_UNUSED kuvm *vm, KU_UNUSED kuobj *cc) {
   tclass_sfree++;
   return NULL_VAL;
 }
 
-kuval test_smark(kuvm *vm, kuobj *cc) {
+kuval test_smark(KU_UNUSED kuvm *vm, KU_UNUSED kuobj *cc) {
   tclass_smark++;
   return NULL_VAL;
 }
 
-kuval test_icall(kuvm *vm, kuobj *o, kustr *m, int argc, kuval *argv) {
+kuval test_icall(KU_UNUSED kuvm *vm, KU_UNUSED kuobj *o, KU_UNUSED kustr *m, KU_UNUSED int argc, KU_UNUSED kuval *argv) {
   tclass_icall++;
   return NULL_VAL;
 }
 
-kuval test_iget(kuvm *vm, kuobj *o, kustr *p) {
+kuval test_iget(KU_UNUSED kuvm *vm, kuobj *o, KU_UNUSED kustr *p) {
   test_inst *ti = (test_inst*)o;
   tclass_iget++;
   return NUM_VAL(ti->value);
 }
 
-kuval test_iput(kuvm *vm, kuobj *o, kustr *p, kuval v) {
+kuval test_iput(KU_UNUSED kuvm *vm, kuobj *o, KU_UNUSED kustr *p, KU_UNUSED kuval v) {
   tclass_iput++;
   test_inst *ti = (test_inst*)o;
   ti->value = AS_NUM(v);
@@ -214,12 +216,12 @@ kuval test_ifree(kuvm *vm, kuobj *o) {
   return NULL_VAL;
 }
 
-kuval test_imark(kuvm *vm, kuobj *cc) {
+kuval test_imark(KU_UNUSED kuvm *vm, KU_UNUSED kuobj *cc) {
   tclass_imark++;
   return NULL_VAL;
 }
 
-void tclass_reset(kuvm *vm) {
+void tclass_reset(KU_UNUSED kuvm *vm) {
   tclass_cons = 0;
   tclass_scall = 0;
   tclass_sget = 0;

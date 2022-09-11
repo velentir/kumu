@@ -18,6 +18,8 @@ extern "C" {
 #define KVM_MAJOR          0
 #define KVM_MINOR          88
 
+#define KU_UNUSED __attribute__((unused))
+
 //#define TRACE_ENABLED 1
 //#define STACK_CHECK 1
 //#define TRACE_OBJ_COUNTS 1

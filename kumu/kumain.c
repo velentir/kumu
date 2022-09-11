@@ -68,7 +68,7 @@ kures debugger(kuvm *vm) {
   return KVM_CONT;
 }
 
-static char *ku_readfile(kuvm *vm, const char *path) {
+static char *ku_readfile(KU_UNUSED kuvm *vm, const char *path) {
   FILE * file = fopen(path , "rb");
 
   if (file == NULL) {
@@ -84,7 +84,7 @@ static char *ku_readfile(kuvm *vm, const char *path) {
     return NULL;
   }
 
-  size_t read = fread(buffer , sizeof (char), fsize, file);
+  size_t read = fread(buffer, sizeof (char), fsize, file);
 
   if (read < fsize) {
     free(buffer);
@@ -144,7 +144,7 @@ static bool ku_check_flag(kuvm *vm, char *line,
 }
 
 static bool ku_check_flags(kuvm *vm, char *line) {
-  for (int i = 0; i < sizeof(ku_repl_flags)/sizeof(ku_repl_flag); i++) {
+  for (size_t i = 0; i < sizeof(ku_repl_flags)/sizeof(ku_repl_flag); i++) {
     ku_repl_flag *flag = &ku_repl_flags[i];
     if (ku_check_flag(vm, line, flag->name, flag->mask)) {
       return true;
@@ -266,7 +266,7 @@ static void ku_repl(kuvm *vm) {
     }
 
     if (strcmp(b, ".help") == 0) {
-      for (int i = 0; i < sizeof(ku_repl_flags)/sizeof(ku_repl_flag); i++) {
+      for (size_t i = 0; i < sizeof(ku_repl_flags)/sizeof(ku_repl_flag); i++) {
         ku_repl_flag *flag = &ku_repl_flags[i];
         printf(".%s\n", flag->name);
       }
