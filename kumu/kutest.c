@@ -283,7 +283,7 @@ void kut_free(kuvm* vm) {
   ku_free(vm);
 }
 
-void ku_test() {
+int ku_test() {
   kuvm *vm = kut_new(false);
   kures res = ku_exec(vm, "let x= -1+4;");
   EXPECT_INT(vm, res, KVM_OK, "let x= -1+4 res");
@@ -807,7 +807,7 @@ void ku_test() {
 
   vm = kut_new(true);
   vm->flags = 0;
-  res = ku_exec(vm, "let x = 0; for(; x < 10; x=x+1) printf(x); printf(\"\n\");");
+  res = ku_exec(vm, "let x = 0; for(; x < 10; x=x+1) {printf(x); printf(\"\\n\");}");
   EXPECT_INT(vm, res, KVM_OK, "for no init");
   EXPECT_VAL(vm, ku_get_global(vm, "x"), NUM_VAL(10), "for no init");
   kut_free(vm);
@@ -2190,4 +2190,5 @@ void ku_test() {
   kut_free(vm);
 
   ku_test_summary();
+  return ktest_fail;
 }

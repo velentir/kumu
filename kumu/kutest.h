@@ -10,6 +10,6 @@
 
 #include <stdio.h>
 
-void ku_test(void);
+int ku_test(void);
 
 #endif // KUTEST_H
