@@ -278,7 +278,7 @@ void kut_free(kuvm* vm) {
     printf(">>> [%s] warning stack underflow %d\n", last_test, vm->underflow);
     ktest_warn++;
   }
-#endif
+#endif // STACK_CHECK
 
   ku_free(vm);
 }

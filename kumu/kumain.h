@@ -5,10 +5,11 @@
 //  Created by Mohsen Agsen on 12/7/21.
 //
 
-#ifndef kumain_h
-#define kumain_h
+#ifndef KUMAIN_H
+#define KUMAIN_H
 
 #include <stdio.h>
+
 int ku_main(int argc, const char* argv[]);
 
-#endif /* kumain_h */
+#endif // KUMAIN_H
