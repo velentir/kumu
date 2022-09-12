@@ -423,6 +423,8 @@
 					"-pedantic",
 					"-Wno-gnu-statement-expression",
 					"-Wno-gnu-zero-variadic-macro-arguments",
+					"-Wno-nullability-extension",
+					"-Wno-nullability-completeness",
 				);
 			};
 			name = Debug;
@@ -483,6 +485,8 @@
 					"-pedantic",
 					"-Wno-gnu-statement-expression",
 					"-Wno-gnu-zero-variadic-macro-arguments",
+					"-Wno-nullability-extension",
+					"-Wno-nullability-completeness",
 				);
 			};
 			name = Release;
