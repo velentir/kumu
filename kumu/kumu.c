@@ -1863,6 +1863,11 @@ kuchunk *ku_chunk_runtime(kuvm *vm) {
   // TODO: add code coverage
   return &vm->frames[vm->framecount-1].closure->func->chunk;
 }
+#else
+kuchunk *ku_chunk_runtime(kuvm *vm) {
+  // TODO: add code coverage
+  return &vm->frames[vm->framecount-1].closure->func->chunk;
+}
 #endif // TRACE_ENABLED
 
 static kuxobj *ku_capture(kuvm *vm, kuval *local) {

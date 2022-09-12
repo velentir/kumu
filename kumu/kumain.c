@@ -68,6 +68,14 @@ kures debugger(kuvm *vm) {
   return KVM_CONT;
 }
 
+#else // TRACE_ENABLED
+
+kures debugger(kuvm *vm) {
+    return KVM_OK;
+}
+
+#endif // TRACE_ENABLED
+
 static char *ku_readfile(kuvm *vm, const char *path) {
   FILE * file = fopen(path , "rb");
 
