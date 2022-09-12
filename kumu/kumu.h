@@ -25,7 +25,7 @@ extern "C" {
 //#define TRACE_OBJ_COUNTS 1
 
 #define UPSTACK_MAX (UINT8_MAX + 1)
-#define LOCALS_MAX    (UINT8_MAX + 1)
+#define LOCALS_MAX (UINT8_MAX + 1)
 #define FRAMES_MAX 64
 
 #define STACK_MAX (FRAMES_MAX * UPSTACK_MAX)
@@ -74,7 +74,7 @@ typedef struct kuobj {
   struct kuobj *next;
 } kuobj;
 
-void ku_objfree(kuvm* vm, kuobj* obj);
+void ku_objfree(kuvm *__nonnull vm, kuobj *__nonnull obj);
 
 // ********************** string **********************
 typedef struct {
@@ -83,7 +83,7 @@ typedef struct {
   char* chars;
   uint32_t hash;
 } kustr;
-kustr* ku_strfrom(kuvm* vm, const char* chars, int len);
+kustr *__nonnull ku_strfrom(kuvm *__nonnull vm, const char *__nonnull chars, int len);
 
 // ********************** value types **********************
 typedef enum {
@@ -104,9 +104,7 @@ typedef enum {
 
 typedef uint64_t kuval;
 
-
 bool ku_objis(kuval v, kuobj_t ot);
-
 
 #define NUM_VAL(v) ku_num2val(v)
 static inline kuval ku_num2val(double d) {
@@ -119,13 +117,10 @@ static inline kuval ku_num2val(double d) {
 #define BOOL_VAL(b) ((b) ? TRUE_VAL : FALSE_VAL)
 #define OBJ_VAL(o) (kuval)(SIGN_BIT | QNAN | (uint64_t)(uintptr_t)(o))
 
-
-
 #define IS_NUM(v) (((v) & QNAN) != QNAN)
 #define IS_NULL(v) ((v) == NULL_VAL)
 #define IS_BOOL(v) (((v) | 1) == TRUE_VAL)
 #define IS_OBJ(v) (((v) & (QNAN | SIGN_BIT)) == (QNAN | SIGN_BIT))
-
 
 #define IS_STR(v) (ku_objis(v, OBJ_STR))
 #define IS_FUNC(v) (ku_objis(v, OBJ_FUNC))
@@ -138,17 +133,15 @@ static inline kuval ku_num2val(double d) {
 #define IS_ARRAY(v) (ku_objis(v, OBJ_ARRAY))
 #define IS_BOUND_METHOD(v) (ku_objis(v, OBJ_BOUND_METHOD))
 
-
-#define AS_NUM(v) ku_val2num(v)
 static inline double ku_val2num(kuval v) {
   double d;
   memcpy(&d, &v, sizeof(kuval));
   return d;
 }
 
+#define AS_NUM(v) ku_val2num(v)
 #define AS_BOOL(v) ((v) == TRUE_VAL)
 #define AS_OBJ(v) ((kuobj*)(uintptr_t)((v) & ~(SIGN_BIT | QNAN)))
-
 
 #define AS_STR(v) ((kustr*)AS_OBJ(v))
 #define AS_CSTR(v) (((kustr*)AS_OBJ(v))->chars)
@@ -166,8 +159,8 @@ static inline double ku_val2num(kuval v) {
 
 bool ku_equal(kuval v1, kuval v2);
 
-void ku_printval(kuvm* vm, kuval value);
-void ku_printf(kuvm* vm, const char* fmt, ...);
+void ku_printval(kuvm *__nonnull vm, kuval value);
+void ku_printf(kuvm *__nonnull vm, const char *__nonnull fmt, ...);
 
 // ********************** arrays **********************
 typedef struct {
@@ -176,12 +169,13 @@ typedef struct {
     kuval* values;
 } kuarr;
 
-void ku_arrinit(kuvm* vm, kuarr* array);
-void ku_arrwrite(kuvm* vm, kuarr* array, kuval value);
+void ku_arrinit(kuvm *__nonnull vm, kuarr *__nonnull array);
+void ku_arrwrite(kuvm *__nonnull vm, kuarr *__nonnull array, kuval value);
 
 // ********************** memory **********************
-char* ku_alloc(kuvm* vm, void* p, size_t oldsize, size_t newsize);
-kuobj* ku_objalloc(kuvm* vm, size_t size, kuobj_t type);
+char *__nonnull ku_alloc(kuvm *__nonnull vm, void *__nullable p, size_t oldsize, size_t newsize);
+kuobj *__nonnull ku_objalloc(kuvm *__nonnull vm, size_t size, kuobj_t type);
+
 // ********************** bytecodes **********************
 typedef enum {
   OP_ADD,
@@ -240,10 +234,10 @@ typedef struct {
   kuarr constants;
 } kuchunk;
 
-void ku_chunkinit(kuvm* vm, kuchunk* chunk);
-void ku_chunkwrite(kuvm* vm, kuchunk* chunk, uint8_t byte, int line);
-void ku_chunkfree(kuvm* vm, kuchunk* chunk);
-int ku_chunkconst(kuvm* vm, kuchunk* chunk, kuval value);
+void ku_chunkinit(kuvm *__nonnull vm, kuchunk *__nonnull chunk);
+void ku_chunkwrite(kuvm *__nonnull vm, kuchunk *__nonnull chunk, uint8_t byte, int line);
+void ku_chunkfree(kuvm *__nonnull vm, kuchunk *__nonnull chunk);
+int ku_chunkconst(kuvm *__nonnull vm, kuchunk *__nonnull chunk, kuval value);
 
 // ********************** upvalues **********************
 typedef struct kuxobj {
@@ -253,7 +247,7 @@ typedef struct kuxobj {
   struct kuxobj *next;
 } kuxobj;
 
-kuxobj *ku_xobjnew(kuvm *vm, kuval *slot);
+kuxobj *__nonnull ku_xobjnew(kuvm *__nonnull vm, kuval *__nonnull slot);
 
 // ********************** functions **********************
 typedef struct {
@@ -264,7 +258,7 @@ typedef struct {
   kustr *name;
 } kufunc;
 
-kufunc *ku_funcnew(kuvm *vm);
+kufunc *__nonnull ku_funcnew(kuvm *__nonnull vm);
 
 // ********************** closures **********************
 typedef struct {
@@ -274,39 +268,39 @@ typedef struct {
   int upcount;
 } kuclosure;
 
-kuclosure *ku_closurenew(kuvm *vm, kufunc *f);
+kuclosure *__nonnull ku_closurenew(kuvm *__nonnull vm, kufunc *__nonnull f);
 
 // ********************** native functions **********************
-typedef kuval (*cfunc)(kuvm *vm, int argc, kuval *argv);
+typedef kuval (*cfunc)(kuvm *__nonnull vm, int argc, kuval *__nullable argv);
 
 typedef struct {
   kuobj obj;
   cfunc fn;
 } kucfunc;
 
-kucfunc *ku_cfuncnew(kuvm *vm, cfunc f);
-void ku_cfuncdef(kuvm *vm, const char *name, cfunc f);
-void ku_reglibs(kuvm *vm);
+kucfunc *__nonnull ku_cfuncnew(kuvm *__nonnull vm, cfunc __nonnull f);
+void ku_cfuncdef(kuvm *__nonnull vm, const char *__nonnull name, cfunc __nonnull f);
+void ku_reglibs(kuvm *__nonnull vm);
 
 // ********************** native class **********************
 typedef struct {
   kuobj obj;
   kustr *name;
-  kuval (*cons)(kuvm *vm, int argc, kuval *argv);
-  kuval (*scall)(kuvm *vm, kustr *m, int argc, kuval *argv);
-  kuval (*sget)(kuvm *vm, kustr *p);
-  kuval (*sput)(kuvm *vm, kustr *p, kuval v);
-  kuval (*sfree)(kuvm *vm, kuobj *cc);
-  kuval (*smark)(kuvm *vm, kuobj *cc);
-  kuval (*icall)(kuvm *vm, kuobj *o, kustr *m, int argc, kuval *argv);
-  kuval (*iget)(kuvm *vm, kuobj *o, kustr *p);
-  kuval (*iput)(kuvm *vm, kuobj *o, kustr *p, kuval v);
-  kuval (*ifree)(kuvm *vm, kuobj *o);
-  kuval (*imark)(kuvm *vm, kuobj *cc);
+  kuval (*cons)(kuvm *__nonnull vm, int argc, kuval *__nullable argv);
+  kuval (*scall)(kuvm *__nonnull vm, kustr *__nonnull m, int argc, kuval *__nullable argv);
+  kuval (*sget)(kuvm *__nonnull vm, kustr *__nonnull p);
+  kuval (*sput)(kuvm *__nonnull vm, kustr *__nonnull p, kuval v);
+  kuval (*sfree)(kuvm *__nonnull vm, kuobj *__nonnull cc);
+  kuval (*smark)(kuvm *__nonnull vm, kuobj *__nonnull cc);
+  kuval (*icall)(kuvm *__nonnull vm, kuobj *__nonnull o, kustr *__nonnull m, int argc, kuval *__nullable argv);
+  kuval (*iget)(kuvm *__nonnull vm, kuobj *__nonnull o, kustr *__nonnull p);
+  kuval (*iput)(kuvm *__nonnull vm, kuobj *__nonnull o, kustr *__nonnull p, kuval v);
+  kuval (*ifree)(kuvm *__nonnull vm, kuobj *__nonnull o);
+  kuval (*imark)(kuvm *__nonnull vm, kuobj *__nonnull cc);
 } kucclass;
 
-kucclass *ku_cclassnew(kuvm *vm, const char *name);
-void ku_cclassdef(kuvm *vm, kucclass *cc);
+kucclass *__nonnull ku_cclassnew(kuvm *__nonnull vm, const char *__nonnull name);
+void ku_cclassdef(kuvm *__nonnull vm, kucclass *__nonnull cc);
 
 // ********************** hash tables **********************
 typedef struct {
@@ -320,13 +314,14 @@ typedef struct {
   kuentry* entries;
 } kutab;
 
-void ku_tabinit(kuvm *vm, kutab* t);
-void ku_tabfree(kuvm *vm, kutab* t);
-bool ku_tabset(kuvm* vm, kutab* t, kustr *key, kuval value);
-bool ku_tabget(kuvm* vm, kutab* t, kustr* key, kuval *value);
-bool ku_tabdel(kuvm* vm, kutab* t, kustr* key);
-void ku_tabcopy(kuvm* vm, kutab* t, kutab* to);
-kustr* ku_tabfindc(kuvm* vm, kutab* t, const char* chars, int len, uint32_t hash);
+void ku_tabinit(kuvm *__nonnull vm, kutab *__nonnull t);
+void ku_tabfree(kuvm *__nonnull vm, kutab *__nonnull t);
+bool ku_tabset(kuvm *__nonnull vm, kutab *__nonnull t, kustr *__nonnull key, kuval value);
+bool ku_tabget(kuvm *__nonnull vm, kutab *__nonnull t, kustr *__nonnull key, kuval *__nonnull value);
+bool ku_tabdel(kuvm *__nonnull vm, kutab *__nonnull t, kustr *__nonnull key);
+void ku_tabcopy(kuvm *__nonnull vm, kutab *__nonnull t, kutab *__nonnull to);
+kustr *__nullable ku_tabfindc(
+    kuvm *__nonnull vm, kutab *__nonnull t, const char *__nonnull chars, int len, uint32_t hash);
 
 // ********************** classes **********************
 typedef struct {
@@ -335,7 +330,7 @@ typedef struct {
   kutab methods;
 } kuclass;
 
-kuclass *ku_classnew(kuvm *vm, kustr *name);
+kuclass *__nonnull ku_classnew(kuvm *__nonnull vm, kustr *__nonnull name);
 
 // ********************** instances **********************
 typedef struct {
@@ -344,7 +339,7 @@ typedef struct {
   kutab fields;
 } kuiobj;
 
-kuiobj *ku_instnew(kuvm *vm, kuclass *klass);
+kuiobj *__nonnull ku_instnew(kuvm *__nonnull vm, kuclass *__nonnull klass);
 
 // ********************** native instance **********************
 typedef struct {
@@ -358,19 +353,19 @@ typedef struct {
   kuarr elements;
 } kuaobj;
 
-kuaobj *ku_arrnew(kuvm* vm, int capacity);
-void ku_arrset(kuvm* vm, kuaobj* array, int index, kuval value);
-kuval ku_arrget(kuvm* vm, kuaobj* array, int index);
+kuaobj *__nonnull ku_arrnew(kuvm *__nonnull vm, int capacity);
+void ku_arrset(kuvm *__nonnull vm, kuaobj *__nullable array, int index, kuval value);
+kuval ku_arrget(kuvm *__nonnull vm, kuaobj *__nullable array, int index);
 
 // ********************** table objects **********************
 typedef struct {
   kunobj base;
   kutab data;
 } kutobj;
-kuval table_cons(kuvm *vm, int argc, kuval *argv);
-kuval table_iget(kuvm *vm, kuobj *o, kustr *p);
-kuval table_iput(kuvm *vm, kuobj *o, kustr *p, kuval v);
-kuval ku_cinstance(kuvm *vm, const char *cname);
+kuval table_cons(kuvm *__nonnull vm, int argc, kuval *__nullable argv);
+kuval table_iget(kuvm *__nonnull vm, kuobj *__nonnull o, kustr *__nonnull p);
+kuval table_iput(kuvm *__nonnull vm, kuobj *__nonnull o, kustr *__nonnull p, kuval v);
+kuval ku_cinstance(kuvm *__nonnull vm, const char *__nonnull cname);
 
 // ********************** bound methods **********************
 typedef struct {
@@ -379,7 +374,7 @@ typedef struct {
   kuclosure *method;
 } kubound;
 
-kubound *ku_boundnew(kuvm *vm, kuval receiver, kuclosure *method);
+kubound *__nonnull ku_boundnew(kuvm *__nonnull vm, kuval receiver, kuclosure *__nonnull method);
 
 // ********************** scanner **********************
 typedef enum {
@@ -412,9 +407,9 @@ typedef struct {
   int line;
 } kulex;
 
-void ku_lexinit(kuvm *vm, const char *source);
-void ku_lexdump(kuvm *vm);
-kutok ku_scan(kuvm *vm);
+void ku_lexinit(kuvm *__nonnull vm, const char *__nonnull source);
+void ku_lexdump(kuvm *__nonnull vm);
+kutok ku_scan(kuvm *__nonnull vm);
 
 // ********************** locals **********************
 #define KU_LOCAL_NONE     0x00000000
@@ -446,16 +441,16 @@ typedef struct kucomp {
   int depth;
 } kucomp;
 
-void ku_compinit(kuvm *vm, kucomp *compiler, kufunc_t type);
-void ku_beginscope(kuvm *vm);
-void ku_endscope(kuvm *vm);
-void ku_declare_let(kuvm *vm, bool isconst);
-void ku_addlocal(kuvm *vm, kutok name, bool isconst);
-bool ku_identeq(kuvm *vm, kutok *a, kutok *b);
-int ku_resolvelocal(kuvm *vm, kucomp *compiler, kutok *name);
-void ku_markinit(kuvm *vm);
-int ku_opslotdis(kuvm *vm, const char *name, kuchunk *chunk, int offset);
-void ku_markobj(kuvm *vm, kuobj *o);
+void ku_compinit(kuvm *__nonnull vm, kucomp *__nonnull compiler, kufunc_t type);
+void ku_beginscope(kuvm *__nonnull vm);
+void ku_endscope(kuvm *__nonnull vm);
+void ku_declare_let(kuvm *__nonnull vm, bool isconst);
+void ku_addlocal(kuvm *__nonnull vm, kutok name, bool isconst);
+bool ku_identeq(kuvm *__nonnull vm, kutok *__nonnull a, kutok *__nonnull b);
+int ku_resolvelocal(kuvm *__nonnull vm, kucomp *__nonnull compiler, kutok *__nonnull name);
+void ku_markinit(kuvm *__nonnull vm);
+int ku_opslotdis(kuvm *__nonnull vm, const char *__nonnull name, kuchunk *__nonnull chunk, int offset);
+void ku_markobj(kuvm *__nonnull vm, kuobj *__nullable o);
 
 // ********************** parser **********************
 typedef struct {
@@ -487,7 +482,7 @@ typedef enum {
   KVM_FILE_NOTFOUND,
 } kures;
 
-typedef kures(*debugcallback)(kuvm* vm);
+typedef kures(*debugcallback)(kuvm *__nonnull vm);
 
 #define KVM_F_TRACE     0x00000001   // trace each instruction as it runs
 #define KVM_F_STACK     0x00000002   // print stack in repl
@@ -553,23 +548,23 @@ typedef struct kuvm {
 } kuvm;
 
 #define ku_new()  ku_newvm(STACK_MAX)
-kuvm* ku_newvm(int stack_size);
-void ku_free(kuvm* vm);
-kures ku_run(kuvm* vm);
-kures ku_runfile(kuvm* vm, const char* file);
-kures ku_exec(kuvm *vm, char *source);
-kuchunk *ku_chunk(kuvm *vm);
-kufunc *ku_compile(kuvm *vm, char *source);
+kuvm *__nonnull ku_newvm(int stack_size);
+void ku_free(kuvm *__nonnull vm);
+kures ku_run(kuvm *__nonnull vm);
+kures ku_runfile(kuvm *__nonnull vm, const char *__nonnull file);
+kures ku_exec(kuvm *__nonnull vm, char *__nonnull source);
+kuchunk *__nonnull ku_chunk(kuvm *__nonnull vm);
+kufunc *__nullable ku_compile(kuvm *__nonnull vm, char *__nonnull source);
 
 // ********************** stack **********************
-void ku_reset(kuvm* vm);
-void ku_push(kuvm* vm, kuval val);
-kuval ku_pop(kuvm* vm);
+void ku_reset(kuvm *__nonnull vm);
+void ku_push(kuvm *__nonnull vm, kuval val);
+kuval ku_pop(kuvm *__nonnull vm);
 
 // ********************** garbage collection **********************
-void ku_gc(kuvm *vm);
-void ku_printmem(kuvm *vm);
-void ku_printstack(kuvm *vm);
+void ku_gc(kuvm *__nonnull vm);
+void ku_printmem(kuvm *__nonnull vm);
+void ku_printstack(kuvm *__nonnull vm);
 
 // ********************** loop patch **********************
 #define PATCH_MAX  32
@@ -583,25 +578,24 @@ typedef struct {
   kupatch continuepatch;
 } kuloop;
 
-void ku_loopinit(kuvm *vm, kuloop *loop);
-void ku_emitpatch(kuvm *vm, kupatch *patch, uint8_t op);
-void ku_patchall(kuvm *vm, kupatch *patch, uint16_t to, bool rev);
+void ku_loopinit(kuvm *__nonnull vm, kuloop *__nonnull loop);
+void ku_emitpatch(kuvm *__nonnull vm, kupatch *__nonnull patch, uint8_t op);
+void ku_patchall(kuvm *__nonnull vm, kupatch *__nonnull patch, uint16_t to, bool rev);
 
 // ********************** branching **********************
-void ku_ifstmt(kuvm *vm, kuloop *loop);
-int ku_emitjump(kuvm *vm, k_op op);
-void ku_patchjump(kuvm *vm, int offset);
-void ku_emitloop(kuvm *vm, int start);
-void ku_whilestmt(kuvm *vm, kuloop *loop);
-void ku_forstmt(kuvm *vm, kuloop *loop);
-int ku_jumpdis(kuvm *vm, const char *name,
-                     int sign, kuchunk *chunk, int offset);
-void ku_and(kuvm *vm, bool lhs);
-void ku_or(kuvm *vm, bool lhs);
-void ku_block(kuvm *vm, kuloop *loop);
-void ku_err(kuvm *vm, const char *fmt, ...);
-bool ku_invoke(kuvm *vm, kustr *name, int argc, bool *native);
-kures ku_nativecall(kuvm *vm, kuclosure *cl, int argc);
+void ku_ifstmt(kuvm *__nonnull vm, kuloop *__nonnull loop);
+int ku_emitjump(kuvm *__nonnull vm, k_op op);
+void ku_patchjump(kuvm *__nonnull vm, int offset);
+void ku_emitloop(kuvm *__nonnull vm, int start);
+void ku_whilestmt(kuvm *__nonnull vm, kuloop *__nonnull loop);
+void ku_forstmt(kuvm *__nonnull vm, kuloop *__nonnull loop);
+int ku_jumpdis(kuvm *__nonnull vm, const char *__nonnull name, int sign, kuchunk *__nonnull chunk, int offset);
+void ku_and(kuvm *__nonnull vm, bool lhs);
+void ku_or(kuvm *__nonnull vm, bool lhs);
+void ku_block(kuvm *__nonnull vm, kuloop *__nullable loop);
+void ku_err(kuvm *__nonnull vm, const char *__nonnull fmt, ...);
+bool ku_invoke(kuvm *__nonnull vm, kustr *__nonnull name, int argc, bool *__nonnull native);
+kures ku_nativecall(kuvm *__nonnull vm, kuclosure *__nonnull cl, int argc);
 #ifdef __cplusplus
 }
 #endif // __cplusplus

@@ -34,25 +34,23 @@
 } while (false)
 
 // ********************** forwards **********************
-kuval ku_peek(kuvm *vm, int distance);
+kuval ku_peek(kuvm *__nonnull vm, int distance);
 
-static void ku_printobj(kuvm* vm, kuval val);
-void ku_printval(kuvm *vm, kuval value);
-static void ku_printfunc(kuvm *vm, kufunc *fn);
+static void ku_printobj(kuvm *__nonnull vm, kuval val);
+static void ku_printfunc(kuvm *__nonnull vm, kufunc *__nonnull fn);
 
-int ku_bytedis(kuvm *vm, kuchunk *chunk, int offset);
-static void ku_chunkdump(kuvm *vm, kuchunk *chunk, const char * name);
+int ku_bytedis(kuvm *__nonnull vm, kuchunk *__nonnull chunk, int offset);
+static void ku_chunkdump(kuvm *__nonnull vm, kuchunk *__nonnull chunk, const char *__nonnull name);
 
-static void ku_function(kuvm *vm, kufunc_t type);
-kuval string_iget(kuvm *vm, kuobj *obj, kustr *prop);
-kuval string_icall(kuvm *vm, kuobj *o, kustr *m, int argc, kuval *argv);
-bool array_invoke(kuvm *vm, kuval arr, kustr *method, int argc, kuval *argv);
-static void ku_markval(kuvm *vm, kuval v);
-void ku_markobj(kuvm *vm, kuobj *o);
-static void ku_marktable(kuvm *vm, kutab *tab);
+static void ku_function(kuvm *__nonnull vm, kufunc_t type);
+static kuval string_iget(kuvm *__nonnull vm, kuobj *__nonnull obj, kustr *__nonnull prop);
+static kuval string_icall(kuvm *__nonnull vm, kuobj *__nonnull o, kustr *__nonnull m, int argc, kuval *__nullable argv);
+static bool array_invoke(kuvm *__nonnull vm, kuval arr, kustr *__nonnull method, int argc, kuval *__nullable argv);
+static void ku_markval(kuvm *__nonnull vm, kuval v);
+static void ku_marktable(kuvm *__nonnull vm, kutab *__nonnull tab);
 
 // ********************** object **********************
-kuobj* ku_objalloc(kuvm* vm, size_t size, kuobj_t type) {
+kuobj *__nonnull ku_objalloc(kuvm *__nonnull vm, size_t size, kuobj_t type) {
 #ifdef  TRACE_OBJ_COUNTS
   vm->alloc_counts[type]++;
 #endif // TRACE_OBJ_COUNTS
@@ -67,7 +65,7 @@ kuobj* ku_objalloc(kuvm* vm, size_t size, kuobj_t type) {
   return obj;
 }
 
-void ku_objfree(kuvm* vm, kuobj* obj) {
+void ku_objfree(kuvm *__nonnull vm, kuobj *__nonnull obj) {
   if (vm->flags & KVM_F_GCLOG) {
     ku_printf(vm, "%p free type %d\n", (void*)obj, obj->type);
   }
@@ -77,15 +75,15 @@ void ku_objfree(kuvm* vm, kuobj* obj) {
 #endif // TRACE_OBJ_COUNTS
   switch (obj->type) {
     case OBJ_FUNC: {
-      kufunc *fn = (kufunc*)obj;
+      kufunc *__nonnull fn = (kufunc*)obj;
       ku_chunkfree(vm, &fn->chunk);
       FREE(vm, kufunc, obj);
     }
       break;
 
     case OBJ_ARRAY: {
-      kuaobj *ao = (kuaobj*)obj;
-      ku_alloc(vm, ao->elements.values, sizeof(kuval)*ao->elements.capacity, 0);
+      kuaobj *__nonnull ao = (kuaobj*)obj;
+      ARRAY_FREE(vm, kuval, ao->elements.values, ao->elements.capacity);
       ao->elements.values = NULL;
       ao->elements.count = 0;
       ao->elements.count = 0;
@@ -94,7 +92,7 @@ void ku_objfree(kuvm* vm, kuobj* obj) {
       break;
 
     case OBJ_CCLASS: {
-      kucclass *cc = (kucclass*)obj;
+      kucclass *__nonnull cc = (kucclass*)obj;
       if (cc->sfree) {
         cc->sfree(vm, obj);
       }
@@ -103,7 +101,7 @@ void ku_objfree(kuvm* vm, kuobj* obj) {
       break;
 
     case OBJ_CINST: {
-      kunobj *i = (kunobj*)obj;
+      kunobj *__nonnull i = (kunobj*)obj;
       if (i->klass->ifree) {
         i->klass->ifree(vm, obj);
       }
@@ -115,21 +113,21 @@ void ku_objfree(kuvm* vm, kuobj* obj) {
       break;
 
     case OBJ_CLOSURE: {
-      kuclosure *cl = (kuclosure*)obj;
+      kuclosure *__nonnull cl = (kuclosure*)obj;
       ARRAY_FREE(vm, kuxobj*, cl->upvals, cl->upcount);
       FREE(vm, kuclosure, obj);
     }
       break;
 
     case OBJ_CLASS: {
-      kuclass *c = (kuclass*)obj;
+      kuclass *__nonnull c = (kuclass*)obj;
       ku_tabfree(vm, &c->methods);
       FREE(vm, kuclass, obj);
     }
       break;
 
     case OBJ_INSTANCE: {
-      kuiobj *i = (kuiobj*)obj;
+      kuiobj *__nonnull i = (kuiobj*)obj;
       ku_tabfree(vm, &i->fields);
       FREE(vm, kuiobj, obj);
     }
@@ -140,7 +138,7 @@ void ku_objfree(kuvm* vm, kuobj* obj) {
       break;
 
     case OBJ_STR: {
-      kustr* str = (kustr*)obj;
+      kustr *__nonnull str = (kustr*)obj;
       ARRAY_FREE(vm, char, str->chars, (size_t)str->len + 1);
       FREE(vm, kustr, obj);
     }
@@ -158,7 +156,7 @@ bool ku_objis(kuval v, kuobj_t ot) {
 
 // ********************** string **********************
 // FNV-1a hashing function
-static uint32_t ku_strhash(const char* key, int len) {
+static uint32_t ku_strhash(const char *__nonnull key, int len) {
   uint32_t hash = 2166136261u;
   for (int i = 0; i < len; i++) {
     hash ^= (uint8_t)key[i];
@@ -167,8 +165,8 @@ static uint32_t ku_strhash(const char* key, int len) {
   return hash;
 }
 
-static kustr* ku_stralloc(kuvm* vm, char* chars, int len, uint32_t hash) {
-  kustr* str = KALLOC_OBJ(vm, kustr, OBJ_STR);
+static kustr *__nonnull ku_stralloc(kuvm *__nonnull vm, char *__nonnull chars, int len, uint32_t hash) {
+  kustr *__nonnull str = KALLOC_OBJ(vm, kustr, OBJ_STR);
   str->len = len;
   str->chars = chars;
   str->hash = hash;
@@ -178,23 +176,23 @@ static kustr* ku_stralloc(kuvm* vm, char* chars, int len, uint32_t hash) {
   return str;
 }
 
-kustr* ku_strfrom(kuvm* vm, const char* chars, int len) {
+kustr* ku_strfrom(kuvm *__nonnull vm, const char *__nonnull chars, int len) {
   uint32_t hash = ku_strhash(chars, len);
 
-  kustr* interned = ku_tabfindc(vm, &vm->strings, chars, len, hash);
+  kustr *__nullable interned = ku_tabfindc(vm, &vm->strings, chars, len, hash);
   if (interned != NULL) {
     return interned;
   }
 
-  char* buff = KALLOC(vm, char, (size_t)len + 1);
+  char *__nonnull buff = KALLOC(vm, char, (size_t)len + 1);
   memcpy(buff, chars, len);
   buff[len] = '\0';
   return ku_stralloc(vm, buff, len, hash);
 }
 
-static kustr* ku_strtake(kuvm* vm, char* buff, int len) {
+static kustr *__nonnull ku_strtake(kuvm *__nonnull vm, char *__nonnull buff, int len) {
   uint32_t hash = ku_strhash(buff, len);
-  kustr* interned = ku_tabfindc(vm, &vm->strings, buff, len, hash);
+  kustr *__nullable interned = ku_tabfindc(vm, &vm->strings, buff, len, hash);
   if (interned != NULL) {
     ARRAY_FREE(vm, char, buff, (size_t)len + 1);
     return interned;
@@ -203,15 +201,15 @@ static kustr* ku_strtake(kuvm* vm, char* buff, int len) {
   return ku_stralloc(vm, buff, len, hash);
 }
 
-static void ku_strcat(kuvm* vm) {
-  kustr *b = AS_STR(ku_peek(vm,0)); // for GC
-  kustr* a = AS_STR(ku_peek(vm,1)); // for GC
+static void ku_strcat(kuvm *__nonnull vm) {
+  kustr *__nonnull b = AS_STR(ku_peek(vm,0)); // for GC
+  kustr *__nonnull a = AS_STR(ku_peek(vm,1)); // for GC
   int len = a->len + b->len;
-  char* buff = KALLOC(vm, char, (size_t)len + 1);
+  char *__nonnull buff = KALLOC(vm, char, (size_t)len + 1);
   memcpy(buff, a->chars, a->len);
   memcpy(buff + a->len, b->chars, b->len);
   buff[len] = '\0';
-  kustr* res = ku_strtake(vm, buff, len);
+  kustr *__nonnull res = ku_strtake(vm, buff, len);
   ku_pop(vm);
   ku_pop(vm);
   ku_push(vm, OBJ_VAL(res));
@@ -219,7 +217,6 @@ static void ku_strcat(kuvm* vm) {
 
 // ********************** value **********************
 bool ku_equal(kuval v1, kuval v2) {
-
   if (IS_NUM(v1) && IS_NUM(v2)) {
     return AS_NUM(v1) == AS_NUM(v2);
   }
@@ -227,13 +224,13 @@ bool ku_equal(kuval v1, kuval v2) {
 }
 
 // ********************** hash table **********************
-void ku_tabinit(KU_UNUSED kuvm* vm, kutab* map) {
+void ku_tabinit(KU_UNUSED kuvm *__nonnull vm, kutab *__nonnull map) {
   map->count = 0;
   map->capacity = 0;
   map->entries = NULL;
 }
 
-void ku_tabfree(kuvm* vm, kutab* map) {
+void ku_tabfree(kuvm *__nonnull vm, kutab *__nonnull map) {
   ARRAY_FREE(vm, kuentry, map->entries, map->capacity);
   ku_tabinit(vm, map);
 }
@@ -242,12 +239,13 @@ void ku_tabfree(kuvm* vm, kutab* map) {
 
 #define MOD2(a,b) ((a) & (b - 1))
 
-static kuentry* ku_tabfinds(KU_UNUSED kuvm* vm, kuentry* entries, int capacity, kustr* key) {
+static kuentry *__nonnull ku_tabfinds(
+    KU_UNUSED kuvm *__nonnull vm, kuentry *__nonnull entries, int capacity, kustr *__nonnull key) {
   uint32_t index = MOD2(key->hash, capacity);
-  kuentry* tombstone = NULL;
+  kuentry *__nullable tombstone = NULL;
 
   for (;;) {
-    kuentry* e = &entries[index];
+    kuentry *__nonnull e = &entries[index];
 
     if (e->key == NULL) {
       if (IS_NULL(e->value)) {
@@ -255,8 +253,7 @@ static kuentry* ku_tabfinds(KU_UNUSED kuvm* vm, kuentry* entries, int capacity, 
         // otherwise return this entry.
         // this allows reusing tombstone slots for added efficiency
         return tombstone != NULL ? tombstone : e;
-      }
-      else {
+      } else {
         // a tombstone has NULL key and BOOL(true) value, remember
         // the first tombstone we found so we can reused it
         if (tombstone == NULL) {
@@ -271,8 +268,8 @@ static kuentry* ku_tabfinds(KU_UNUSED kuvm* vm, kuentry* entries, int capacity, 
   }
 }
 
-static void ku_tabadjust(kuvm* vm, kutab* map, int capacity) {
-  kuentry* entries = KALLOC(vm, kuentry, capacity);
+static void ku_tabadjust(kuvm *__nonnull vm, kutab *__nonnull map, int capacity) {
+  kuentry *__nonnull entries = KALLOC(vm, kuentry, capacity);
   for (int i = 0; i < capacity; i++) {
     entries[i].key = NULL;
     entries[i].value = NULL_VAL;
@@ -280,12 +277,12 @@ static void ku_tabadjust(kuvm* vm, kutab* map, int capacity) {
 
   map->count = 0;
   for (int i = 0; i < map->capacity; i++) {
-    kuentry* src = &map->entries[i];
+    kuentry *__nonnull src = &map->entries[i];
     if (src->key == NULL) {
       continue;
     }
 
-    kuentry* dest = ku_tabfinds(vm, entries, capacity, src->key);
+    kuentry *__nonnull dest = ku_tabfinds(vm, entries, capacity, src->key);
     dest->key = src->key;
     dest->value = src->value;
     map->count++;
@@ -296,13 +293,13 @@ static void ku_tabadjust(kuvm* vm, kutab* map, int capacity) {
   map->capacity = capacity;
 }
 
-bool ku_tabset(kuvm* vm, kutab* map, kustr* key, kuval value) {
+bool ku_tabset(kuvm *__nonnull vm, kutab *__nonnull map, kustr *__nonnull key, kuval value) {
   if ((size_t)map->count + 1 > map->capacity * MAP_MAX_LOAD) {
     int capacity = CAPACITY_GROW(map->capacity);
     ku_tabadjust(vm, map, capacity);
   }
 
-  kuentry* e = ku_tabfinds(vm, map->entries, map->capacity, key);
+  kuentry *__nonnull e = ku_tabfinds(vm, map->entries, map->capacity, key);
   bool isnew = e->key == NULL;
   // we don't increase the count if we use a tombstone slot
   if (isnew && IS_NULL(e->value)) {
@@ -313,7 +310,7 @@ bool ku_tabset(kuvm* vm, kutab* map, kustr* key, kuval value) {
   return isnew;
 }
 
-void ku_tabcopy(kuvm* vm, kutab* from, kutab* to) {
+void ku_tabcopy(kuvm *__nonnull vm, kutab *__nonnull from, kutab *__nonnull to) {
   for (int i = 0; i < from->capacity; i++) {
     kuentry* e = &from->entries[i];
     if (e->key != NULL) {
@@ -322,12 +319,12 @@ void ku_tabcopy(kuvm* vm, kutab* from, kutab* to) {
   }
 }
 
-bool ku_tabget(kuvm* vm, kutab* map, kustr* key, kuval* value) {
+bool ku_tabget(kuvm *__nonnull vm, kutab *__nonnull map, kustr *__nonnull key, kuval *__nonnull value) {
   if (map->count == 0) {
     return false;
   }
 
-  kuentry* e = ku_tabfinds(vm, map->entries, map->capacity, key);
+  kuentry *__nonnull e = ku_tabfinds(vm, map->entries, map->capacity, key);
   if (e->key == NULL) {
     return false;
   }
@@ -336,12 +333,12 @@ bool ku_tabget(kuvm* vm, kutab* map, kustr* key, kuval* value) {
   return true;
 }
 
-bool ku_tabdel(kuvm* vm, kutab* map, kustr* key) {
+bool ku_tabdel(kuvm *__nonnull vm, kutab *__nonnull map, kustr *__nonnull key) {
   if (map->count == 0) {
     return false;
   }
 
-  kuentry* e = ku_tabfinds(vm, map->entries, map->capacity, key);
+  kuentry *__nonnull e = ku_tabfinds(vm, map->entries, map->capacity, key);
   if (e->key == NULL) {
     return false;
   }
@@ -350,20 +347,20 @@ bool ku_tabdel(kuvm* vm, kutab* map, kustr* key) {
   return true;
 }
 
-kustr* ku_tabfindc(KU_UNUSED kuvm* vm, kutab* map, const char* chars, int len, uint32_t hash) {
+kustr *__nullable ku_tabfindc(
+    KU_UNUSED kuvm *__nonnull vm, kutab *__nonnull map, const char *__nonnull chars, int len, uint32_t hash) {
   if (map->count == 0) {
     return NULL;
   }
 
   uint32_t index = MOD2(hash, map->capacity);
   for (;;) {
-    kuentry* e = &map->entries[index];
+    kuentry *__nonnull e = &map->entries[index];
     if (e->key == NULL) {
       if (IS_NULL(e->value)) {
         return NULL;    // empty non-tombstone
       }
-    }
-    else if (e->key->len == len && e->key->hash == hash &&
+    } else if (e->key->len == len && e->key->hash == hash &&
       memcmp(e->key->chars, chars, len) == 0) {
       return e->key;
     }
@@ -372,18 +369,18 @@ kustr* ku_tabfindc(KU_UNUSED kuvm* vm, kutab* map, const char* chars, int len, u
 }
 
 // ********************** scanner **********************
-static char ku_advance(kuvm *vm) {
+static char ku_advance(kuvm *__nonnull vm) {
   vm->scanner.curr++;
   return vm->scanner.curr[-1];
 }
 
-void ku_lexinit(kuvm *vm, const char *source) {
+void ku_lexinit(kuvm *__nonnull vm, const char *__nonnull source) {
   vm->scanner.start = source;
   vm->scanner.curr = source;
   vm->scanner.line = 1;
 }
 
-static bool ku_lexend(kuvm *vm) {
+static bool ku_lexend(kuvm *__nonnull vm) {
   return (*(vm->scanner.curr) == '\0');
 }
 
@@ -403,16 +400,16 @@ static bool ku_isalpha(char c) {
          (c == '_');
 }
 
-static char ku_lexpeeknext(kuvm *vm) {
+static char ku_lexpeeknext(kuvm *__nonnull vm) {
   if (ku_lexend(vm)) return '\0';
   return vm->scanner.curr[1];
 }
 
-static char ku_lexpeek(kuvm *vm) {
+static char ku_lexpeek(kuvm *__nonnull vm) {
   return *vm->scanner.curr;
 }
 
-static void ku_lexspace(kuvm *vm) {
+static void ku_lexspace(kuvm *__nonnull vm) {
   while (true) {
     char c = ku_lexpeek(vm);
     switch (c) {
@@ -440,7 +437,7 @@ static void ku_lexspace(kuvm *vm) {
   }
 }
 
-static kutok ku_tokmake(kuvm *vm, kutok_t type) {
+static kutok ku_tokmake(kuvm *__nonnull vm, kutok_t type) {
   kutok token;
   token.type = type;
   token.start = vm->scanner.start;
@@ -449,7 +446,7 @@ static kutok ku_tokmake(kuvm *vm, kutok_t type) {
   return token;
 }
 
-static kutok ku_lexerr(kuvm *vm, const char *msg) {
+static kutok ku_lexerr(kuvm *__nonnull vm, const char *__nonnull msg) {
   kutok token;
   token.type = TOK_ERR;
   token.start = msg;
@@ -458,20 +455,20 @@ static kutok ku_lexerr(kuvm *vm, const char *msg) {
   return token;
 }
 
-static bool ku_lexmatch(kuvm *vm, char expected) {
+static bool ku_lexmatch(kuvm *__nonnull vm, char expected) {
   if (ku_lexend(vm)) return false;
   if (*vm->scanner.curr != expected) return false;
   vm->scanner.curr++;
   return true;
 }
 
-static kutok ku_hexnum(kuvm *vm) {
+static kutok ku_hexnum(kuvm *__nonnull vm) {
   ku_advance(vm); // skip 'x'
   while(ku_ishexdigit(ku_lexpeek(vm))) ku_advance(vm);
   return ku_tokmake(vm, TOK_HEX);
 }
 
-static kutok ku_lexnum(kuvm *vm) {
+static kutok ku_lexnum(kuvm *__nonnull vm) {
   while(ku_isdigit(ku_lexpeek(vm))) ku_advance(vm);
 
   if (ku_lexpeek(vm) == '.' && ku_isdigit(ku_lexpeeknext(vm))) {
@@ -490,7 +487,7 @@ static kutok ku_lexnum(kuvm *vm) {
   return ku_tokmake(vm, TOK_NUM);
 }
 
-static kutok ku_lexstr(kuvm *vm) {
+static kutok ku_lexstr(kuvm *__nonnull vm) {
   kutok_t type = TOK_STR;
 
   while(ku_lexpeek(vm) != '"' && !ku_lexend(vm)) {
@@ -503,8 +500,8 @@ static kutok ku_lexstr(kuvm *vm) {
   return ku_tokmake(vm, type);
 }
 
-static kutok_t ku_lexkey(kuvm *vm, int start, int len,
-                        const char *rest, kutok_t type) {
+static kutok_t ku_lexkey(
+    kuvm *__nonnull vm, int start, int len, const char *__nonnull rest, kutok_t type) {
   if (vm->scanner.curr - vm->scanner.start == (long)(start + len) &&
       memcmp(vm->scanner.start + start, rest, len) == 0) {
     return type;
@@ -512,7 +509,7 @@ static kutok_t ku_lexkey(kuvm *vm, int start, int len,
   return TOK_IDENT;
 }
 
-static kutok_t ku_keyword(kuvm *vm) {
+static kutok_t ku_keyword(kuvm *__nonnull vm) {
   switch (vm->scanner.start[0]) {
     case 'a': return ku_lexkey(vm, 1,2,"nd", TOK_AND);
     case 'b': return ku_lexkey(vm, 1,4,"reak", TOK_BREAK);
@@ -555,14 +552,14 @@ static kutok_t ku_keyword(kuvm *vm) {
   return TOK_IDENT;
 }
 
-static kutok ku_lexid(kuvm *vm) {
+static kutok ku_lexid(kuvm *__nonnull vm) {
   while (ku_isalpha(ku_lexpeek(vm)) || ku_isdigit(ku_lexpeek(vm))) {
     ku_advance(vm);
   }
   return ku_tokmake(vm, ku_keyword(vm));
 }
 
-kutok ku_scan(kuvm *vm) {
+kutok ku_scan(kuvm *__nonnull vm) {
   ku_lexspace(vm);
   vm->scanner.start = vm->scanner.curr;
 
@@ -620,7 +617,7 @@ kutok ku_scan(kuvm *vm) {
   return ku_lexerr(vm, "unexpected character");
 }
 
-void ku_lexdump(kuvm *vm) {
+void ku_lexdump(kuvm *__nonnull vm) {
   int line = -1;
 
   while (true) {
@@ -640,7 +637,7 @@ void ku_lexdump(kuvm *vm) {
 }
 
 // ********************** parser **********************
-static void ku_perrat(kuvm *vm, kutok *tok, const char *msg) {
+static void ku_perrat(kuvm *__nonnull vm, kutok *__nonnull tok, const char *__nonnull msg) {
   if (vm->parser.panic) return;
   vm->parser.panic = true;
 
@@ -658,11 +655,11 @@ static void ku_perrat(kuvm *vm, kutok *tok, const char *msg) {
   vm->parser.err = true;
 }
 
-static void ku_perr(kuvm *vm, const char *msg) {
+static void ku_perr(kuvm *__nonnull vm, const char *__nonnull msg) {
   ku_perrat(vm, &vm->parser.curr, msg);
 }
 
-static void ku_pnext(kuvm *vm) {
+static void ku_pnext(kuvm *__nonnull vm) {
   vm->parser.prev = vm->parser.curr;
 
   while (true) {
@@ -672,7 +669,7 @@ static void ku_pnext(kuvm *vm) {
   }
 }
 
-static void ku_pconsume(kuvm *vm, kutok_t type, const char *msg) {
+static void ku_pconsume(kuvm *__nonnull vm, kutok_t type, const char *__nonnull msg) {
   if (vm->parser.curr.type == type) {
     ku_pnext(vm);
     return;
@@ -680,22 +677,22 @@ static void ku_pconsume(kuvm *vm, kutok_t type, const char *msg) {
   ku_perr(vm, msg);
 }
 
-kuchunk *ku_chunk(kuvm *vm) {
+kuchunk *__nonnull ku_chunk(kuvm *__nonnull vm) {
   return &vm->compiler->function->chunk;
 }
 
-static void ku_emitbyte(kuvm* vm, uint8_t byte) {
+static void ku_emitbyte(kuvm *__nonnull vm, uint8_t byte) {
   ku_chunkwrite(vm, ku_chunk(vm), byte, vm->parser.prev.line);
 }
 
-static void ku_emitop(kuvm *vm, uint8_t byte) {
+static void ku_emitop(kuvm *__nonnull vm, uint8_t byte) {
   ku_emitbyte(vm, byte);
 }
 
-static void ku_emitbytes(kuvm *vm, uint8_t b1, uint8_t b2);
-static void ku_emitop2(kuvm* vm, uint8_t b1, uint8_t b2);
+static void ku_emitbytes(kuvm *__nonnull vm, uint8_t b1, uint8_t b2);
+static void ku_emitop2(kuvm *__nonnull vm, uint8_t b1, uint8_t b2);
 
-static void ku_emitret(kuvm *vm, bool lambda) {
+static void ku_emitret(kuvm *__nonnull vm, bool lambda) {
   if (lambda) {
     ku_emitop(vm, OP_RET);
     return;
@@ -708,23 +705,23 @@ static void ku_emitret(kuvm *vm, bool lambda) {
   ku_emitop(vm, OP_RET);
 }
 
-static kufunc *ku_pend(kuvm *vm, bool lambda) {
+static kufunc *__nonnull ku_pend(kuvm *__nonnull vm, bool lambda) {
   ku_emitret(vm, lambda);
-  kufunc *fn = vm->compiler->function;
+  kufunc *__nonnull fn = vm->compiler->function;
   vm->compiler = vm->compiler->enclosing;
   return fn;
 }
 
-static void ku_emitbytes(kuvm *vm, uint8_t b1, uint8_t b2) {
+static void ku_emitbytes(kuvm *__nonnull vm, uint8_t b1, uint8_t b2) {
   ku_emitbyte(vm, b1);
   ku_emitbyte(vm, b2);
 }
 
-static void ku_emitop2(kuvm* vm, uint8_t b1, uint8_t b2) {
+static void ku_emitop2(kuvm*__nonnull  vm, uint8_t b1, uint8_t b2) {
   ku_emitbytes(vm, b1, b2);
 }
 
-static uint8_t ku_pconst(kuvm *vm, kuval val) {
+static uint8_t ku_pconst(kuvm *__nonnull vm, kuval val) {
   int cons = ku_chunkconst(vm, ku_chunk(vm), val);
   if (cons > vm->max_const) {
     ku_perr(vm, "out of constant space");
@@ -732,7 +729,7 @@ static uint8_t ku_pconst(kuvm *vm, kuval val) {
   }
   return (uint8_t)cons;
 }
-static void ku_emitconst(kuvm *vm, kuval val) {
+static void ku_emitconst(kuvm *__nonnull vm, kuval val) {
   ku_emitop2(vm, OP_CONST, ku_pconst(vm, val));
 }
 
@@ -752,7 +749,7 @@ typedef enum {
   P_PRIMARY
 } kup_precedence;
 
-typedef void (*kupfunc)(kuvm *, bool lhs);
+typedef void (*kupfunc)(kuvm *__nonnull vm, bool lhs);
 
 typedef struct {
   kupfunc prefix;
@@ -760,13 +757,13 @@ typedef struct {
   kup_precedence precedence;
 } kuprule;
 
-static kuprule *ku_getrule(kuvm *vm, kutok_t optype);
+static kuprule *__nonnull ku_getrule(kuvm *__nonnull vm, kutok_t optype);
 
-static bool ku_pcheck(kuvm* vm, kutok_t type) {
+static bool ku_pcheck(kuvm *__nonnull vm, kutok_t type) {
   return vm->parser.curr.type == type;
 }
 
-static bool ku_pmatch(kuvm* vm, kutok_t type) {
+static bool ku_pmatch(kuvm *__nonnull vm, kutok_t type) {
   if (!ku_pcheck(vm, type)) {
     return false;
   }
@@ -774,9 +771,9 @@ static bool ku_pmatch(kuvm* vm, kutok_t type) {
   return true;
 }
 
-static void ku_prec(kuvm *vm, kup_precedence prec) {
+static void ku_prec(kuvm *__nonnull vm, kup_precedence prec) {
   ku_pnext(vm);
-  kupfunc prefix = ku_getrule(vm, vm->parser.prev.type)->prefix;
+  kupfunc __nullable prefix = ku_getrule(vm, vm->parser.prev.type)->prefix;
   if (prefix == NULL) {
     ku_perr(vm, "expected expression");
     return;
@@ -796,7 +793,7 @@ static void ku_prec(kuvm *vm, kup_precedence prec) {
   }
 }
 
-static void ku_lit(kuvm *vm, KU_UNUSED bool lhs) {
+static void ku_lit(kuvm *__nonnull vm, KU_UNUSED bool lhs) {
   switch (vm->parser.prev.type) {
     case TOK_FALSE: ku_emitop(vm, OP_FALSE); break;
     case TOK_TRUE: ku_emitop(vm, OP_TRUE); break;
@@ -805,15 +802,15 @@ static void ku_lit(kuvm *vm, KU_UNUSED bool lhs) {
   }
 }
 
-static void ku_xstring(kuvm* vm, KU_UNUSED bool lhs) {
-  const char *chars = vm->parser.prev.start + 1;
+static void ku_xstring(kuvm *__nonnull vm, KU_UNUSED bool lhs) {
+  const char *__nonnull chars = vm->parser.prev.start + 1;
   int len = vm->parser.prev.len - 2;
 
   // len(encoded) always <= len(chars);
-  char *encoded = ku_alloc(vm, NULL, 0, len);
+  char *__nonnull encoded = ku_alloc(vm, NULL, 0, len);
 
   int esclen = len;
-  char *ep = encoded;
+  char *__nonnull ep = encoded;
   for (int i = 0; i < len; i++) {
     char ch = chars[i];
     if (ch == '\\') {
@@ -842,14 +839,14 @@ static void ku_xstring(kuvm* vm, KU_UNUSED bool lhs) {
   ku_alloc(vm, encoded, len, 0);
 }
 
-static void ku_string(kuvm* vm, KU_UNUSED bool lhs) {
-  const char *chars = vm->parser.prev.start + 1;
+static void ku_string(kuvm *__nonnull vm, KU_UNUSED bool lhs) {
+  const char *__nonnull chars = vm->parser.prev.start + 1;
   int len = vm->parser.prev.len - 2;
   ku_emitconst(vm, OBJ_VAL(ku_strfrom(vm, chars, len)));
 }
 
-static void ku_hex(kuvm *vm, KU_UNUSED bool lhs) {
-  const char *start = vm->parser.prev.start + 2;  // skip 0x
+static void ku_hex(kuvm *__nonnull vm, KU_UNUSED bool lhs) {
+  const char *__nonnull start = vm->parser.prev.start + 2;  // skip 0x
   int len = vm->parser.prev.len - 2;
 
   double val = 0;
@@ -861,25 +858,25 @@ static void ku_hex(kuvm *vm, KU_UNUSED bool lhs) {
       val = val*16 + (double)(ch - 'a' + 10);
     } else if (ch >= 'A' && ch <= 'F') {
       val = val*16 + (double)(ch - 'A' + 10);
-    }
+    } 
   }
   ku_emitconst(vm, NUM_VAL(val));
 }
 
-static void ku_number(kuvm *vm, KU_UNUSED bool lhs) {
+static void ku_number(kuvm *__nonnull vm, KU_UNUSED bool lhs) {
   double val = strtod(vm->parser.prev.start, NULL);
   ku_emitconst(vm, NUM_VAL(val));
 }
 
-static void ku_funcexpr(kuvm *vm, KU_UNUSED bool lhs) {
+static void ku_funcexpr(kuvm *__nonnull vm, KU_UNUSED bool lhs) {
   ku_function(vm, FUNC_STD);
 }
 
-static void ku_expr(kuvm *vm) {
+static void ku_expr(kuvm *__nonnull vm) {
   ku_prec(vm, P_ASSIGN);
 }
 
-static uint8_t ku_arglist(kuvm *vm, kutok_t right) {
+static uint8_t ku_arglist(kuvm *__nonnull vm, kutok_t right) {
   uint8_t argc = 0;
   if (!ku_pcheck(vm, right)) {
     do {
@@ -898,20 +895,20 @@ static uint8_t ku_arglist(kuvm *vm, kutok_t right) {
   return argc;
 }
 
-static void ku_call(kuvm *vm, KU_UNUSED bool lhs) {
+static void ku_call(kuvm *__nonnull vm, KU_UNUSED bool lhs) {
   uint8_t argc = ku_arglist(vm, TOK_RPAR);
   ku_emitop2(vm, OP_CALL, argc);
 }
 
-static void ku_grouping(kuvm *vm, KU_UNUSED bool lhs) {
+static void ku_grouping(kuvm *__nonnull vm, KU_UNUSED bool lhs) {
   ku_expr(vm);
   ku_pconsume(vm, TOK_RPAR, "')' expected");
 }
 
-static bool ku_peek_lambda(kuvm *vm) {
+static bool ku_peek_lambda(kuvm *__nonnull vm) {
   bool ret = false;
-  const char *start = vm->scanner.start;
-  const char *curr = vm->scanner.curr;
+  const char *__nonnull start = vm->scanner.start;
+  const char *__nonnull curr = vm->scanner.curr;
 
   if (ku_isalpha(*vm->scanner.start)) {
     while (ku_isalpha(ku_lexpeek(vm)) || ku_isdigit(ku_lexpeek(vm))) {
@@ -931,10 +928,10 @@ static bool ku_peek_lambda(kuvm *vm) {
   return ret;
 }
 
-static void ku_params(kuvm *vm);
-static void ku_lbody(kuvm *vm, kucomp *compiler);
+static void ku_params(kuvm *__nonnull vm);
+static void ku_lbody(kuvm *__nonnull vm, kucomp *__nonnull compiler);
 
-static void ku_lambda_or_group(kuvm *vm, bool lhs) {
+static void ku_lambda_or_group(kuvm *__nonnull vm, bool lhs) {
   if (ku_peek_lambda(vm)) {
     kucomp compiler;
     ku_compinit(vm, &compiler, FUNC_STD);
@@ -949,14 +946,14 @@ static void ku_lambda_or_group(kuvm *vm, bool lhs) {
   ku_grouping(vm, lhs);
 }
 
-static void ku_array(kuvm *vm, KU_UNUSED bool lhs) {
+static void ku_array(kuvm *__nonnull vm, KU_UNUSED bool lhs) {
   int count = ku_arglist(vm, TOK_RBRACKET);
   ku_emitop(vm, OP_ARRAY);
   ku_emitbyte(vm, (count >> 8) & 0xff);
   ku_emitbyte(vm, count & 0xff);
 }
 
-static void ku_index(kuvm *vm, bool lhs) {
+static void ku_index(kuvm *__nonnull vm, bool lhs) {
   ku_expr(vm);
   ku_pconsume(vm, TOK_RBRACKET, "']' expected");
   if (lhs && ku_pmatch(vm, TOK_EQ)) {
@@ -967,7 +964,7 @@ static void ku_index(kuvm *vm, bool lhs) {
   }
 }
 
-static void ku_unary(kuvm *vm, KU_UNUSED bool lhs) {
+static void ku_unary(kuvm *__nonnull vm, KU_UNUSED bool lhs) {
   kutok_t optype = vm->parser.prev.type;
 
   ku_prec(vm, P_UNARY);
@@ -979,13 +976,13 @@ static void ku_unary(kuvm *vm, KU_UNUSED bool lhs) {
   }
 }
 
-static void ku_exprstmt(kuvm* vm, KU_UNUSED kuloop *loop) {
+static void ku_exprstmt(kuvm *__nonnull vm, KU_UNUSED kuloop *__nullable loop) {
   ku_expr(vm);
   ku_pconsume(vm, TOK_SEMI, "; expected");
   ku_emitop(vm, OP_POP);
 }
 
-static void ku_return(kuvm *vm, KU_UNUSED kuloop *loop) {
+static void ku_return(kuvm *__nonnull vm, KU_UNUSED kuloop *__nullable loop) {
   if (vm->compiler->type == FUNC_MAIN) {
     ku_perr(vm, "can't return from top-level");
   }
@@ -1003,7 +1000,7 @@ static void ku_return(kuvm *vm, KU_UNUSED kuloop *loop) {
   }
 }
 
-static void ku_break(kuvm *vm, kuloop *loop) {
+static void ku_break(kuvm *__nonnull vm, kuloop *__nullable loop) {
   if (loop == NULL) {
     ku_perr(vm, "break must be in a loop");
   } else {
@@ -1012,7 +1009,7 @@ static void ku_break(kuvm *vm, kuloop *loop) {
   }
 }
 
-static void ku_continue(kuvm *vm, kuloop *loop) {
+static void ku_continue(kuvm *__nonnull vm, kuloop *__nullable loop) {
   if (loop == NULL) {
     ku_perr(vm, "continue must be in a loop");
   } else {
@@ -1021,7 +1018,7 @@ static void ku_continue(kuvm *vm, kuloop *loop) {
   }
 }
 
-static void ku_stmt(kuvm* vm, kuloop *loop) {
+static void ku_stmt(kuvm *__nonnull vm, kuloop *__nullable loop) {
   if (ku_pmatch(vm, TOK_IF)) {
     ku_ifstmt(vm, loop);
   } else if (ku_pmatch(vm, TOK_RETURN)) {
@@ -1043,7 +1040,7 @@ static void ku_stmt(kuvm* vm, kuloop *loop) {
   }
 }
 
-static void ku_pskip(kuvm* vm) {
+static void ku_pskip(kuvm *__nonnull vm) {
   vm->parser.panic = false;
 
   while (vm->parser.curr.type != TOK_EOF) {
@@ -1069,17 +1066,17 @@ static void ku_pskip(kuvm* vm) {
   }
 }
 
-static uint8_t ku_pidconst(kuvm* vm, kutok* name) {
+static uint8_t ku_pidconst(kuvm *__nonnull vm, kutok *__nonnull name) {
   return ku_pconst(vm, OBJ_VAL(ku_strfrom(vm, name->start, name->len)));
 }
 
-static uint8_t ku_strtoname(kuvm* vm, kutok* name) {
-  const char *chars = name->start + 1;
+static uint8_t ku_strtoname(kuvm *__nonnull vm, kutok *__nonnull name) {
+  const char *__nonnull chars = name->start + 1;
   int len = name->len - 2;
   return ku_pconst(vm, OBJ_VAL(ku_strfrom(vm, chars, len)));
 }
 
-static uint8_t ku_let(kuvm* vm, bool isconst, const char* msg) {
+static uint8_t ku_let(kuvm *__nonnull vm, bool isconst, const char *__nonnull msg) {
   ku_pconsume(vm, TOK_IDENT, msg);
   ku_declare_let(vm, isconst);
   if (vm->compiler->depth > 0) {
@@ -1088,13 +1085,13 @@ static uint8_t ku_let(kuvm* vm, bool isconst, const char* msg) {
   return ku_pidconst(vm, &vm->parser.prev);
 }
 
-static void ku_vardef(kuvm* vm, uint8_t index, bool isconst) {
+static void ku_vardef(kuvm *__nonnull vm, uint8_t index, bool isconst) {
   if (vm->compiler->depth > 0) {
     ku_markinit(vm);
     return;
   }
   if (isconst) {
-    kustr *key = AS_STR(ku_chunk(vm)->constants.values[index]);
+    kustr *__nonnull key = AS_STR(ku_chunk(vm)->constants.values[index]);
     kuval cinit;
     if (ku_tabget(vm, &vm->gconst, key, &cinit)) {
         ku_perr(vm, "const already defined");
@@ -1105,7 +1102,7 @@ static void ku_vardef(kuvm* vm, uint8_t index, bool isconst) {
   ku_emitop2(vm, OP_DEF_GLOBAL, index);
 }
 
-static void ku_vardecl(kuvm* vm, bool isconst) {
+static void ku_vardecl(kuvm *__nonnull vm, bool isconst) {
   do {
     uint8_t g = ku_let(vm, isconst, "name expected");
     if (ku_pmatch(vm, TOK_EQ)) {
@@ -1121,8 +1118,8 @@ static void ku_vardecl(kuvm* vm, bool isconst) {
 }
 
 // common between functions and lambdas
-static void ku_functail(kuvm *vm, kucomp *compiler, bool lambda) {
-  kufunc *fn = ku_pend(vm, lambda);
+static void ku_functail(kuvm *__nonnull vm, kucomp *__nonnull compiler, bool lambda) {
+  kufunc *__nonnull fn = ku_pend(vm, lambda);
   ku_emitbytes(vm, OP_CLOSURE, ku_pconst(vm, OBJ_VAL(fn)));
   for (int i = 0; i < fn->upcount; i++) {
     ku_emitbyte(vm, compiler->upvals[i].local ? 1: 0);
@@ -1130,7 +1127,7 @@ static void ku_functail(kuvm *vm, kucomp *compiler, bool lambda) {
   }
 }
 
-static void ku_params(kuvm *vm) {
+static void ku_params(kuvm *__nonnull vm) {
   do {
     vm->compiler->function->arity++;
     if (vm->compiler->function->arity > vm->max_params) {
@@ -1142,7 +1139,7 @@ static void ku_params(kuvm *vm) {
   } while(ku_pmatch(vm, TOK_COMMA));
 }
 
-static void ku_lbody(kuvm *vm, kucomp *compiler) {
+static void ku_lbody(kuvm *__nonnull vm, kucomp *__nonnull compiler) {
   if (ku_pmatch(vm, TOK_LBRACE)) {
     ku_block(vm, NULL);
     ku_functail(vm, compiler, false);
@@ -1152,7 +1149,7 @@ static void ku_lbody(kuvm *vm, kucomp *compiler) {
   }
 }
 
-static void ku_lblock(kuvm *vm, KU_UNUSED bool lhs) {
+static void ku_lblock(kuvm *__nonnull vm, KU_UNUSED bool lhs) {
   if (ku_pcheck(vm, TOK_STR)) {
     ku_emitop(vm, OP_TABLE);
     do {
@@ -1170,7 +1167,7 @@ static void ku_lblock(kuvm *vm, KU_UNUSED bool lhs) {
   }
 }
 
-static void ku_function(kuvm *vm, kufunc_t type) {
+static void ku_function(kuvm *__nonnull vm, kufunc_t type) {
   kucomp compiler;
   ku_compinit(vm, &compiler, type);
   ku_beginscope(vm);
@@ -1185,14 +1182,14 @@ static void ku_function(kuvm *vm, kufunc_t type) {
 }
 
 
-static void ku_funcdecl(kuvm *vm) {
+static void ku_funcdecl(kuvm *__nonnull vm) {
   uint8_t global = ku_let(vm, false, "function name expected");
   ku_markinit(vm);
   ku_function(vm, FUNC_STD);
   ku_vardef(vm, global, false);
 }
 
-static void ku_method(kuvm *vm) {
+static void ku_method(kuvm *__nonnull vm) {
   ku_pconsume(vm, TOK_IDENT, "method name expected");
   uint8_t name = ku_pidconst(vm, &vm->parser.prev);
   kufunc_t type = FUNC_METHOD;
@@ -1204,17 +1201,17 @@ static void ku_method(kuvm *vm) {
   ku_emitop2(vm, OP_METHOD, name);
 }
 
-static void ku_namedvar(kuvm* vm, kutok name, bool lhs);
-static void ku_pvar(kuvm* vm, bool lhs);
+static void ku_namedvar(kuvm *__nonnull vm, kutok name, bool lhs);
+static void ku_pvar(kuvm *__nonnull vm, bool lhs);
 
-static kutok ku_maketok(KU_UNUSED kuvm *vm, const char *text) {
+static kutok ku_maketok(KU_UNUSED kuvm *__nonnull vm, const char *__nonnull text) {
   kutok tok;
   tok.start = text;
   tok.len = (int)strlen(text);
   return tok;
 }
 
-static void ku_classdecl(kuvm *vm) {
+static void ku_classdecl(kuvm *__nonnull vm) {
   ku_pconsume(vm, TOK_IDENT, "class name expected");
   kutok cname = vm->parser.prev;
   uint8_t name = ku_pidconst(vm, &vm->parser.prev);
@@ -1256,7 +1253,7 @@ static void ku_classdecl(kuvm *vm) {
   vm->curclass = vm->curclass->enclosing;
 }
 
-static void ku_decl(kuvm* vm, kuloop *loop) {
+static void ku_decl(kuvm *__nonnull vm, kuloop *__nullable loop) {
   if (ku_pmatch(vm, TOK_CLASS)) {
     ku_classdecl(vm);
   } else if (ku_pmatch(vm, TOK_FUN)) {
@@ -1265,8 +1262,7 @@ static void ku_decl(kuvm* vm, kuloop *loop) {
     ku_vardecl(vm, false);
   } else if (ku_pmatch(vm, TOK_CONST)) {
     ku_vardecl(vm, true);
-  }
-  else {
+  } else {
     ku_stmt(vm, loop);
   }
   if (vm->parser.panic) {
@@ -1274,11 +1270,11 @@ static void ku_decl(kuvm* vm, kuloop *loop) {
   }
 }
 
-static int ku_xvaladd(kuvm *vm, kucomp *compiler, uint8_t index, bool local) {
+static int ku_xvaladd(kuvm *__nonnull vm, kucomp *__nonnull compiler, uint8_t index, bool local) {
   int upcount = compiler->function->upcount;
 
   for (int i = 0; i < upcount; i++) {
-    kuxval *uv = &compiler->upvals[i];
+    kuxval *__nonnull uv = &compiler->upvals[i];
     if (uv->index == index && uv->local == local) {
       return i;
     }
@@ -1293,7 +1289,7 @@ static int ku_xvaladd(kuvm *vm, kucomp *compiler, uint8_t index, bool local) {
   return compiler->function->upcount++;
 }
 
-static int ku_xvalresolve(kuvm *vm, kucomp *compiler, kutok *name) {
+static int ku_xvalresolve(kuvm *__nonnull vm, kucomp *__nonnull compiler, kutok *__nonnull name) {
   if (compiler->enclosing == NULL) {
     return -1;
   }
@@ -1311,7 +1307,7 @@ static int ku_xvalresolve(kuvm *vm, kucomp *compiler, kutok *name) {
   return -1;
 }
 
-static void ku_lambda(kuvm *vm, kutok name) {
+static void ku_lambda(kuvm *__nonnull vm, kutok name) {
   kucomp compiler;
   ku_compinit(vm, &compiler, FUNC_STD);
   ku_beginscope(vm);
@@ -1322,7 +1318,7 @@ static void ku_lambda(kuvm *vm, kutok name) {
 }
 
 
-static void ku_namedvar(kuvm* vm, kutok name, bool lhs) {
+static void ku_namedvar(kuvm *__nonnull vm, kutok name, bool lhs) {
   int arg = ku_resolvelocal(vm, vm->compiler, &name);
   uint8_t set, get;
   bool isglobal = false;
@@ -1341,14 +1337,14 @@ static void ku_namedvar(kuvm* vm, kutok name, bool lhs) {
   }
   if (lhs && ku_pmatch(vm, TOK_EQ)) {
     if (isglobal) {
-        kustr *key = AS_STR(ku_chunk(vm)->constants.values[arg]);
+        kustr *__nonnull key = AS_STR(ku_chunk(vm)->constants.values[arg]);
         kuval cinit;
         if (ku_tabget(vm, &vm->gconst, key, &cinit)) {
             ku_perr(vm, "const cannot be assigned");
         }
     }
     else {
-      kulocal* local = &vm->compiler->locals[arg];
+      kulocal *__nonnull local = &vm->compiler->locals[arg];
       if (local->flags & KU_LOCAL_CONST && local->flags & KU_LOCAL_INIT) {
         ku_perr(vm, "const cannot be assigned");
       }
@@ -1362,11 +1358,11 @@ static void ku_namedvar(kuvm* vm, kutok name, bool lhs) {
   }
 }
 
-static void ku_pvar(kuvm* vm, bool lhs) {
+static void ku_pvar(kuvm *__nonnull vm, bool lhs) {
   ku_namedvar(vm, vm->parser.prev, lhs);
 }
 
-static void ku_this(kuvm *vm, KU_UNUSED bool lhs) {
+static void ku_this(kuvm *__nonnull vm, KU_UNUSED bool lhs) {
   if (vm->curclass == NULL) {
     ku_perr(vm, "cannot use this outside a class");
     return;
@@ -1374,7 +1370,7 @@ static void ku_this(kuvm *vm, KU_UNUSED bool lhs) {
   ku_pvar(vm, false);
 }
 
-static void ku_super(kuvm *vm, KU_UNUSED bool lhs) {
+static void ku_super(kuvm *__nonnull vm, KU_UNUSED bool lhs) {
   if (vm->curclass == NULL) {
     ku_perr(vm, "'super' must be used inside a class");
   } else if (!vm->curclass->hassuper) {
@@ -1396,9 +1392,9 @@ static void ku_super(kuvm *vm, KU_UNUSED bool lhs) {
   }
 }
 
-static void ku_bin(kuvm *vm, KU_UNUSED bool lhs) {
+static void ku_bin(kuvm *__nonnull vm, KU_UNUSED bool lhs) {
   kutok_t optype = vm->parser.prev.type;
-  kuprule *rule = ku_getrule(vm, optype);
+  kuprule *__nonnull rule = ku_getrule(vm, optype);
   ku_prec(vm, (kup_precedence)(rule->precedence + 1));
 
   switch (optype) {
@@ -1420,7 +1416,7 @@ static void ku_bin(kuvm *vm, KU_UNUSED bool lhs) {
   }
 }
 
-static void ku_dot(kuvm *vm, bool lhs) {
+static void ku_dot(kuvm *__nonnull vm, bool lhs) {
   ku_pconsume(vm, TOK_IDENT, "property name expected");
   uint8_t name = ku_pidconst(vm, &vm->parser.prev);
   if (lhs && ku_pmatch(vm, TOK_EQ)) {
@@ -1435,14 +1431,14 @@ static void ku_dot(kuvm *vm, bool lhs) {
   }
 }
 
-int ku_arraydis(kuvm *vm, const char *name, kuchunk *chunk, int offset) {
+int ku_arraydis(kuvm *__nonnull vm, const char *__nonnull name, kuchunk *__nonnull chunk, int offset) {
   uint16_t count = (uint16_t)(chunk->code[offset + 1] << 8);
   count |= chunk->code[offset + 2];
   ku_printf(vm, "%-16s %4d", name, count);
   return offset + 3;
 }
 
-int ku_jumpdis(kuvm *vm, const char *name, int sign, kuchunk *chunk,
+int ku_jumpdis(kuvm *__nonnull vm, const char *__nonnull name, int sign, kuchunk *__nonnull chunk,
 int offset) {
   uint16_t jump = (uint16_t)(chunk->code[offset + 1] << 8);
   jump |= chunk->code[offset + 2];
@@ -1451,7 +1447,7 @@ int offset) {
   return offset + 3;
 }
 
-void ku_ifstmt(kuvm *vm, kuloop *loop) {
+void ku_ifstmt(kuvm *__nonnull vm, kuloop *__nonnull loop) {
   ku_pconsume(vm, TOK_LPAR, "'(' expected after 'if'");
   ku_expr(vm);
   ku_pconsume(vm, TOK_RPAR, "'R' expected after condition");
@@ -1467,14 +1463,14 @@ void ku_ifstmt(kuvm *vm, kuloop *loop) {
   ku_patchjump(vm, else_jump);
 }
 
-int ku_emitjump(kuvm *vm, k_op op) {
+int ku_emitjump(kuvm *__nonnull vm, k_op op) {
   ku_emitop(vm, op);
   ku_emitbyte(vm, 0xff);
   ku_emitbyte(vm, 0xff);
   return ku_chunk(vm)->count - 2;
 }
 
-void ku_patchjump(kuvm *vm, int offset) {
+void ku_patchjump(kuvm *__nonnull vm, int offset) {
   int jump = ku_chunk(vm)->count - offset - 2;
 
   if (jump > vm->max_jump) {
@@ -1485,7 +1481,7 @@ void ku_patchjump(kuvm *vm, int offset) {
   ku_chunk(vm)->code[offset + 1] = jump & 0xff;
 }
 
-void ku_emitloop(kuvm *vm, int start) {
+void ku_emitloop(kuvm *__nonnull vm, int start) {
   ku_emitop(vm, OP_LOOP);
   int offset = ku_chunk(vm)->count - start + 2;
   if (offset > vm->max_body) {
@@ -1495,7 +1491,7 @@ void ku_emitloop(kuvm *vm, int start) {
   ku_emitbyte(vm, offset  & 0xff);
 }
 
-void ku_whilestmt(kuvm *vm, KU_UNUSED kuloop *loop) {
+void ku_whilestmt(kuvm *__nonnull vm, KU_UNUSED kuloop *__nonnull loop) {
   int loop_start = ku_chunk(vm)->count;
   ku_pconsume(vm, TOK_LPAR, "'(' expected after 'while'");
   ku_expr(vm);
@@ -1517,7 +1513,7 @@ void ku_whilestmt(kuvm *vm, KU_UNUSED kuloop *loop) {
   ku_patchall(vm, &inner.breakpatch, loop_end, false);
 }
 
-void ku_forstmt(kuvm *vm, kuloop *loop) {
+void ku_forstmt(kuvm *__nonnull vm, kuloop *__nonnull loop) {
   ku_beginscope(vm);
   ku_pconsume(vm, TOK_LPAR, "'(' expected after 'for'");
   if (ku_pmatch(vm, TOK_SEMI)) {
@@ -1565,14 +1561,14 @@ void ku_forstmt(kuvm *vm, kuloop *loop) {
   ku_endscope(vm);
 }
 
-void ku_and(kuvm *vm, KU_UNUSED bool lhs) {
+void ku_and(kuvm *__nonnull vm, KU_UNUSED bool lhs) {
   int end_jump = ku_emitjump(vm, OP_JUMP_IF_FALSE);
   ku_emitop(vm, OP_POP);
   ku_prec(vm, P_AND);
   ku_patchjump(vm, end_jump);
 }
 
-void ku_or(kuvm *vm, KU_UNUSED bool lhs) {
+void ku_or(kuvm *__nonnull vm, KU_UNUSED bool lhs) {
   int else_jump = ku_emitjump(vm, OP_JUMP_IF_FALSE);
   int end_jump = ku_emitjump(vm, OP_JUMP);
   ku_patchjump(vm, else_jump);
@@ -1630,12 +1626,12 @@ kuprule ku_rules[] = {
   [TOK_GTGT] =        { NULL,        ku_bin,   P_SHIFT },
 };
 
-static kuprule *ku_getrule(KU_UNUSED kuvm *vm, kutok_t optype) {
+static kuprule *__nonnull ku_getrule(KU_UNUSED kuvm *__nonnull vm, kutok_t optype) {
   return &ku_rules[optype];
 }
 
 // ********************** virtual machine **********************
-void ku_reset(kuvm *vm) {
+void ku_reset(kuvm *__nonnull vm) {
   vm->sp = vm->stack;
   vm->framecount = 0;
 #ifdef STACK_CHECK
@@ -1643,7 +1639,7 @@ void ku_reset(kuvm *vm) {
 #endif // STACK_CHECK
 }
 
-void ku_push(kuvm *vm, kuval val) {
+void ku_push(kuvm *__nonnull vm, kuval val) {
 #ifdef STACK_CHECK
   if (vm->sp >= vm->stack + vm->max_stack) {
     assert(false); // TODO: figure out code coverage
@@ -1654,7 +1650,7 @@ void ku_push(kuvm *vm, kuval val) {
   vm->sp++;
 }
 
-kuval ku_pop(kuvm *vm) {
+kuval ku_pop(kuvm *__nonnull vm) {
 #ifdef STACK_CHECK
   if (vm->sp <= vm->stack) {
     vm->underflow++;
@@ -1668,16 +1664,13 @@ static bool ku_falsy(kuval v) {
   return IS_NULL(v) || (IS_BOOL(v) && !AS_BOOL(v));
 }
 
-kuval ku_peek(kuvm *vm, int distance) {
+kuval ku_peek(kuvm *__nonnull vm, int distance) {
   return vm->sp[-1 - distance];
 }
 
-kuvm *ku_newvm(int stack_max) {
-  kuvm *vm = malloc(sizeof(kuvm) + stack_max*sizeof(kuval));
-  if (!vm) {
-    // TODO: add code coverage
-    return NULL;
-  }
+kuvm *__nonnull ku_newvm(int stack_max) {
+  kuvm *__nonnull vm = malloc(sizeof(kuvm) + stack_max*sizeof(kuval));
+  assert(vm != NULL); // TODO: figure out code coverage
 
   vm->debugger = NULL;
   vm->allocated = sizeof(kuvm);
@@ -1713,21 +1706,21 @@ kuvm *ku_newvm(int stack_max) {
   return vm;
 }
 
-static void ku_freeobjects(kuvm* vm) {
-  kuobj* obj = vm->objects;
+static void ku_freeobjects(kuvm *__nonnull vm) {
+  kuobj *__nullable obj = vm->objects;
   while (obj != NULL) {
     if (vm->flags & KVM_F_GCLOG) {
-      ku_printf(vm, "%p dangling ", (void*)obj);
+      ku_printf(vm, "%p dangling ", (void *)obj);
       ku_printval(vm, OBJ_VAL(obj));
       ku_printf(vm, "\n");
     }
-    kuobj* next = (kuobj*)obj->next;
+    kuobj *__nullable next = (kuobj*)obj->next;
     ku_objfree(vm, obj);
     obj = next;
   }
 }
 
-void ku_free(kuvm *vm) {
+void ku_free(kuvm *__nonnull vm) {
   vm->initstr = NULL; // free_objects will take care of it
   vm->countstr = NULL;
 
@@ -1741,7 +1734,7 @@ void ku_free(kuvm *vm) {
   free(vm);
 }
 
-void ku_err(kuvm *vm, const char *fmt, ...) {
+void ku_err(kuvm *__nonnull vm, const char *__nonnull fmt, ...) {
   va_list args;
   char out[1024];
 
@@ -1752,8 +1745,8 @@ void ku_err(kuvm *vm, const char *fmt, ...) {
 
   ku_printf(vm, "error %s\n", out);
   for (int f = vm->framecount - 1; f >= 0; f--) {
-    kuframe *frame = &vm->frames[f];
-    kufunc *fn = frame->closure->func;
+    kuframe *__nonnull frame = &vm->frames[f];
+    kufunc *__nonnull fn = frame->closure->func;
     size_t inst = frame->ip - fn->chunk.code - 1;
     ku_printf(vm, "[line %d] in ", fn->chunk.lines[inst]);
     if (fn->name == NULL) {
@@ -1766,7 +1759,7 @@ void ku_err(kuvm *vm, const char *fmt, ...) {
   ku_reset(vm);
 }
 
-static bool ku_docall(kuvm *vm, kuclosure *cl, int argc) {
+static bool ku_docall(kuvm *__nonnull vm, kuclosure *__nonnull cl, int argc) {
   if (argc != cl->func->arity) {
     ku_err(vm, "%d expected got %d", cl->func->arity, argc);
     return false;
@@ -1777,14 +1770,14 @@ static bool ku_docall(kuvm *vm, kuclosure *cl, int argc) {
     return false;
   }
 
-  kuframe *frame = &vm->frames[vm->framecount++];
+  kuframe *__nonnull frame = &vm->frames[vm->framecount++];
   frame->closure = cl;
   frame->ip = cl->func->chunk.code;
   frame->bp = vm->sp - argc - 1;
   return true;
 }
 
-kures ku_nativecall(kuvm *vm, kuclosure *cl, int argc) {
+kures ku_nativecall(kuvm *__nonnull vm, kuclosure *__nonnull cl, int argc) {
   int oldbase = vm->baseframe;
   vm->baseframe = vm->framecount;
   if (ku_docall(vm, cl, argc)) {
@@ -1797,12 +1790,12 @@ kures ku_nativecall(kuvm *vm, kuclosure *cl, int argc) {
   return KVM_ERR_RUNTIME;
 }
 
-static bool ku_callvalue(kuvm *vm, kuval callee, int argc, bool *native) {
+static bool ku_callvalue(kuvm *__nonnull vm, kuval callee, int argc, bool *__nonnull native) {
   *native = false;
   if (IS_OBJ(callee)) {
     switch (OBJ_TYPE(callee)) {
       case OBJ_CCLASS: {
-        kucclass *cc = AS_CCLASS(callee);
+        kucclass *__nonnull cc = AS_CCLASS(callee);
         if (cc->cons) {
           kuval res = cc->cons(vm, argc, vm->sp - argc);
           vm->sp -= (size_t)argc + 1;
@@ -1812,7 +1805,7 @@ static bool ku_callvalue(kuvm *vm, kuval callee, int argc, bool *native) {
             // TODO: add code coverage
             ku_err(vm, "invalid instance");
           } else {
-            kunobj *i = AS_CINST(res);
+            kunobj *__nonnull i = AS_CINST(res);
             i->klass = cc;
           }
           return !vm->err;
@@ -1830,7 +1823,7 @@ static bool ku_callvalue(kuvm *vm, kuval callee, int argc, bool *native) {
       case OBJ_CLOSURE:
         return ku_docall(vm, AS_CLOSURE(callee), argc);
       case OBJ_CLASS: {
-        kuclass *c = AS_CLASS(callee);
+        kuclass *__nonnull c = AS_CLASS(callee);
         kuval initfn;
         vm->sp[-argc - 1] = OBJ_VAL(ku_instnew(vm, c));
         if (ku_tabget(vm, &c->methods, vm->initstr, &initfn)) {
@@ -1843,7 +1836,7 @@ static bool ku_callvalue(kuvm *vm, kuval callee, int argc, bool *native) {
       }
 
       case OBJ_BOUND_METHOD: {
-        kubound *bm = AS_BOUND_METHOD(callee);
+        kubound *__nonnull bm = AS_BOUND_METHOD(callee);
         vm->sp[-argc - 1] = bm->receiver;
         return ku_docall(vm, bm->method, argc);
       }
@@ -1860,15 +1853,15 @@ static bool ku_callvalue(kuvm *vm, kuval callee, int argc, bool *native) {
 
 #ifdef TRACE_ENABLED
 // We can't use vm->compiler at runtime
-kuchunk *ku_chunk_runtime(kuvm *vm) {
+kuchunk *__nonnull ku_chunk_runtime(kuvm *__nonnull vm) {
   // TODO: add code coverage
   return &vm->frames[vm->framecount-1].closure->func->chunk;
 }
 #endif // TRACE_ENABLED
 
-static kuxobj *ku_capture(kuvm *vm, kuval *local) {
-  kuxobj *prev = NULL;
-  kuxobj *uv = vm->openupvals;
+static kuxobj *__nonnull ku_capture(kuvm *__nonnull vm, kuval *__nonnull local) {
+  kuxobj *__nullable prev = NULL;
+  kuxobj *__nullable uv = vm->openupvals;
 
   while (uv != NULL && uv->location > local) {
     // TODO: add code coverage
@@ -1881,7 +1874,7 @@ static kuxobj *ku_capture(kuvm *vm, kuval *local) {
     return uv;
   }
 
-  kuxobj *created = ku_xobjnew(vm, local);
+  kuxobj *__nonnull created = ku_xobjnew(vm, local);
 
   created->next = uv;
 
@@ -1894,36 +1887,36 @@ static kuxobj *ku_capture(kuvm *vm, kuval *local) {
   return created;
 }
 
-static void ku_close(kuvm *vm, kuval *last) {
+static void ku_close(kuvm *__nonnull vm, kuval *__nonnull last) {
   while (vm->openupvals != NULL && vm->openupvals->location >= last) {
-    kuxobj *uo = vm->openupvals;
+    kuxobj *__nonnull uo = vm->openupvals;
     uo->closed = *uo->location;
     uo->location = &uo->closed;
     vm->openupvals = uo->next;
   }
 }
 
-static void ku_defmethod(kuvm *vm, kustr *name) {
+static void ku_defmethod(kuvm *__nonnull vm, kustr *__nonnull name) {
   kuval method = ku_peek(vm, 0);
-  kuclass *c = AS_CLASS(ku_peek(vm, 1));
-//  ku_printf(vm, ">> class %p method %s\n", (void*)c, name->chars);
+  kuclass *__nonnull c = AS_CLASS(ku_peek(vm, 1));
+//  ku_printf(vm, ">> class %p method %s\n", (void *)c, name->chars);
   ku_tabset(vm, &c->methods, name, method);
   ku_pop(vm);
 }
 
-static bool ku_bindmethod(kuvm *vm, kuclass *klass, kustr *name) {
+static bool ku_bindmethod(kuvm *__nonnull vm, kuclass *__nonnull klass, kustr *__nonnull name) {
   kuval method;
   if (!ku_tabget(vm, &klass->methods, name, &method)) {
     ku_err(vm, "undefined property %s", name->chars);
     return false;
   }
-  kubound *bm = ku_boundnew(vm, ku_peek(vm,0), AS_CLOSURE(method));
+  kubound *__nonnull bm = ku_boundnew(vm, ku_peek(vm,0), AS_CLOSURE(method));
   ku_pop(vm);
   ku_push(vm, OBJ_VAL(bm));
   return true;
 }
 
-static bool ku_classinvoke(kuvm *vm, kuclass *klass, kustr *name, int argc) {
+static bool ku_classinvoke(kuvm *__nonnull vm, kuclass *__nonnull klass, kustr *__nonnull name, int argc) {
   kuval method;
   if (!ku_tabget(vm, &klass->methods, name, &method)) {
     ku_err(vm, "undefined property '%s'", name->chars);
@@ -1932,11 +1925,11 @@ static bool ku_classinvoke(kuvm *vm, kuclass *klass, kustr *name, int argc) {
   return ku_docall(vm, AS_CLOSURE(method), argc);
 }
 
-bool ku_invoke(kuvm *vm, kustr *name, int argc, bool *native) {
+bool ku_invoke(kuvm *__nonnull vm, kustr *__nonnull name, int argc, bool *__nonnull native) {
   kuval receiver = ku_peek(vm, argc);
   *native = false;
   if (IS_CCLASS(receiver)) {
-    kucclass *cc = AS_CCLASS(receiver);
+    kucclass *__nonnull cc = AS_CCLASS(receiver);
     if (cc->scall) {
       *native = true;
       kuval v = cc->scall(vm, name, argc, vm->sp - argc);
@@ -1956,10 +1949,10 @@ bool ku_invoke(kuvm *vm, kustr *name, int argc, bool *native) {
   }
 
   if (IS_CINST(receiver)) {
-    kunobj *no = AS_CINST(receiver);
+    kunobj *__nonnull no = AS_CINST(receiver);
     if (no->klass->icall) {
       *native = true;
-      kuval v = no->klass->icall(vm, (kuobj*)no, name, argc, vm->sp - argc);
+      kuval v = no->klass->icall(vm, (kuobj *)no, name, argc, vm->sp - argc);
       vm->sp -= (size_t)argc + 1;
       ku_push(vm, v);
       return true;
@@ -1973,7 +1966,7 @@ bool ku_invoke(kuvm *vm, kustr *name, int argc, bool *native) {
     ku_err(vm, "instance expected");
     return false;
   }
-  kuiobj *inst = AS_INSTANCE(receiver);
+  kuiobj *__nonnull inst = AS_INSTANCE(receiver);
 
   kuval val;
   if (ku_tabget(vm, &inst->fields, name, &val)) {
@@ -1985,7 +1978,7 @@ bool ku_invoke(kuvm *vm, kustr *name, int argc, bool *native) {
   return ku_classinvoke(vm, inst->klass, name, argc);
 }
 
-kures ku_run(kuvm *vm) {
+kures ku_run(kuvm *__nonnull vm) {
   kuframe *frame = &vm->frames[vm->framecount - 1];
 
   vm->err = false;
@@ -2001,7 +1994,7 @@ kures ku_run(kuvm *vm) {
 
 #ifdef TRACE_ENABLED
     if (vm->flags & KVM_F_TRACE) {
-      kuchunk *ck = ku_chunk_runtime(vm);
+      kuchunk *__nonnull ck = ku_chunk_runtime(vm);
       ku_bytedis(vm, ck, (int) (frame->ip - ck->code));
     }
 #endif // TRACE_ENABLED
@@ -2013,8 +2006,8 @@ kures ku_run(kuvm *vm) {
 
       case OP_ARRAY: {
         int count = READ_SHORT(vm);
-        kuaobj *ao = ku_arrnew(vm, count);
-        kuval *argv = vm->sp - count;
+        kuaobj *__nonnull ao = ku_arrnew(vm, count);
+        kuval *__nonnull argv = vm->sp - count;
 
         for (int i = 0; i < count; i++) {
           ku_arrset(vm, ao, i, argv[i]);
@@ -2047,7 +2040,7 @@ kures ku_run(kuvm *vm) {
 
       case OP_INVOKE: {
         bool native;
-        kustr *method = READ_STRING(vm);
+        kustr *__nonnull method = READ_STRING(vm);
         int argc = BYTE_READ(vm);
         if (!ku_invoke(vm, method, argc, &native)) {
           return KVM_ERR_RUNTIME;
@@ -2059,9 +2052,9 @@ kures ku_run(kuvm *vm) {
         break; // TODO: figure out code coverage
 
       case OP_SUPER_INVOKE: {
-        kustr *method = READ_STRING(vm);
+        kustr *__nonnull method = READ_STRING(vm);
         int argc = BYTE_READ(vm);
-        kuclass *superclass = AS_CLASS(ku_pop(vm));
+        kuclass *__nonnull superclass = AS_CLASS(ku_pop(vm));
         if (!ku_classinvoke(vm, superclass, method, argc)) {
           return KVM_ERR_RUNTIME;
         }
@@ -2076,18 +2069,18 @@ kures ku_run(kuvm *vm) {
           ku_err(vm, "superclass must be a class");
           return KVM_ERR_RUNTIME;
         }
-        kuclass *subclass = AS_CLASS(ku_peek(vm, 0));
-        kuclass *superclass = AS_CLASS(sc);
-//        ku_printf(vm, ">> class %p inherits from %p\n", (void*)subclass, (void*)superclass);
+        kuclass *__nonnull subclass = AS_CLASS(ku_peek(vm, 0));
+        kuclass *__nonnull superclass = AS_CLASS(sc);
+//        ku_printf(vm, ">> class %p inherits from %p\n", (void *)subclass, (void *)superclass);
         ku_tabcopy(vm, &superclass->methods, &subclass->methods);
         ku_pop(vm); // subclass
       }
         break; // TODO: figure out code coverage
 
       case OP_CLOSURE: {
-        kufunc *fn = AS_FUNC(CONST_READ(vm));
+        kufunc *__nonnull fn = AS_FUNC(CONST_READ(vm));
         ku_push(vm, OBJ_VAL(fn));  // for GC
-        kuclosure *cl = ku_closurenew(vm, fn);
+        kuclosure *__nonnull cl = ku_closurenew(vm, fn);
         ku_pop(vm);
         ku_push(vm, OBJ_VAL(cl));
         for (int i = 0; i < cl->upcount; i++) {
@@ -2149,7 +2142,7 @@ kures ku_run(kuvm *vm) {
         break;
 
       case OP_NEG: {
-        if (! IS_NUM(ku_peek(vm, 0))) {
+        if (!IS_NUM(ku_peek(vm, 0))) {
           ku_err(vm, "number expected" );
           return KVM_ERR_RUNTIME;
         }
@@ -2169,7 +2162,7 @@ kures ku_run(kuvm *vm) {
         break;
 
       case OP_GET_GLOBAL: {
-        kustr* name = READ_STRING(vm);
+        kustr *__nonnull name = READ_STRING(vm);
         kuval value;
 
         if (!ku_tabget(vm, &vm->globals, name, &value)) {
@@ -2181,14 +2174,14 @@ kures ku_run(kuvm *vm) {
         break; // TODO: figure out code coverage
 
       case OP_DEF_GLOBAL: {
-        kustr* name = READ_STRING(vm);
+        kustr *__nonnull name = READ_STRING(vm);
         ku_tabset(vm, &vm->globals, name, ku_peek(vm, 0));
         ku_pop(vm);
       }
         break;
 
       case OP_SET_GLOBAL: {
-        kustr* name = READ_STRING(vm);
+        kustr *__nonnull name = READ_STRING(vm);
         if (ku_tabset(vm, &vm->globals, name, ku_peek(vm, 0))) {
           ku_tabdel(vm, &vm->globals, name);
           ku_err(vm, "undefined variable %s", name->chars);
@@ -2211,7 +2204,7 @@ kures ku_run(kuvm *vm) {
           ku_err(vm, "number index expected");
           return KVM_ERR_RUNTIME;
         }
-        kuaobj *aobj = AS_ARRAY(aval);
+        kuaobj *__nonnull aobj = AS_ARRAY(aval);
         ku_arrset(vm, aobj, (int)AS_NUM(ival), val);
         ku_pop(vm); // array
         ku_push(vm, val);
@@ -2223,10 +2216,10 @@ kures ku_run(kuvm *vm) {
         kuval aval = ku_peek(vm, 0); // for GC
 
         if (IS_STR(aval) && IS_NUM(ival)) {
-          kustr *st = AS_STR(aval);
+          kustr *__nonnull st = AS_STR(aval);
           int idx = (int)AS_NUM(ival);
           if (idx >= 0 && idx < st->len) {
-            kustr *sr = ku_strfrom(vm, &st->chars[idx], 1);
+            kustr *__nonnull sr = ku_strfrom(vm, &st->chars[idx], 1);
             ku_pop(vm);
             ku_push(vm, OBJ_VAL(sr));
             break;
@@ -2275,7 +2268,7 @@ kures ku_run(kuvm *vm) {
         break;
 
       case OP_GET_PROP: {
-        kustr *name = READ_STRING(vm);
+        kustr *__nonnull name = READ_STRING(vm);
         kuval target = ku_peek(vm, 0);
         ku_pop(vm);   // pop the target
 
@@ -2284,10 +2277,10 @@ kures ku_run(kuvm *vm) {
           return KVM_ERR_RUNTIME;
         }
 
-        kuobj *obj = AS_OBJ(target);
+        kuobj *__nonnull obj = AS_OBJ(target);
 
         if (obj->type == OBJ_ARRAY) {
-          kuaobj *ao = AS_ARRAY(target);
+          kuaobj *__nonnull ao = AS_ARRAY(target);
           if (name == vm->countstr) {
             ku_push(vm, NUM_VAL(ao->elements.count));
           } else if (strcmp(name->chars, "first") == 0) {
@@ -2311,7 +2304,7 @@ kures ku_run(kuvm *vm) {
         }
 
         if (obj->type == OBJ_CCLASS) {
-          kucclass *cc = (kucclass*)obj;
+          kucclass *__nonnull cc = (kucclass *)obj;
           if (cc->sget) {
             ku_push(vm, cc->sget(vm, name));
             break;
@@ -2319,9 +2312,9 @@ kures ku_run(kuvm *vm) {
         }
 
         if (obj->type == OBJ_CINST) {
-          kunobj *i = (kunobj*)obj;
+          kunobj *__nonnull i = (kunobj *)obj;
           if (i->klass->iget) {
-            ku_push(vm, i->klass->iget(vm, (kuobj*)i, name));
+            ku_push(vm, i->klass->iget(vm, (kuobj *)i, name));
             break;
           }
         }
@@ -2330,7 +2323,7 @@ kures ku_run(kuvm *vm) {
           ku_err(vm, "instance expected");
           return KVM_ERR_RUNTIME;
         }
-        kuiobj *i = (kuiobj*)obj;
+        kuiobj *__nonnull i = (kuiobj *)obj;
         kuval val;
         if (ku_tabget(vm, &i->fields, name, &val)) {
           ku_push(vm, val);
@@ -2346,9 +2339,9 @@ kures ku_run(kuvm *vm) {
 
       case OP_SET_PROP: {
         if (IS_CCLASS(ku_peek(vm, 1))) {
-          kucclass *cc = AS_CCLASS(ku_peek(vm, 1));
+          kucclass *__nonnull cc = AS_CCLASS(ku_peek(vm, 1));
           if (cc->sput) {
-            kustr *name = READ_STRING(vm);
+            kustr *__nonnull name = READ_STRING(vm);
             kuval val = ku_pop(vm);
             ku_pop(vm); // cclass
             val = cc->sput(vm, name, val);
@@ -2358,12 +2351,12 @@ kures ku_run(kuvm *vm) {
         }
 
         if (IS_CINST(ku_peek(vm, 1))) {
-          kunobj *i = AS_CINST(ku_peek(vm, 1));
+          kunobj *__nonnull i = AS_CINST(ku_peek(vm, 1));
           if (i->klass->iput) {
-            kustr *name = READ_STRING(vm);
+            kustr *__nonnull name = READ_STRING(vm);
             kuval val = ku_pop(vm);
             ku_pop(vm); // instance
-            val = i->klass->iput(vm, (kuobj*)i, name, val);
+            val = i->klass->iput(vm, (kuobj *)i, name, val);
             ku_push(vm, val);
             break;
           }
@@ -2373,7 +2366,7 @@ kures ku_run(kuvm *vm) {
           ku_err(vm, "instance expected");
           return KVM_ERR_RUNTIME;
         }
-        kuiobj *i = AS_INSTANCE(ku_peek(vm, 1));
+        kuiobj *__nonnull i = AS_INSTANCE(ku_peek(vm, 1));
         ku_tabset(vm, &i->fields, READ_STRING(vm), ku_peek(vm, 0));
         kuval val = ku_pop(vm);
         ku_pop(vm); // instance
@@ -2382,9 +2375,9 @@ kures ku_run(kuvm *vm) {
         break; // TODO: figure out code coverage
 
       case OP_GET_SUPER: {
-        kustr *name = READ_STRING(vm);
+        kustr *__nonnull name = READ_STRING(vm);
         kuval v = ku_pop(vm);
-        kuclass *superclass = AS_CLASS(v);
+        kuclass *__nonnull superclass = AS_CLASS(v);
         if (!ku_bindmethod(vm, superclass, name)) {
           return KVM_ERR_RUNTIME;
         }
@@ -2446,8 +2439,8 @@ kures ku_run(kuvm *vm) {
           else
             ku_push(vm, BOOL_VAL(a < b));
         } else if (IS_STR(ku_peek(vm, 0)) && IS_STR(ku_peek(vm, 1))) {
-          kustr *b = AS_STR(ku_pop(vm));
-          kustr *a = AS_STR(ku_pop(vm));
+          kustr *__nonnull b = AS_STR(ku_pop(vm));
+          kustr *__nonnull a = AS_STR(ku_pop(vm));
           int len = (a->len > b->len) ? a->len : b->len;
           int res = strncmp(a->chars, b->chars, len);
           if (op == OP_GT)
@@ -2498,7 +2491,7 @@ kures ku_run(kuvm *vm) {
   return KVM_OK;
 }
 
-kufunc *ku_compile(kuvm *vm, char *source) {
+kufunc *__nullable ku_compile(kuvm *__nonnull vm, char *__nonnull source) {
   kucomp compiler;
   ku_compinit(vm, &compiler, FUNC_MAIN);
   ku_lexinit(vm, source);
@@ -2513,14 +2506,13 @@ kufunc *ku_compile(kuvm *vm, char *source) {
     ku_chunkdump(vm, ku_chunk(vm), "code");
   }
 
-  kufunc *fn = ku_pend(vm, false);
-
+  kufunc *__nullable fn = ku_pend(vm, false);
 
   return vm->parser.err ? NULL : fn;
 }
 
-kures ku_exec(kuvm *vm, char *source) {
-  kufunc *fn = ku_compile(vm, source);
+kures ku_exec(kuvm *__nonnull vm, char *__nonnull source) {
+  kufunc *__nullable fn = ku_compile(vm, source);
   if (fn == NULL) {
     return KVM_ERR_SYNTAX;
   }
@@ -2534,7 +2526,7 @@ kures ku_exec(kuvm *vm, char *source) {
   }
 
   ku_push(vm, OBJ_VAL(fn));
-  kuclosure *closure = ku_closurenew(vm, fn);
+  kuclosure *__nonnull closure = ku_closurenew(vm, fn);
   ku_pop(vm);
   ku_push(vm, OBJ_VAL(closure));
   vm->baseframe = 0;
@@ -2551,7 +2543,7 @@ kures ku_exec(kuvm *vm, char *source) {
 }
 
 // ********************** memory **********************
-char *ku_alloc(kuvm *vm, void *ptr, size_t oldsize, size_t nsize) {
+char *__nonnull ku_alloc(kuvm *__nonnull vm, void *__nullable ptr, size_t oldsize, size_t nsize) {
   if ((vm->flags & KVM_F_GCSTRESS) && nsize > oldsize) {
     ku_gc(vm);
   }
@@ -2572,15 +2564,19 @@ char *ku_alloc(kuvm *vm, void *ptr, size_t oldsize, size_t nsize) {
 
   vm->allocated += nsize - oldsize;
 
-  if (nsize == 0) {
-    free(ptr);
-    return NULL;
-  }
+  // TODO: handle oom
+  // Right now all of the callers assume that this returns nonnull, so defer changing that until we can actually handle
+  // NULL everywhere.  This is broken right now, though, because if nsize is 0, this will crash.
+  // if (nsize == 0) {
+  //   free(ptr);
+  //   return NULL;
+  // }
+
   return realloc(ptr, nsize);
 }
 
 // ********************** chunk **********************
-void ku_chunkinit(kuvm *vm, kuchunk *chunk) {
+void ku_chunkinit(kuvm *__nonnull vm, kuchunk *__nonnull chunk) {
   chunk->count = 0;
   chunk->capacity = 0;
   chunk->code = NULL;
@@ -2588,7 +2584,7 @@ void ku_chunkinit(kuvm *vm, kuchunk *chunk) {
   ku_arrinit(vm, &chunk->constants);
 }
 
-void ku_chunkwrite(kuvm *vm, kuchunk *chunk, uint8_t byte, int line) {
+void ku_chunkwrite(kuvm *__nonnull vm, kuchunk *__nonnull chunk, uint8_t byte, int line) {
   if (chunk->capacity < chunk->count + 1) {
     int cap = chunk->capacity;
     chunk->capacity = CAPACITY_GROW(cap);
@@ -2601,13 +2597,13 @@ void ku_chunkwrite(kuvm *vm, kuchunk *chunk, uint8_t byte, int line) {
   chunk->count++;
 }
 
-void ku_chunkfree(kuvm *vm, kuchunk *chunk) {
+void ku_chunkfree(kuvm *__nonnull vm, kuchunk *__nonnull chunk) {
   ARRAY_FREE(vm, uint8_t, chunk->code, chunk->capacity);
   ARRAY_FREE(vm, int, chunk->lines, chunk->capacity);
   ARRAY_FREE(vm, kuval, chunk->constants.values, chunk->constants.capacity);
 }
 
-int ku_chunkconst(kuvm *vm, kuchunk *chunk, kuval value) {
+int ku_chunkconst(kuvm *__nonnull vm, kuchunk *__nonnull chunk, kuval value) {
   ku_push(vm, value); // for GC
   for (int i = 0; i < chunk->constants.count; i++) {
     if (ku_equal(value, chunk->constants.values[i])) {
@@ -2621,13 +2617,13 @@ int ku_chunkconst(kuvm *vm, kuchunk *chunk, kuval value) {
 }
 
 // ********************** array **********************
-void ku_arrinit(KU_UNUSED kuvm* vm, kuarr *array) {
+void ku_arrinit(KU_UNUSED kuvm *__nonnull vm, kuarr *__nonnull array) {
   array->values = NULL;
   array->count = 0;
   array->capacity = 0;
 }
 
-void ku_arrwrite(kuvm* vm, kuarr *array, kuval value) {
+void ku_arrwrite(kuvm *__nonnull vm, kuarr *__nonnull array, kuval value) {
   if (array->capacity < array->count + 1) {
     int old = array->capacity;
     array->capacity = CAPACITY_GROW(old);
@@ -2638,7 +2634,7 @@ void ku_arrwrite(kuvm* vm, kuarr *array, kuval value) {
 }
 
 // ********************** debugging **********************
-static void ku_chunkdump(kuvm *vm, kuchunk *chunk, const char * name) {
+static void ku_chunkdump(kuvm *__nonnull vm, kuchunk *__nonnull chunk, const char *__nonnull name) {
   ku_printf(vm, "== %s ==\n", name);
   for (int offset = 0; offset < chunk->count; ) {
     offset = ku_bytedis(vm, chunk, offset);
@@ -2646,12 +2642,12 @@ static void ku_chunkdump(kuvm *vm, kuchunk *chunk, const char * name) {
   }
 }
 
-static int ku_opdis(kuvm *vm, const char *name, int offset) {
+static int ku_opdis(kuvm *__nonnull vm, const char *__nonnull name, int offset) {
   ku_printf(vm, "%-16s %4s", name, "");
   return offset + 1;
 }
 
-static int ku_constdis(kuvm *vm, const char *name, kuchunk *chunk, int offset) {
+static int ku_constdis(kuvm *__nonnull vm, const char *__nonnull name, kuchunk *__nonnull chunk, int offset) {
   uint8_t con = chunk->code[offset+1];
   ku_printf(vm, "%-16s %4d '", name, con);
   ku_printval(vm, chunk->constants.values[con]);
@@ -2659,7 +2655,7 @@ static int ku_constdis(kuvm *vm, const char *name, kuchunk *chunk, int offset) {
   return offset+2;
 }
 
-static int ku_invokedis(kuvm *vm, const char *name, kuchunk *chunk, int offset) {
+static int ku_invokedis(kuvm *__nonnull vm, const char *__nonnull name, kuchunk *__nonnull chunk, int offset) {
   uint8_t cons = chunk->code[offset + 1];
   uint8_t argc = chunk->code[offset + 2];
   ku_printf(vm, "%-16s (%d args) %4d'", name, argc, cons);
@@ -2668,7 +2664,7 @@ static int ku_invokedis(kuvm *vm, const char *name, kuchunk *chunk, int offset) 
   return offset + 3;
 }
 
-int ku_bytedis(kuvm *vm, kuchunk *chunk, int offset) {
+int ku_bytedis(kuvm *__nonnull vm, kuchunk *__nonnull chunk, int offset) {
   ku_printf(vm, "%04d ", offset);
 
   if (offset > 0 && chunk->lines[offset] == chunk->lines[offset-1]) {
@@ -2735,7 +2731,7 @@ int ku_bytedis(kuvm *vm, kuchunk *chunk, int offset) {
       ku_printf(vm, "%-16s %4d ", "OP_CLOSURE", con);
       ku_printval(vm, chunk->constants.values[con]);
 //       ku_printf(vm, "\n");
-      kufunc *fn = AS_FUNC(chunk->constants.values[con]);
+      kufunc *__nonnull fn = AS_FUNC(chunk->constants.values[con]);
       for (int j = 0; j < fn->upcount; j++) {
         int local = chunk->code[offset++];
         int index = chunk->code[offset++];
@@ -2753,7 +2749,7 @@ int ku_bytedis(kuvm *vm, kuchunk *chunk, int offset) {
 // ------------------------------------------------------------
 // Locals
 // ------------------------------------------------------------
-void ku_compinit(kuvm *vm, kucomp *compiler, kufunc_t type) {
+void ku_compinit(kuvm *__nonnull vm, kucomp *__nonnull compiler, kufunc_t type) {
   compiler->function = NULL; // for GC
   compiler->enclosing = vm->compiler;
   compiler->count = 0;
@@ -2765,7 +2761,7 @@ void ku_compinit(kuvm *vm, kucomp *compiler, kufunc_t type) {
   if (type != FUNC_MAIN) {
     compiler->function->name = ku_strfrom(vm, vm->parser.prev.start, vm->parser.prev.len);
   }
-  kulocal *local = &vm->compiler->locals[vm->compiler->count++];
+  kulocal *__nonnull local = &vm->compiler->locals[vm->compiler->count++];
   local->depth = 0;
   local->flags = KU_LOCAL_NONE;
 
@@ -2778,18 +2774,18 @@ void ku_compinit(kuvm *vm, kucomp *compiler, kufunc_t type) {
   }
 }
 
-void ku_block(kuvm *vm, kuloop *loop) {
+void ku_block(kuvm *__nonnull vm, kuloop *__nullable loop) {
   while (!ku_pcheck(vm, TOK_RBRACE) && !ku_pcheck(vm, TOK_EOF)) {
     ku_decl(vm, loop);
   }
   ku_pconsume(vm, TOK_RBRACE, "'}' expected");
 }
 
-void ku_beginscope(kuvm *vm) {
+void ku_beginscope(kuvm *__nonnull vm) {
   vm->compiler->depth++;
 }
 
-void ku_endscope(kuvm *vm) {
+void ku_endscope(kuvm *__nonnull vm) {
   vm->compiler->depth--;
 
   while (vm->compiler->count > 0 &&
@@ -2805,14 +2801,14 @@ void ku_endscope(kuvm *vm) {
     }
 }
 
-void ku_declare_let(kuvm *vm, bool isconst) {
-  kutok *name = &vm->parser.prev;
+void ku_declare_let(kuvm *__nonnull vm, bool isconst) {
+  kutok *__nonnull name = &vm->parser.prev;
 
   if (vm->compiler->depth == 0) {
     return;
   }
   for (int i = vm->compiler->count - 1; i >= 0; i--) {
-    kulocal *local = &vm->compiler->locals[i];
+    kulocal *__nonnull local = &vm->compiler->locals[i];
     if (local->depth != -1 && local->depth < vm->compiler->depth) {
       break;
     }
@@ -2825,13 +2821,13 @@ void ku_declare_let(kuvm *vm, bool isconst) {
   ku_addlocal(vm, *name, isconst);
 }
 
-void ku_addlocal(kuvm *vm, kutok name, bool isconst) {
+void ku_addlocal(kuvm *__nonnull vm, kutok name, bool isconst) {
   if (vm->compiler->count == vm->max_locals) {
     ku_perr(vm, "too many locals");
     return;
   }
 
-  kulocal *local = &vm->compiler->locals[vm->compiler->count++];
+  kulocal *__nonnull local = &vm->compiler->locals[vm->compiler->count++];
   local->name = name;
   local->depth = -1;
   if ((local->flags & KU_LOCAL_CONST) && (local->flags & KU_LOCAL_INIT)) {
@@ -2841,7 +2837,7 @@ void ku_addlocal(kuvm *vm, kutok name, bool isconst) {
   local->flags = (isconst) ? KU_LOCAL_CONST : KU_LOCAL_NONE;
 }
 
-bool ku_identeq(KU_UNUSED kuvm *vm, kutok *a, kutok *b) {
+bool ku_identeq(KU_UNUSED kuvm *__nonnull vm, kutok *__nonnull a, kutok *__nonnull b) {
   if (a->len != b->len) {
     return false;
   }
@@ -2849,9 +2845,9 @@ bool ku_identeq(KU_UNUSED kuvm *vm, kutok *a, kutok *b) {
   return memcmp(a->start, b->start, a->len) == 0;
 }
 
-int ku_resolvelocal(kuvm *vm, kucomp *compiler, kutok *name) {
+int ku_resolvelocal(kuvm *__nonnull vm, kucomp *__nonnull compiler, kutok *__nonnull name) {
   for (int i = compiler->count - 1; i >= 0; i--) {
-    kulocal *local = &compiler->locals[i];
+    kulocal *__nonnull local = &compiler->locals[i];
     if (ku_identeq(vm, name, &local->name)) {
       if (local->depth == -1) {
         ku_perr(vm, "own initialization disallowed");
@@ -2862,25 +2858,25 @@ int ku_resolvelocal(kuvm *vm, kucomp *compiler, kutok *name) {
   return -1;
 }
 
-void ku_markinit(kuvm *vm) {
+void ku_markinit(kuvm *__nonnull vm) {
   // functions can reference themselves unlike global
   // variables which can't use their own value in their
   // initialization
   if (vm->compiler->depth == 0) return;
-  kulocal *local = &vm->compiler->locals[vm->compiler->count - 1];
+  kulocal *__nonnull local = &vm->compiler->locals[vm->compiler->count - 1];
   local->depth = vm->compiler->depth;
   local->flags |= KU_LOCAL_INIT;
 }
 
-int ku_opslotdis(kuvm *vm, const char *name, kuchunk *chunk, int offset) {
+int ku_opslotdis(kuvm *__nonnull vm, const char *__nonnull name, kuchunk *__nonnull chunk, int offset) {
   uint8_t slot = chunk->code[offset + 1];
   ku_printf(vm, "%-16s %4d", name, slot);
   return offset + 2;
 }
 
 // ********************** function **********************
-kufunc *ku_funcnew(kuvm *vm) {
-  kufunc *fn = (kufunc*)KALLOC_OBJ(vm, kufunc, OBJ_FUNC);
+kufunc *__nonnull ku_funcnew(kuvm *__nonnull vm) {
+  kufunc *__nonnull fn = (kufunc *)KALLOC_OBJ(vm, kufunc, OBJ_FUNC);
   fn->arity = 0;
   fn->upcount = 0;
   fn->name = NULL;
@@ -2889,15 +2885,15 @@ kufunc *ku_funcnew(kuvm *vm) {
 }
 
 // ********************** native functions **********************
-kucfunc *ku_cfuncnew(kuvm *vm, cfunc f) {
-  kucfunc *cf = KALLOC_OBJ(vm, kucfunc, OBJ_CFUNC);
+kucfunc *__nonnull ku_cfuncnew(kuvm *__nonnull vm, cfunc __nonnull f) {
+  kucfunc *__nonnull cf = KALLOC_OBJ(vm, kucfunc, OBJ_CFUNC);
   cf->fn = f;
   return cf;
 }
 
-void ku_cfuncdef(kuvm *vm, const char *name, cfunc f) {
+void ku_cfuncdef(kuvm *__nonnull vm, const char *__nonnull name, cfunc __nonnull f) {
   int len = (int)strlen(name);
-  kustr *sname = ku_strfrom(vm, name, len);
+  kustr *__nonnull sname = ku_strfrom(vm, name, len);
   ku_push(vm, OBJ_VAL(sname));
   ku_push(vm, OBJ_VAL(ku_cfuncnew(vm, f)));
   ku_tabset(vm, &vm->globals, AS_STR(vm->stack[0]), vm->stack[1]);
@@ -2916,11 +2912,11 @@ void ku_cfuncdef(kuvm *vm, const char *name, cfunc f) {
 #include <time.h>
 
 // ********************** array **********************
-static kuval ku_arraycons(kuvm *vm, int argc, kuval *argv) {
+static kuval ku_arraycons(kuvm *__nonnull vm, int argc, kuval *__nullable argv) {
   int cap = 0;
   if (argc > 0 && IS_NUM(argv[0])) {
     cap = (int)AS_NUM(argv[0]);
-    kuaobj *ao = ku_arrnew(vm, cap);
+    kuaobj *__nonnull ao = ku_arrnew(vm, cap);
     ku_push(vm, OBJ_VAL(ao)); // for GC
     for (int i = 0; i < cap; i++) {
       ku_arrset(vm, ao, i, NULL_VAL);
@@ -2932,13 +2928,13 @@ static kuval ku_arraycons(kuvm *vm, int argc, kuval *argv) {
   return OBJ_VAL(ku_arrnew(vm, cap));
 }
 
-void array_swap(kuval *a, kuval *b) {
+void array_swap(kuval *__nonnull a, kuval *__nonnull b) {
   kuval t = *a;
   *a = *b;
   *b = t;
 }
 
-int array_partition(kuvm *vm, kuval array[], int low, int high, kuclosure *cmp) {
+int array_partition(kuvm *__nonnull vm, kuval array[], int low, int high, kuclosure *__nonnull cmp) {
   kuval pivot = array[high];
   int i = (low - 1);
 
@@ -2969,7 +2965,7 @@ int array_partition(kuvm *vm, kuval array[], int low, int high, kuclosure *cmp) 
   return (i + 1);
 }
 
-void array_qsort(kuvm *vm, kuval array[], int low, int high, kuclosure *cmp) {
+void array_qsort(kuvm *__nonnull vm, kuval array[], int low, int high, kuclosure *__nonnull cmp) {
   if (low < high) {
     int pi = array_partition(vm, array, low, high, cmp);
     if (vm->err) return;
@@ -2978,12 +2974,12 @@ void array_qsort(kuvm *vm, kuval array[], int low, int high, kuclosure *cmp) {
   }
 }
 
-bool array_sort(kuvm *vm, kuaobj *src, int argc, kuval *argv) {
+bool array_sort(kuvm *__nonnull vm, kuaobj *__nonnull src, int argc, kuval *__nullable argv) {
   if (argc != 1 || !IS_CLOSURE(argv[0])) {
     return false;
   }
 
-  kuclosure *cl = AS_CLOSURE(argv[0]);
+  kuclosure *__nonnull cl = AS_CLOSURE(argv[0]);
   if (cl->func->arity != 2) {
     return false;
   }
@@ -2993,17 +2989,17 @@ bool array_sort(kuvm *vm, kuaobj *src, int argc, kuval *argv) {
   return !vm->err;
 }
 
-bool array_filter(kuvm *vm, kuaobj *src, int argc, kuval *argv, kuval *ret) {
+bool array_filter(kuvm *__nonnull vm, kuaobj *__nonnull src, int argc, kuval *__nullable argv, kuval *__nonnull ret) {
   if (argc != 1 || !IS_CLOSURE(argv[0])) {
     return false;
   }
 
-  kuclosure *cl = AS_CLOSURE(argv[0]);
+  kuclosure *__nonnull cl = AS_CLOSURE(argv[0]);
   if (cl->func->arity != 1) {
     return false;
   }
 
-  kuaobj *dest = ku_arrnew(vm, 0);
+  kuaobj *__nonnull dest = ku_arrnew(vm, 0);
   ku_push(vm, OBJ_VAL(dest)); // for GC
   int j = 0;
   for (int i = 0; i < src->elements.count; i++) {
@@ -3027,17 +3023,17 @@ bool array_filter(kuvm *vm, kuaobj *src, int argc, kuval *argv, kuval *ret) {
   return true;
 }
 
-bool array_map(kuvm *vm, kuaobj *src, int argc, kuval *argv, kuval *ret) {
+bool array_map(kuvm *__nonnull vm, kuaobj *__nonnull src, int argc, kuval *__nullable argv, kuval *__nonnull ret) {
   if (argc != 1 || !IS_CLOSURE(argv[0])) {
     return false;
   }
 
-  kuclosure *cl = AS_CLOSURE(argv[0]);
+  kuclosure *__nonnull cl = AS_CLOSURE(argv[0]);
   if (cl->func->arity != 1) {
     return false;
   }
 
-  kuaobj *dest = ku_arrnew(vm, src->elements.capacity);
+  kuaobj *__nonnull dest = ku_arrnew(vm, src->elements.capacity);
   ku_push(vm, OBJ_VAL(dest)); // for GC
   for (int i = 0; i < src->elements.count; i++) {
     kuval e = ku_arrget(vm, src, i);
@@ -3057,12 +3053,12 @@ bool array_map(kuvm *vm, kuaobj *src, int argc, kuval *argv, kuval *ret) {
   return true;
 }
 
-bool array_reduce(kuvm *vm, kuaobj *src, int argc, kuval *argv, kuval *ret) {
+bool array_reduce(kuvm *__nonnull vm, kuaobj *__nonnull src, int argc, kuval *__nullable argv, kuval *__nonnull ret) {
   if (argc != 2 || !IS_CLOSURE(argv[1])) {
     return false;
   }
 
-  kuclosure *cl = AS_CLOSURE(argv[1]);
+  kuclosure *__nonnull cl = AS_CLOSURE(argv[1]);
   if (cl->func->arity != 2) {
     return false;
   }
@@ -3086,7 +3082,7 @@ bool array_reduce(kuvm *vm, kuaobj *src, int argc, kuval *argv, kuval *ret) {
   return true;
 }
 
-bool array_invoke(kuvm *vm, kuval obj, kustr *method, int argc, kuval *argv) {
+bool array_invoke(kuvm *__nonnull vm, kuval obj, kustr *__nonnull method, int argc, kuval *__nullable argv) {
   if (M3(method, "map")) {
     kuval ret;
     if(array_map(vm, AS_ARRAY(obj), argc, argv, &ret)) {
@@ -3123,7 +3119,7 @@ bool array_invoke(kuvm *vm, kuval obj, kustr *method, int argc, kuval *argv) {
 }
 
 // ********************** utility **********************
-static int arglen(KU_UNUSED kuvm *vm, const char *f, kuval arg) {
+static int arglen(KU_UNUSED kuvm *__nonnull vm, const char *__nonnull f, kuval arg) {
   char s = *(f+1);
   if (s == 0) {
     return 0;
@@ -3172,13 +3168,13 @@ static int arglen(KU_UNUSED kuvm *vm, const char *f, kuval arg) {
   return len;
 }
 
-char *format_core(kuvm *vm, int argc, kuval *argv, int *count) {
+char *__nullable format_core(kuvm *__nonnull vm, int argc, kuval *__nullable argv, int *__nonnull count) {
   if (argc < 1 || !IS_STR(argv[0])) {
     return NULL;
   }
 
-  kustr *sfmt = AS_STR(argv[0]);
-  const char *fmt = sfmt->chars;
+  kustr *__nonnull sfmt = AS_STR(argv[0]);
+  const char *__nonnull fmt = sfmt->chars;
   int fmtlen = 0;
   int needed = fmtlen;
 
@@ -3199,12 +3195,12 @@ char *format_core(kuvm *vm, int argc, kuval *argv, int *count) {
     }
   }
 
-  char *chars = ku_alloc(vm, NULL, 0, (size_t)needed+1);
+  char *__nonnull chars = ku_alloc(vm, NULL, 0, (size_t)needed+1);
 
   iarg = 0;
-  char *d = chars;
+  char *__nonnull d = chars;
 
-  for (char *p = (char*)fmt; *p; p++) {
+  for (char *__nonnull p = (char *)fmt; *p; p++) {
     if (*p != '%') {
       *d++ = *p;
       continue;
@@ -3241,7 +3237,7 @@ char *format_core(kuvm *vm, int argc, kuval *argv, int *count) {
   return chars;
 }
 
-static kuval ku_intf(KU_UNUSED kuvm *vm, int argc, kuval *argv) {
+static kuval ku_intf(KU_UNUSED kuvm *__nonnull vm, int argc, kuval *__nullable argv) {
   if (argc > 0 && IS_NUM(argv[0])) {
     double d = AS_NUM(argv[0]);
     int i = (int)d;
@@ -3250,30 +3246,30 @@ static kuval ku_intf(KU_UNUSED kuvm *vm, int argc, kuval *argv) {
   return NULL_VAL;
 }
 
-static kuval ku_parseFloat(KU_UNUSED kuvm *vm, int argc, kuval *argv) {
+static kuval ku_parseFloat(KU_UNUSED kuvm *__nonnull vm, int argc, kuval *__nullable argv) {
   if (argc > 0 && IS_STR(argv[0])) {
-    kustr *s = AS_STR(argv[0]);
+    kustr *__nonnull s = AS_STR(argv[0]);
     double d = atof(s->chars);
     return NUM_VAL(d);
   }
   return NULL_VAL;
 }
 
-static kuval ku_eval(KU_UNUSED kuvm *vm, int argc, kuval *argv) {
+static kuval ku_eval(KU_UNUSED kuvm *__nonnull vm, int argc, kuval *__nullable argv) {
   if (argc > 0 && IS_STR(argv[0])) {
     int stack = (argc > 1 && IS_NUM(argv[1])) ? (int)AS_NUM(argv[1]) : 128;
-    kuvm *temp = ku_newvm(stack);
+    kuvm *__nonnull temp = ku_newvm(stack);
     temp->flags = KVM_F_QUIET;
-    const char *line = AS_STR(argv[0])->chars;
+    const char *__nonnull line = AS_STR(argv[0])->chars;
     size_t len = strlen(line) + 8;
-    char *buffer = malloc(len);
+    char *__nonnull buffer = malloc(len);
     assert(buffer); // TODO: figure out code coverage
     sprintf(buffer, "let _=%s;", line);
     kures res = ku_exec(temp, buffer);
     kuval ret = NULL_VAL;
     free(buffer);
     if (res == KVM_OK) {
-      kustr *key = ku_strfrom(temp, "_", 1);
+      kustr *__nonnull key = ku_strfrom(temp, "_", 1);
       ku_tabget(temp, &temp->globals, key, &ret);
     }
     ku_free(temp);
@@ -3282,11 +3278,11 @@ static kuval ku_eval(KU_UNUSED kuvm *vm, int argc, kuval *argv) {
   return NULL_VAL;
 }
 
-static kuval ku_clock(KU_UNUSED kuvm *vm, KU_UNUSED int argc, KU_UNUSED kuval *argv) {
+static kuval ku_clock(KU_UNUSED kuvm *__nonnull vm, KU_UNUSED int argc, KU_UNUSED kuval *__nullable argv) {
   return NUM_VAL((double)clock() / CLOCKS_PER_SEC);
 }
 
-static kuval ku_print(kuvm *vm, int argc, kuval *argv) {
+static kuval ku_print(kuvm *__nonnull vm, int argc, kuval *__nullable argv) {
   if (argc > 0 && !IS_STR(argv[0])) {
     for (int i = 0; i < argc; i++) {
       ku_printval(vm, argv[i]);
@@ -3295,8 +3291,8 @@ static kuval ku_print(kuvm *vm, int argc, kuval *argv) {
   }
 
   int needed;
-  char *str = format_core(vm, argc, argv, &needed);
-  if (!str) {
+  char *__nullable str = format_core(vm, argc, argv, &needed);
+  if (str == NULL) {
     // TODO: add code coverage
     return NULL_VAL;
   }
@@ -3309,7 +3305,7 @@ static kuval ku_print(kuvm *vm, int argc, kuval *argv) {
 #define  _USE_MATH_DEFINES    // for windows
 #include <math.h>
 
-kuval math_scall(KU_UNUSED kuvm *vm, kustr *m, int argc, kuval *argv) {
+kuval math_scall(KU_UNUSED kuvm *__nonnull vm, kustr *__nonnull m, int argc, kuval *__nullable argv) {
   double x = AS_NUM(argv[0]);
 
   if (M3(m, "sin")) {
@@ -3345,13 +3341,13 @@ kuval math_scall(KU_UNUSED kuvm *vm, kustr *m, int argc, kuval *argv) {
 
 
 // ********************** table **********************
-kuval table_cons(kuvm *vm, KU_UNUSED int argc, KU_UNUSED kuval *argv) {
-  kutobj *to = (kutobj*)ku_objalloc(vm, sizeof(kutobj), OBJ_CINST);
+kuval table_cons(kuvm *__nonnull vm, KU_UNUSED int argc, KU_UNUSED kuval *__nullable argv) {
+  kutobj *__nonnull to = (kutobj *)ku_objalloc(vm, sizeof(kutobj), OBJ_CINST);
   ku_tabinit(vm, &to->data);
   return OBJ_VAL(to);
 }
 
-kuval ku_cinstance(kuvm *vm, const char *cname) {
+kuval ku_cinstance(kuvm *__nonnull vm, const char *__nonnull cname) {
   kuval tcv;
   if (!ku_tabget(vm, &vm->globals, ku_strfrom(vm, cname, 5), &tcv)) {
     // TODO: add code coverage
@@ -3363,17 +3359,17 @@ kuval ku_cinstance(kuvm *vm, const char *cname) {
     return NULL_VAL;
   }
 
-  kucclass *tcc = AS_CCLASS(tcv);
+  kucclass *__nonnull tcc = AS_CCLASS(tcv);
   kuval tab = table_cons(vm, 0, NULL);
-  kutobj *to = (kutobj*)AS_OBJ(tab);
+  kutobj *__nonnull to = (kutobj *)AS_OBJ(tab);
   to->base.klass = tcc;
   return tab;
 }
 
-kuval table_icall(kuvm *vm, kuobj *o, kustr *m, int argc, kuval *argv) {
+kuval table_icall(kuvm *__nonnull vm, kuobj *__nonnull o, kustr *__nonnull m, int argc, kuval *__nullable argv) {
   if (M3(m, "get") && argc > 0 && IS_STR(argv[0])) {
-    kutobj *to = (kutobj*)o;
-    kustr *s = AS_STR(argv[0]);
+    kutobj *__nonnull to = (kutobj *)o;
+    kustr *__nonnull s = AS_STR(argv[0]);
     kuval ret;
     if (ku_tabget(vm, &to->data, s, &ret)) {
       return ret;
@@ -3382,8 +3378,8 @@ kuval table_icall(kuvm *vm, kuobj *o, kustr *m, int argc, kuval *argv) {
   }
 
   if (M3(m, "set") && argc > 1 && IS_STR(argv[0])) {
-    kutobj *to = (kutobj*)o;
-    kustr *s = AS_STR(argv[0]);
+    kutobj *__nonnull to = (kutobj *)o;
+    kustr *__nonnull s = AS_STR(argv[0]);
     ku_tabset(vm, &to->data, s, argv[1]);
     return argv[1];
   }
@@ -3393,14 +3389,14 @@ kuval table_icall(kuvm *vm, kuobj *o, kustr *m, int argc, kuval *argv) {
       return NULL_VAL;
     }
 
-    kuclosure *cl = AS_CLOSURE(argv[0]);
+    kuclosure *__nonnull cl = AS_CLOSURE(argv[0]);
     if (cl->func->arity != 2) {
       return NULL_VAL;
     }
 
-    kutobj *to = (kutobj*)o;
+    kutobj *__nonnull to = (kutobj *)o;
     for (int i = 0; i < to->data.capacity; i++) {
-      kuentry *e = &to->data.entries[i];
+      kuentry *__nonnull e = &to->data.entries[i];
       if (e->key != NULL) {
         ku_push(vm, OBJ_VAL(e->key));
         ku_push(vm, e->value);
@@ -3413,8 +3409,8 @@ kuval table_icall(kuvm *vm, kuobj *o, kustr *m, int argc, kuval *argv) {
   return NULL_VAL;
 }
 
-kuval table_iget(kuvm *vm, kuobj *o, kustr *p) {
-  kutobj *to = (kutobj*)o;
+kuval table_iget(kuvm *__nonnull vm, kuobj *__nonnull o, kustr *__nonnull p) {
+  kutobj *__nonnull to = (kutobj *)o;
   kuval ret;
 
   if (ku_tabget(vm, &to->data, p, &ret)) {
@@ -3423,48 +3419,48 @@ kuval table_iget(kuvm *vm, kuobj *o, kustr *p) {
   return NULL_VAL;
 }
 
-kuval table_iput(kuvm *vm, kuobj *o, kustr *p, kuval v) {
-  kutobj *to = (kutobj*)o;
+kuval table_iput(kuvm *__nonnull vm, kuobj *__nonnull o, kustr *__nonnull p, kuval v) {
+  kutobj *__nonnull to = (kutobj *)o;
   ku_tabset(vm, &to->data, p, v);
   return v;
 }
 
-kuval table_ifree(kuvm *vm, kuobj *o) {
-  kutobj *to = (kutobj*)o;
+kuval table_ifree(kuvm *__nonnull vm, kuobj *__nonnull o) {
+  kutobj *__nonnull to = (kutobj *)o;
   ku_tabfree(vm, &to->data);
   FREE(vm, kutobj, to);
   return NULL_VAL;
 }
 
-kuval table_imark(kuvm *vm, kuobj *o) {
-  kutobj *to = (kutobj*)o;
+kuval table_imark(kuvm *__nonnull vm, kuobj *__nonnull o) {
+  kutobj *__nonnull to = (kutobj *)o;
   ku_marktable(vm, &to->data);
   return NULL_VAL;
 }
 
 // ********************** string **********************
-kuval string_format(kuvm *vm, int argc, kuval *argv) {
+kuval string_format(kuvm *__nonnull vm, int argc, kuval *__nullable argv) {
   int needed;
-  char *chars = format_core(vm, argc, argv, &needed);
-  if (!chars) {
+  char *__nullable chars = format_core(vm, argc, argv, &needed);
+  if (chars == NULL) {
     return NULL_VAL;
   }
   return OBJ_VAL(ku_strtake(vm, chars, needed));
 }
 
-static kuval string_frombytes(kuvm *vm, kuaobj *arr) {
+static kuval string_frombytes(kuvm *__nonnull vm, kuaobj *__nonnull arr) {
   int len = arr->elements.count;
-  char* buff = KALLOC(vm, char, (size_t)len + 1);
+  char *__nonnull buff = KALLOC(vm, char, (size_t)len + 1);
   for (int i = 0; i < len; i++) {
     buff[i] = (int)AS_NUM(ku_arrget(vm, arr, i));
   }
   buff[len] = '\0';
-  kustr* res = ku_strtake(vm, buff, len);
+  kustr *__nonnull res = ku_strtake(vm, buff, len);
   return OBJ_VAL(res);
 }
 
-kuval string_scall(kuvm *vm, kustr *m, int argc, kuval *argv) {
-  if (strcmp(m->chars, "format")==0) {
+kuval string_scall(kuvm *__nonnull vm, kustr *__nonnull m, int argc, kuval *__nullable argv) {
+  if (strcmp(m->chars, "format") == 0) {
     return string_format(vm, argc, argv);
   } else if (strcmp(m->chars, "frombytes") == 0 && argc == 1 && IS_ARRAY(argv[0])) {
     return string_frombytes(vm, AS_ARRAY(argv[0]));
@@ -3472,17 +3468,17 @@ kuval string_scall(kuvm *vm, kustr *m, int argc, kuval *argv) {
   return NULL_VAL;
 }
 
-kuval string_iget(kuvm *vm, kuobj *obj, kustr *prop) {
+kuval string_iget(kuvm *__nonnull vm, kuobj *__nonnull obj, kustr *__nonnull prop) {
   if (prop == vm->countstr) {
-    kustr *str = (kustr*)obj;
+    kustr *__nonnull str = (kustr *)obj;
     return NUM_VAL(str->len);
   }
   return NULL_VAL;
 }
 
-kuval string_icall(kuvm *vm, kuobj *o, kustr *m, int argc, kuval *argv) {
+kuval string_icall(kuvm *__nonnull vm, kuobj *__nonnull o, kustr *__nonnull m, int argc, kuval *__nullable argv) {
   if (m->len == 6 && strcmp(m->chars, "substr") == 0) {
-    kustr *s = (kustr*)o;
+    kustr *__nonnull s = (kustr *)o;
     int start = 0;
     int end = s->len;
     bool empty = false;
@@ -3509,26 +3505,26 @@ kuval string_icall(kuvm *vm, kuobj *o, kustr *m, int argc, kuval *argv) {
     }
 
     int len = end - start + 1;
-    char* buff = KALLOC(vm, char, (size_t)len + 1);
+    char *__nonnull buff = KALLOC(vm, char, (size_t)len + 1);
     for (int i = 0; i < len; i++) {
       buff[i] = s->chars[start + i];
     }
     buff[len] = '\0';
-    kustr* res = ku_strtake(vm, buff, len);
+    kustr *__nonnull res = ku_strtake(vm, buff, len);
     return OBJ_VAL(res);
 
   }
   return NULL_VAL;
 }
 
-kuval math_sget(KU_UNUSED kuvm *vm, kustr *p) {
+kuval math_sget(KU_UNUSED kuvm *__nonnull vm, kustr *__nonnull p) {
   if (M2(p, "pi")) {
     return NUM_VAL(M_PI);
   }
   return NULL_VAL;
 }
 
-void ku_reglibs(kuvm *vm) {
+void ku_reglibs(kuvm *__nonnull vm) {
   ku_cfuncdef(vm, "clock", ku_clock);
   ku_cfuncdef(vm, "int", ku_intf);
   ku_cfuncdef(vm, "parseFloat", ku_parseFloat);
@@ -3536,16 +3532,16 @@ void ku_reglibs(kuvm *vm) {
   ku_cfuncdef(vm, "array", ku_arraycons);
   ku_cfuncdef(vm, "eval", ku_eval);
 
-  kucclass *math = ku_cclassnew(vm, "math");
+  kucclass *__nonnull math = ku_cclassnew(vm, "math");
   math->sget = math_sget;
   math->scall = math_scall;
   ku_cclassdef(vm, math);
 
-  kucclass *string = ku_cclassnew(vm, "string");
+  kucclass *__nonnull string = ku_cclassnew(vm, "string");
   string->scall = string_scall;
   ku_cclassdef(vm, string);
 
-  kucclass *table = ku_cclassnew(vm, "table");
+  kucclass *__nonnull table = ku_cclassnew(vm, "table");
   table->cons = table_cons;
   table->icall = table_icall;
   table->iget = table_iget;
@@ -3556,14 +3552,14 @@ void ku_reglibs(kuvm *vm) {
 }
 
 // ********************** closure **********************
-kuclosure *ku_closurenew(kuvm *vm, kufunc *f) {
+kuclosure *__nonnull ku_closurenew(kuvm *__nonnull vm, kufunc *__nonnull f) {
   ku_push(vm, OBJ_VAL(f)); // for GC
-  kuclosure *cl = KALLOC_OBJ(vm, kuclosure, OBJ_CLOSURE);
+  kuclosure *__nonnull cl = KALLOC_OBJ(vm, kuclosure, OBJ_CLOSURE);
   cl->func = f;
   cl->upcount = 0;  // for GC
   cl->upvals = NULL; // for GC
   ku_push(vm, OBJ_VAL(cl));
-  kuxobj **upvals = KALLOC(vm, kuxobj*, f->upcount);
+  kuxobj *__nullable *__nonnull upvals = KALLOC(vm, kuxobj*, f->upcount);
   ku_pop(vm);
   ku_pop(vm);
   for (int i = 0; i < f->upcount; i++) {
@@ -3575,8 +3571,8 @@ kuclosure *ku_closurenew(kuvm *vm, kufunc *f) {
 }
 
 // ********************** upvalue **********************
-kuxobj *ku_xobjnew(kuvm *vm, kuval *slot) {
-  kuxobj *uo = KALLOC_OBJ(vm, kuxobj, OBJ_UPVAL);
+kuxobj *__nonnull ku_xobjnew(kuvm *__nonnull vm, kuval *__nonnull slot) {
+  kuxobj *__nonnull uo = KALLOC_OBJ(vm, kuxobj, OBJ_UPVAL);
   uo->location = slot;
   uo->next = NULL;
   uo->closed = NULL_VAL;
@@ -3584,15 +3580,15 @@ kuxobj *ku_xobjnew(kuvm *vm, kuval *slot) {
 }
 
 // ********************** garbage collection **********************
-static void ku_markarray(kuvm *vm, kuarr *array) {
+static void ku_markarray(kuvm *__nonnull vm, kuarr *__nonnull array) {
   for (int i = 0; i < array->count; i++) {
     ku_markval(vm, array->values[i]);
   }
 }
 
-static void ku_traceobj(kuvm *vm, kuobj *o) {
+static void ku_traceobj(kuvm *__nonnull vm, kuobj *__nonnull o) {
   if (vm->flags & KVM_F_GCLOG) {
-    ku_printf(vm, "%p trace ", (void*)o);
+    ku_printf(vm, "%p trace ", (void *)o);
     ku_printval(vm, OBJ_VAL(o));
     ku_printf(vm, "\n");
   }
@@ -3603,14 +3599,14 @@ static void ku_traceobj(kuvm *vm, kuobj *o) {
       break;
 
     case OBJ_ARRAY: {
-      kuaobj *ao = (kuaobj*)o;
+      kuaobj *__nonnull ao = (kuaobj *)o;
       ku_markarray(vm, &ao->elements);
     }
       break;
 
     case OBJ_CINST: {
-      kunobj *i = (kunobj*)o;
-      ku_markobj(vm, (kuobj*)i->klass);
+      kunobj *__nonnull i = (kunobj *)o;
+      ku_markobj(vm, (kuobj *)i->klass);
       if (i->klass->imark) {
         i->klass->imark(vm, o);
       }
@@ -3618,19 +3614,19 @@ static void ku_traceobj(kuvm *vm, kuobj *o) {
       break;
 
     case OBJ_UPVAL:
-      ku_markval(vm, ((kuxobj*)o)->closed);
+      ku_markval(vm, ((kuxobj *)o)->closed);
       break;
 
     case OBJ_FUNC: {
-      kufunc *fn = (kufunc*)o;
-      ku_markobj(vm, (kuobj*)fn->name);
+      kufunc *__nonnull fn = (kufunc *)o;
+      ku_markobj(vm, (kuobj *)fn->name);
       ku_markarray(vm, &fn->chunk.constants);
     }
       break;
 
     case OBJ_CCLASS: {
-      kucclass *cc = (kucclass*)o;
-      ku_markobj(vm, (kuobj*)cc->name);
+      kucclass *__nonnull cc = (kucclass *)o;
+      ku_markobj(vm, (kuobj *)cc->name);
       if (cc->smark) {
         cc->smark(vm, o);
       }
@@ -3638,52 +3634,52 @@ static void ku_traceobj(kuvm *vm, kuobj *o) {
       break;
 
     case OBJ_CLASS: {
-      kuclass *c = (kuclass*)o;
-      ku_markobj(vm, (kuobj*)c->name);
+      kuclass *__nonnull c = (kuclass *)o;
+      ku_markobj(vm, (kuobj *)c->name);
       ku_marktable(vm, &c->methods);
     }
       break;
 
     case OBJ_INSTANCE: {
-      kuiobj *i = (kuiobj*)o;
-      ku_markobj(vm, (kuobj*)i->klass);
+      kuiobj *__nonnull i = (kuiobj *)o;
+      ku_markobj(vm, (kuobj *)i->klass);
       ku_marktable(vm, &i->fields);
     }
       break;
 
     case OBJ_BOUND_METHOD: {
-      kubound *bm = (kubound*)o;
+      kubound *__nonnull bm = (kubound *)o;
       ku_markval(vm, bm->receiver);
-      ku_markobj(vm, (kuobj*)bm->method);
+      ku_markobj(vm, (kuobj *)bm->method);
     }
       break;
 
     case OBJ_CLOSURE: {
-      kuclosure *cl = (kuclosure*)o;
-      ku_markobj(vm, (kuobj*)cl->func);
+      kuclosure *__nonnull cl = (kuclosure *)o;
+      ku_markobj(vm, (kuobj *)cl->func);
       for (int i = 0; i < cl->upcount; i++) {
-        ku_markobj(vm, (kuobj*)cl->upvals[i]);
+        ku_markobj(vm, (kuobj *)cl->upvals[i]);
       }
     }
       break;
   }
 }
 
-static void ku_tracerefs(kuvm *vm) {
+static void ku_tracerefs(kuvm *__nonnull vm) {
   while (vm->gccount > 0) {
-    kuobj *o = vm->gcstack[--vm->gccount];
+    kuobj *__nonnull o = vm->gcstack[--vm->gccount];
     ku_traceobj(vm, o);
   }
 }
 
-void ku_markobj(kuvm *vm, kuobj *o) {
+void ku_markobj(kuvm *__nonnull vm, kuobj *__nullable o) {
   if (o == NULL) {
     return;
   }
 
   if (o->marked) return;
   if (vm->flags & KVM_F_GCLOG) {
-    ku_printf(vm, "%p mark ", (void*) o);
+    ku_printf(vm, "%p mark ", (void *) o);
     ku_printval(vm, OBJ_VAL(o));
     ku_printf(vm, "\n");
   }
@@ -3693,55 +3689,55 @@ void ku_markobj(kuvm *vm, kuobj *o) {
   if (vm->gccap < vm->gccount + 1) {
     vm->gccap = CAPACITY_GROW(vm->gccap);
     // for VC++ C6308
-    kuobj **temp = (kuobj**)realloc(vm->gcstack, sizeof(kuobj*) * vm->gccap);
+    kuobj *__nonnull *__nonnull temp = (kuobj **)realloc(vm->gcstack, sizeof(kuobj *) * vm->gccap);
     assert(temp != NULL); // TODO: figure out code coverage
     vm->gcstack = temp;
   }
   vm->gcstack[vm->gccount++] = o;
 }
 
-static void ku_markval(kuvm *vm, kuval v) {
+static void ku_markval(kuvm *__nonnull vm, kuval v) {
   if (IS_OBJ(v)) {
     ku_markobj(vm, AS_OBJ(v));
   }
 }
 
-static void ku_marktable(kuvm *vm, kutab *tab) {
+static void ku_marktable(kuvm *__nonnull vm, kutab *__nonnull tab) {
   for (int i = 0; i < tab->capacity; i++) {
-    kuentry *e = &tab->entries[i];
-    ku_markobj(vm, (kuobj*)e->key);
+    kuentry *__nonnull e = &tab->entries[i];
+    ku_markobj(vm, (kuobj *)e->key);
     ku_markval(vm, e->value);
   }
 }
 
-static void ku_markcomproots(kuvm *vm) {
-  kucomp *comp = vm->compiler;
+static void ku_markcomproots(kuvm *__nonnull vm) {
+  kucomp *__nullable comp = vm->compiler;
   while (comp != NULL) {
-    ku_markobj(vm, (kuobj*)comp->function);
+    ku_markobj(vm, (kuobj *)comp->function);
     comp = comp->enclosing;
   }
 }
 
-static void ku_markroots(kuvm *vm) {
-  for (kuval *pv = vm->stack; pv < vm->sp; pv++) {
+static void ku_markroots(kuvm *__nonnull vm) {
+  for (kuval *__nonnull pv = vm->stack; pv < vm->sp; pv++) {
     ku_markval(vm, *pv);
   }
 
   for (int i = 0; i < vm->framecount; i++) {
-    ku_markobj(vm, (kuobj*)vm->frames[i].closure);
+    ku_markobj(vm, (kuobj *)vm->frames[i].closure);
   }
 
-  for (kuxobj *uo = vm->openupvals; uo != NULL; uo = uo->next) {
-    ku_markobj(vm, (kuobj*)uo);
+  for (kuxobj *__nullable uo = vm->openupvals; uo != NULL; uo = uo->next) {
+    ku_markobj(vm, (kuobj *)uo);
   }
 
   ku_marktable(vm, &vm->globals);
   ku_markcomproots(vm);
 }
 
-void ku_sweep(kuvm *vm) {
-  kuobj *prev = NULL;
-  kuobj *obj = vm->objects;
+void ku_sweep(kuvm *__nonnull vm) {
+  kuobj *__nullable prev = NULL;
+  kuobj *__nullable obj = vm->objects;
 
   while (obj != NULL) {
     if (obj->marked) {
@@ -3749,7 +3745,7 @@ void ku_sweep(kuvm *vm) {
       prev = obj;
       obj = obj->next;
     } else {
-      kuobj *unreached = obj;
+      kuobj *__nonnull unreached = obj;
       obj = obj->next;
       if (prev != NULL) {
         prev->next = obj;
@@ -3761,9 +3757,9 @@ void ku_sweep(kuvm *vm) {
   }
 }
 
-static void ku_freeweak(kuvm *vm, kutab *table) {
+static void ku_freeweak(kuvm *__nonnull vm, kutab *__nonnull table) {
   for (int i = 0; i < table->capacity; i++) {
-    kuentry *e = &table->entries[i];
+    kuentry *__nonnull e = &table->entries[i];
     if (e->key != NULL && !e->key->obj.marked) {
       ku_tabdel(vm, table, e->key);
     }
@@ -3772,7 +3768,7 @@ static void ku_freeweak(kuvm *vm, kutab *table) {
 
 #define GC_HEAP_GROW_FACTOR 2
 
-void ku_gc(kuvm *vm) {
+void ku_gc(kuvm *__nonnull vm) {
   if (vm->flags & KVM_F_GCLOG) {
     ku_printf(vm, "-- gc start\n");
   }
@@ -3780,8 +3776,8 @@ void ku_gc(kuvm *vm) {
   size_t bytes = vm->allocated;
 
   ku_markroots(vm);
-  ku_markobj(vm, (kuobj*)vm->initstr);
-  ku_markobj(vm, (kuobj*)vm->countstr);
+  ku_markobj(vm, (kuobj *)vm->initstr);
+  ku_markobj(vm, (kuobj *)vm->countstr);
   ku_tracerefs(vm);
   ku_freeweak(vm, &vm->strings);
   ku_sweep(vm);
@@ -3796,16 +3792,16 @@ void ku_gc(kuvm *vm) {
 }
 
 // ********************** class **********************
-kuclass *ku_classnew(kuvm *vm, kustr *name) {
-  kuclass *c = KALLOC_OBJ(vm, kuclass, OBJ_CLASS);
+kuclass *__nonnull ku_classnew(kuvm *__nonnull vm, kustr *__nonnull name) {
+  kuclass *__nonnull c = KALLOC_OBJ(vm, kuclass, OBJ_CLASS);
   c->name = name;
   ku_tabinit(vm, &c->methods);
   return c;
 }
 
 // ********************** instance **********************
-kuiobj *ku_instnew(kuvm *vm, kuclass *klass) {
-  kuiobj *i = KALLOC_OBJ(vm, kuiobj, OBJ_INSTANCE);
+kuiobj *__nonnull ku_instnew(kuvm *__nonnull vm, kuclass *__nonnull klass) {
+  kuiobj *__nonnull i = KALLOC_OBJ(vm, kuiobj, OBJ_INSTANCE);
   i->klass = klass;
   ku_tabinit(vm, &i->fields);
   return i;
@@ -3813,15 +3809,15 @@ kuiobj *ku_instnew(kuvm *vm, kuclass *klass) {
 
 
 // ********************** bound method **********************
-kubound *ku_boundnew(kuvm *vm, kuval receiver, kuclosure *method) {
-  kubound *bm = KALLOC_OBJ(vm, kubound, OBJ_BOUND_METHOD);
+kubound *__nonnull ku_boundnew(kuvm *__nonnull vm, kuval receiver, kuclosure *__nonnull method) {
+  kubound *__nonnull bm = KALLOC_OBJ(vm, kubound, OBJ_BOUND_METHOD);
   bm->receiver = receiver;
   bm->method = method;
   return bm;
 }
 
 // ********************** print **********************
-void ku_printf(kuvm *vm, const char *fmt, ...) {
+void ku_printf(kuvm *__nonnull vm, const char *__nonnull fmt, ...) {
   va_list args;
 
   if (vm->flags & KVM_F_QUIET) {
@@ -3833,7 +3829,7 @@ void ku_printf(kuvm *vm, const char *fmt, ...) {
   va_end(args);
 }
 
-void ku_printmem(kuvm *vm) {
+void ku_printmem(kuvm *__nonnull vm) {
   ku_printf(vm, "allocated: %ld\n", vm->allocated);
 #ifdef TRACE_OBJ_COUNTS
   ku_printf(vm, "  OBJ_FUNC:          %d\n", vm->alloc_counts[OBJ_FUNC]);
@@ -3850,7 +3846,7 @@ void ku_printmem(kuvm *vm) {
 #endif // TRACE_OBJ_COUNTS
 }
 
-static void ku_printobj(kuvm* vm, kuval val) {
+static void ku_printobj(kuvm *__nonnull vm, kuval val) {
   switch (OBJ_TYPE(val)) {
     case OBJ_FUNC:
       ku_printfunc(vm, AS_FUNC(val));
@@ -3862,12 +3858,12 @@ static void ku_printobj(kuvm* vm, kuval val) {
       ku_printf(vm, "<array %d>", AS_ARRAY(val)->elements.count);
       break;
     case OBJ_CINST: {
-      kunobj *i = AS_CINST(val);
+      kunobj *__nonnull i = AS_CINST(val);
       ku_printf(vm, "<%s instance>", i->klass->name->chars);
     }
       break;
     case OBJ_CCLASS: {
-      kucclass *cc = AS_CCLASS(val);
+      kucclass *__nonnull cc = AS_CCLASS(val);
       ku_printf(vm, "<class %s>", cc->name->chars);
     }
       break;
@@ -3892,7 +3888,7 @@ static void ku_printobj(kuvm* vm, kuval val) {
   }
 }
 
-void ku_printval(kuvm *vm, kuval value) {
+void ku_printval(kuvm *__nonnull vm, kuval value) {
 
   if (IS_BOOL(value)) {
     ku_printf(vm, AS_BOOL(value) ? "true" : "false");
@@ -3905,7 +3901,7 @@ void ku_printval(kuvm *vm, kuval value) {
   }
 }
 
-static void ku_printfunc(kuvm *vm, kufunc *fn) {
+static void ku_printfunc(kuvm *__nonnull vm, kufunc *__nonnull fn) {
   if (fn->name) {
     ku_printf(vm, "<fn %.*s>", fn->name->len, fn->name);
   } else {
@@ -3913,9 +3909,9 @@ static void ku_printfunc(kuvm *vm, kufunc *fn) {
   }
 }
 
-void ku_printstack(kuvm *vm) {
+void ku_printstack(kuvm *__nonnull vm) {
   ku_printf(vm, " [");
-  for (kuval* vp = vm->stack; vp < vm->sp; vp++) {
+  for (kuval *__nonnull vp = vm->stack; vp < vm->sp; vp++) {
     ku_printval(vm, *vp);
     if (vp < vm->sp - 1) {
       ku_printf(vm, ",");
@@ -3926,12 +3922,12 @@ void ku_printstack(kuvm *vm) {
 }
 
 // ********************** loop patch **********************
-void ku_loopinit(KU_UNUSED kuvm *vm, kuloop *loop) {
+void ku_loopinit(KU_UNUSED kuvm *__nonnull vm, kuloop *__nonnull loop) {
   loop->breakpatch.count = 0;
   loop->continuepatch.count = 0;
 }
 
-void ku_emitpatch(kuvm *vm, kupatch *patch, uint8_t op) {
+void ku_emitpatch(kuvm *__nonnull vm, kupatch *__nonnull patch, uint8_t op) {
   if (patch->count == vm->max_patches) {
     ku_perr(vm, "max break / continue limit reached");
     return;
@@ -3939,21 +3935,21 @@ void ku_emitpatch(kuvm *vm, kupatch *patch, uint8_t op) {
   patch->offset[patch->count++] = ku_emitjump(vm, op);
 }
 
-void ku_patchall(kuvm *vm, kupatch *patch, uint16_t to, bool rev) {
+void ku_patchall(kuvm *__nonnull vm, kupatch *__nonnull patch, uint16_t to, bool rev) {
   for (int i = 0; i < patch->count; i++) {
-    kuchunk *c = ku_chunk(vm);
-    uint16_t delta = (rev) ? patch->offset[i] - to + 2 : to - patch->offset[i];
+    kuchunk *__nonnull c = ku_chunk(vm);
+    uint16_t delta = rev ? patch->offset[i] - to + 2 : to - patch->offset[i];
     c->code[patch->offset[i]] = (delta >> 8) & 0xff;
     c->code[patch->offset[i]+1] = delta & 0xff;
   }
 }
 
 // ********************** native class **********************
-kucclass *ku_cclassnew(kuvm *vm, const char *name) {
+kucclass *__nonnull ku_cclassnew(kuvm *__nonnull vm, const char *__nonnull name) {
   int len = (int)strlen(name);
-  kustr *sname = ku_strfrom(vm, name, len);
+  kustr *__nonnull sname = ku_strfrom(vm, name, len);
 
-  kucclass *cc = KALLOC_OBJ(vm, kucclass, OBJ_CCLASS);
+  kucclass *__nonnull cc = KALLOC_OBJ(vm, kucclass, OBJ_CCLASS);
   cc->name = sname;
   cc->cons = NULL;
   cc->scall = NULL;
@@ -3969,25 +3965,25 @@ kucclass *ku_cclassnew(kuvm *vm, const char *name) {
   return cc;
 }
 
-void ku_cclassdef(kuvm *vm, kucclass *cc) {
+void ku_cclassdef(kuvm *__nonnull vm, kucclass *__nonnull cc) {
   ku_push(vm, OBJ_VAL(cc->name));
-  ku_push(vm, OBJ_VAL((kuobj*)cc));
+  ku_push(vm, OBJ_VAL((kuobj *)cc));
   ku_tabset(vm, &vm->globals, AS_STR(vm->stack[0]), vm->stack[1]);
   ku_pop(vm);
   ku_pop(vm);
 }
 
 // ********************** array object **********************
-kuaobj * ku_arrnew(kuvm* vm, int capacity) {
-  kuaobj *arr = KALLOC_OBJ(vm, kuaobj, OBJ_ARRAY);
+kuaobj *__nonnull ku_arrnew(kuvm *__nonnull vm, int capacity) {
+  kuaobj *__nonnull arr = KALLOC_OBJ(vm, kuaobj, OBJ_ARRAY);
   ku_push(vm, OBJ_VAL(arr)); // for GC
   arr->elements.count = 0;
   arr->elements.capacity = capacity;
   arr->elements.values = NULL;
 
-  kuarr *e = &arr->elements;
+  kuarr *__nonnull e = &arr->elements;
   if (capacity > 0) {
-    e->values = (kuval*)ku_alloc(vm, NULL, 0, sizeof(kuval)*capacity);
+    e->values = (kuval *)ku_alloc(vm, NULL, 0, sizeof(kuval)*capacity);
 
     for (int i = 0; i < capacity; i++) {
       e->values[i] = NULL_VAL;
@@ -3997,14 +3993,14 @@ kuaobj * ku_arrnew(kuvm* vm, int capacity) {
   return arr;
 }
 
-void ku_arrset(kuvm* vm, kuaobj* arr, int index, kuval value) {
-  kuarr *e = &arr->elements;
-
+void ku_arrset(kuvm *__nonnull vm, kuaobj *__nullable arr, int index, kuval value) {
   if (arr == NULL) {
     // TODO: add code coverage
     ku_err(vm, "null array");
     return;
   }
+
+  kuarr *__nonnull e = &arr->elements;
   int oldcount = e->count;
 
   if (e->capacity <= index) {
@@ -4020,7 +4016,7 @@ void ku_arrset(kuvm* vm, kuaobj* arr, int index, kuval value) {
   e->count = (index >= oldcount) ? index + 1 : e->count;
 }
 
-kuval ku_arrget(kuvm* vm, kuaobj* arr, int index) {
+kuval ku_arrget(kuvm *__nonnull vm, kuaobj *__nullable arr, int index) {
   if (arr == NULL) {
     // TODO: add code coverage
     ku_err(vm, "null array");
