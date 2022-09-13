@@ -1669,7 +1669,7 @@ kuval ku_peek(kuvm *__nonnull vm, int distance) {
 }
 
 kuvm *__nonnull ku_newvm(int stack_max) {
-  kuvm *__nonnull vm = malloc(sizeof(kuvm) + stack_max*sizeof(kuval));
+  kuvm *__nullable vm = malloc(sizeof(kuvm) + stack_max*sizeof(kuval));
   assert(vm != NULL); // TODO: figure out code coverage
 
   vm->debugger = NULL;
@@ -2572,7 +2572,9 @@ char *__nonnull ku_alloc(kuvm *__nonnull vm, void *__nullable ptr, size_t oldsiz
   //   return NULL;
   // }
 
-  return realloc(ptr, nsize);
+  ptr = realloc(ptr, nsize);
+  assert(ptr != NULL);
+  return ptr;
 }
 
 // ********************** chunk **********************
@@ -3262,7 +3264,7 @@ static kuval ku_eval(KU_UNUSED kuvm *__nonnull vm, int argc, kuval *__nullable a
     temp->flags = KVM_F_QUIET;
     const char *__nonnull line = AS_STR(argv[0])->chars;
     size_t len = strlen(line) + 8;
-    char *__nonnull buffer = malloc(len);
+    char *__nullable buffer = malloc(len);
     assert(buffer); // TODO: figure out code coverage
     sprintf(buffer, "let _=%s;", line);
     kures res = ku_exec(temp, buffer);
@@ -3689,7 +3691,7 @@ void ku_markobj(kuvm *__nonnull vm, kuobj *__nullable o) {
   if (vm->gccap < vm->gccount + 1) {
     vm->gccap = CAPACITY_GROW(vm->gccap);
     // for VC++ C6308
-    kuobj *__nonnull *__nonnull temp = (kuobj **)realloc(vm->gcstack, sizeof(kuobj *) * vm->gccap);
+    kuobj *__nonnull *__nullable temp = (kuobj **)realloc(vm->gcstack, sizeof(kuobj *) * vm->gccap);
     assert(temp != NULL); // TODO: figure out code coverage
     vm->gcstack = temp;
   }
