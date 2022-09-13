@@ -544,7 +544,6 @@ typedef struct kuvm {
   int gccap;        // gray object capacity
   kuobj *__nonnull *__nullable gcstack;  // gray object stack
   kuval stack[];
-
 } kuvm;
 
 #define ku_new()  ku_newvm(STACK_MAX)

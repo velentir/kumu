@@ -10,6 +10,6 @@
 
 #include <stdio.h>
 
-int ku_main(int argc, const char* argv[]);
+int ku_main(int argc, const char *__nonnull argv[__nullable]);
 
 #endif // KUMAIN_H

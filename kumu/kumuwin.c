@@ -11,7 +11,7 @@
 #include "kutest.h"
 #endif // KVM_TEST
 
-int main(int argc, char **argv)
+int main(int argc, const char *__nonnull argv[__nullable])
 {
 #ifdef KVM_MAIN
 	return ku_main(argc, argv);
