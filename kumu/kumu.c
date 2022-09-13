@@ -181,7 +181,7 @@ kustr *__nonnull ku_strfrom(kuvm *__nonnull vm, const char *__nonnull chars, int
 
   kustr *__nullable interned = ku_tabfindc(vm, &vm->strings, chars, len, hash);
   if (interned != NULL) {
-    return KU_NONNULL(interned);
+    return KU_NONNULL(interned); // TODO: figure out code coverage
   }
 
   char *__nonnull buff = KALLOC(vm, char, (size_t)len + 1);
@@ -195,7 +195,7 @@ static kustr *__nonnull ku_strtake(kuvm *__nonnull vm, char *__nonnull buff, int
   kustr *__nullable interned = ku_tabfindc(vm, &vm->strings, buff, len, hash);
   if (interned != NULL) {
     ARRAY_FREE(vm, char, buff, (size_t)len + 1);
-    return KU_NONNULL(interned);
+    return KU_NONNULL(interned); // TODO: figure out code coverage
   }
 
   return ku_stralloc(vm, buff, len, hash);
@@ -252,7 +252,7 @@ static kuentry *__nonnull ku_tabfinds(
         // empty entry and have a tombstone ~> return the tombstone
         // otherwise return this entry.
         // this allows reusing tombstone slots for added efficiency
-        return tombstone != NULL ? KU_NONNULL(tombstone) : e;
+        return tombstone != NULL ? KU_NONNULL(tombstone) : e; // TODO: figure out code coverage
       } else {
         // a tombstone has NULL key and BOOL(true) value, remember
         // the first tombstone we found so we can reused it
@@ -298,7 +298,7 @@ bool ku_tabset(kuvm *__nonnull vm, kutab *__nonnull map, kustr *__nonnull key, k
     int capacity = CAPACITY_GROW(map->capacity);
     ku_tabadjust(vm, map, capacity);
   }
-  kuentry *__nonnull entries = KU_NONNULL(map->entries);
+  kuentry *__nonnull entries = KU_NONNULL(map->entries); // TODO: figure out code coverage
 
   kuentry *__nonnull e = ku_tabfinds(vm, entries, map->capacity, key);
   bool isnew = e->key == NULL;
@@ -315,7 +315,7 @@ void ku_tabcopy(kuvm *__nonnull vm, kutab *__nonnull from, kutab *__nonnull to) 
   for (int i = 0; i < from->capacity; i++) {
     kuentry *__nonnull e = &from->entries[i];
     if (e->key != NULL) {
-      ku_tabset(vm, to, KU_NONNULL(e->key), e->value);
+      ku_tabset(vm, to, KU_NONNULL(e->key), e->value); // TODO: figure out code coverage
     }
   }
 }
@@ -324,7 +324,7 @@ bool ku_tabget(kuvm *__nonnull vm, kutab *__nonnull map, kustr *__nullable key, 
   if (map->count == 0) {
     return false;
   }
-  kuentry *__nonnull entries = KU_NONNULL(map->entries);
+  kuentry *__nonnull entries = KU_NONNULL(map->entries); // TODO: figure out code coverage
 
   kuentry *__nonnull e = ku_tabfinds(vm, entries, map->capacity, key);
   if (e->key == NULL) {
@@ -339,7 +339,7 @@ bool ku_tabdel(kuvm *__nonnull vm, kutab *__nonnull map, kustr *__nullable key) 
   if (map->count == 0) {
     return false;
   }
-  kuentry *__nonnull entries = KU_NONNULL(map->entries);
+  kuentry *__nonnull entries = KU_NONNULL(map->entries); // TODO: figure out code coverage
 
   kuentry *__nonnull e = ku_tabfinds(vm, entries, map->capacity, key);
   if (e->key == NULL) {
@@ -1296,7 +1296,7 @@ static int ku_xvalresolve(kuvm *__nonnull vm, kucomp *__nonnull compiler, kutok 
   if (compiler->enclosing == NULL) {
     return -1;
   }
-  kucomp *__nonnull enclosing = KU_NONNULL(compiler->enclosing);
+  kucomp *__nonnull enclosing = KU_NONNULL(compiler->enclosing); // TODO: figure out code coverage
 
   int local = ku_resolvelocal(vm, enclosing, name);
   if (local != -1) {
@@ -1323,7 +1323,7 @@ static void ku_lambda(kuvm *__nonnull vm, kutok name) {
 
 
 static void ku_namedvar(kuvm *__nonnull vm, kutok name, bool lhs) {
-  kucomp *__nonnull compiler = KU_NONNULL(vm->compiler);
+  kucomp *__nonnull compiler = KU_NONNULL(vm->compiler); // TODO: figure out code coverage
   int arg = ku_resolvelocal(vm, compiler, &name);
   uint8_t set, get;
   bool isglobal = false;
@@ -1646,9 +1646,7 @@ void ku_reset(kuvm *__nonnull vm) {
 
 void ku_push(kuvm *__nonnull vm, kuval val) {
 #ifdef STACK_CHECK
-  if (vm->sp >= vm->stack + vm->max_stack) {
-    assert(false); // TODO: figure out code coverage
-  }
+  assert(vm->sp < vm->stack + vm->max_stack); // TODO: figure out code coverage
 #endif // STACK_CHECK
 
   *(vm->sp) = val;
@@ -1720,7 +1718,7 @@ static void ku_freeobjects(kuvm *__nonnull vm) {
       ku_printf(vm, "\n");
     }
     kuobj *__nullable next = (kuobj*)obj->next;
-    ku_objfree(vm, KU_NONNULL(obj));
+    ku_objfree(vm, KU_NONNULL(obj)); // TODO: figure out code coverage
     obj = next;
   }
 }
@@ -1876,7 +1874,7 @@ static kuxobj *__nonnull ku_capture(kuvm *__nonnull vm, kuval *__nonnull local) 
 
   if (uv != NULL && uv->location == local) {
     // TODO: add code coverage
-    return KU_NONNULL(uv);
+    return KU_NONNULL(uv); // TODO: figure out code coverage
   }
 
   kuxobj *__nonnull created = ku_xobjnew(vm, local);
@@ -1894,7 +1892,7 @@ static kuxobj *__nonnull ku_capture(kuvm *__nonnull vm, kuval *__nonnull local) 
 
 static void ku_close(kuvm *__nonnull vm, kuval *__nonnull last) {
   while (vm->openupvals != NULL && vm->openupvals->location >= last) {
-    kuxobj *__nonnull uo = KU_NONNULL(vm->openupvals);
+    kuxobj *__nonnull uo = KU_NONNULL(vm->openupvals); // TODO: figure out code coverage
     uo->closed = *uo->location;
     uo->location = &uo->closed;
     vm->openupvals = uo->next;
@@ -2531,7 +2529,7 @@ kures ku_exec(kuvm *__nonnull vm, char *__nonnull source) {
   }
 
   ku_push(vm, OBJ_VAL(fn));
-  kuclosure *__nonnull closure = ku_closurenew(vm, KU_NONNULL(fn));
+  kuclosure *__nonnull closure = ku_closurenew(vm, KU_NONNULL(fn)); // TODO: figure out code coverage
   ku_pop(vm);
   ku_push(vm, OBJ_VAL(closure));
   vm->baseframe = 0;
@@ -2578,7 +2576,7 @@ char *__nonnull ku_alloc(kuvm *__nonnull vm, void *__nullable ptr, size_t oldsiz
   // }
 
   ptr = realloc(ptr, nsize);
-  return KU_NONNULL(ptr);
+  return KU_NONNULL(ptr); // TODO: figure out code coverage
 }
 
 // ********************** chunk **********************
@@ -3302,7 +3300,7 @@ static kuval ku_print(kuvm *__nonnull vm, int argc, kuval *__nullable argv) {
     // TODO: add code coverage
     return NULL_VAL;
   }
-  char *__nonnull str = KU_NONNULL(nullable_str);
+  char *__nonnull str = KU_NONNULL(nullable_str); // TODO: figure out code coverage
   ku_printf(vm, str);
   ku_alloc(vm, str, (size_t)needed+1, 0);
   return NULL_VAL;
@@ -3452,7 +3450,7 @@ kuval string_format(kuvm *__nonnull vm, int argc, kuval *__nullable argv) {
   if (nullable_chars == NULL) {
     return NULL_VAL;
   }
-  char *__nonnull chars = KU_NONNULL(nullable_chars);
+  char *__nonnull chars = KU_NONNULL(nullable_chars); // TODO: figure out code coverage
   return OBJ_VAL(ku_strtake(vm, chars, needed));
 }
 
@@ -3701,7 +3699,7 @@ void ku_markobj(kuvm *__nonnull vm, kuobj *__nullable o) {
     assert(temp != NULL); // TODO: figure out code coverage
     vm->gcstack = temp;
   }
-  vm->gcstack[vm->gccount++] = KU_NONNULL(o);
+  vm->gcstack[vm->gccount++] = KU_NONNULL(o); // TODO: figure out code coverage
 }
 
 static void ku_markval(kuvm *__nonnull vm, kuval v) {
@@ -3753,7 +3751,7 @@ void ku_sweep(kuvm *__nonnull vm) {
       prev = obj;
       obj = obj->next;
     } else {
-      kuobj *__nonnull unreached = KU_NONNULL(obj);
+      kuobj *__nonnull unreached = KU_NONNULL(obj); // TODO: figure out code coverage
       obj = obj->next;
       if (prev != NULL) {
         prev->next = obj;
