@@ -101,7 +101,7 @@ void ku_objfree(kuvm *__nonnull vm, kuobj *__nonnull obj) {
       break;
 
     case OBJ_CINST: {
-      kunobj *__nonnull i = (kunobj*)obj;
+      kunobj *__nonnull i = (kunobj *)obj;
       if (i->klass->ifree) {
         i->klass->ifree(vm, obj);
       }
@@ -176,7 +176,7 @@ static kustr *__nonnull ku_stralloc(kuvm *__nonnull vm, char *__nonnull chars, i
   return str;
 }
 
-kustr* ku_strfrom(kuvm *__nonnull vm, const char *__nonnull chars, int len) {
+kustr *__nonnull ku_strfrom(kuvm *__nonnull vm, const char *__nonnull chars, int len) {
   uint32_t hash = ku_strhash(chars, len);
 
   kustr *__nullable interned = ku_tabfindc(vm, &vm->strings, chars, len, hash);
@@ -441,7 +441,7 @@ static kutok ku_tokmake(kuvm *__nonnull vm, kutok_t type) {
   kutok token;
   token.type = type;
   token.start = vm->scanner.start;
-  token.len = (int) (vm->scanner.curr - vm->scanner.start);
+  token.len = (int)(vm->scanner.curr - vm->scanner.start);
   token.line = vm->scanner.line;
   return token;
 }
