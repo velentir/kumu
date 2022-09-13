@@ -20,6 +20,11 @@ extern "C" {
 
 #define KU_UNUSED __attribute__((unused))
 
+#define KU_NONNULL(ptr) ({ \
+  assert(ptr != NULL); \
+  (__typeof(*(ptr))* __nonnull)ptr; \
+})
+
 //#define TRACE_ENABLED 1
 //#define STACK_CHECK 1
 //#define TRACE_OBJ_COUNTS 1
@@ -141,19 +146,19 @@ static inline double ku_val2num(kuval v) {
 
 #define AS_NUM(v) ku_val2num(v)
 #define AS_BOOL(v) ((v) == TRUE_VAL)
-#define AS_OBJ(v) ((kuobj*)(uintptr_t)((v) & ~(SIGN_BIT | QNAN)))
+#define AS_OBJ(v) ((kuobj *)(uintptr_t)((v) & ~(SIGN_BIT | QNAN)))
 
-#define AS_STR(v) ((kustr*)AS_OBJ(v))
-#define AS_CSTR(v) (((kustr*)AS_OBJ(v))->chars)
-#define AS_FUNC(v) ((kufunc*)AS_OBJ(v))
-#define AS_CFUNC(v) (((kucfunc*)AS_OBJ(v))->fn)
-#define AS_CCLASS(v) ((kucclass*)AS_OBJ(v))
-#define AS_CLOSURE(v) ((kuclosure*)AS_OBJ(v))
-#define AS_CLASS(v) ((kuclass*)AS_OBJ(v))
-#define AS_INSTANCE(v) ((kuiobj*)AS_OBJ(v))
-#define AS_BOUND_METHOD(v) ((kubound*)AS_OBJ(v))
-#define AS_CINST(v) ((kunobj*)AS_OBJ(v))
-#define AS_ARRAY(v) ((kuaobj*)AS_OBJ(v))
+#define AS_STR(v) ((kustr *)AS_OBJ(v))
+#define AS_CSTR(v) (((kustr *)AS_OBJ(v))->chars)
+#define AS_FUNC(v) ((kufunc *)AS_OBJ(v))
+#define AS_CFUNC(v) (((kucfunc *)AS_OBJ(v))->fn)
+#define AS_CCLASS(v) ((kucclass *)AS_OBJ(v))
+#define AS_CLOSURE(v) ((kuclosure *)AS_OBJ(v))
+#define AS_CLASS(v) ((kuclass *)AS_OBJ(v))
+#define AS_INSTANCE(v) ((kuiobj *)AS_OBJ(v))
+#define AS_BOUND_METHOD(v) ((kubound *)AS_OBJ(v))
+#define AS_CINST(v) ((kunobj *)AS_OBJ(v))
+#define AS_ARRAY(v) ((kuaobj *)AS_OBJ(v))
 
 #define OBJ_TYPE(v) (AS_OBJ(v)->type)
 
@@ -317,8 +322,8 @@ typedef struct {
 void ku_tabinit(kuvm *__nonnull vm, kutab *__nonnull t);
 void ku_tabfree(kuvm *__nonnull vm, kutab *__nonnull t);
 bool ku_tabset(kuvm *__nonnull vm, kutab *__nonnull t, kustr *__nonnull key, kuval value);
-bool ku_tabget(kuvm *__nonnull vm, kutab *__nonnull t, kustr *__nonnull key, kuval *__nonnull value);
-bool ku_tabdel(kuvm *__nonnull vm, kutab *__nonnull t, kustr *__nonnull key);
+bool ku_tabget(kuvm *__nonnull vm, kutab *__nonnull t, kustr *__nullable key, kuval *__nonnull value);
+bool ku_tabdel(kuvm *__nonnull vm, kutab *__nonnull t, kustr *__nullable key);
 void ku_tabcopy(kuvm *__nonnull vm, kutab *__nonnull t, kutab *__nonnull to);
 kustr *__nullable ku_tabfindc(
     kuvm *__nonnull vm, kutab *__nonnull t, const char *__nonnull chars, int len, uint32_t hash);
@@ -463,13 +468,13 @@ typedef struct {
 // ********************** frames **********************
 typedef struct {
   kuclosure *__nonnull closure;
-  uint8_t *__nonnull ip;
+  uint8_t *__nullable ip;
   kuval *__nonnull bp;
 } kuframe;
 
 // ********************** class compiler **********************
 typedef struct kuclasscomp {
-  struct kuclasscomp *__nonnull enclosing;
+  struct kuclasscomp *__nullable enclosing;
   bool hassuper;
 } kuclasscomp;
 
@@ -582,12 +587,12 @@ void ku_emitpatch(kuvm *__nonnull vm, kupatch *__nonnull patch, uint8_t op);
 void ku_patchall(kuvm *__nonnull vm, kupatch *__nonnull patch, uint16_t to, bool rev);
 
 // ********************** branching **********************
-void ku_ifstmt(kuvm *__nonnull vm, kuloop *__nonnull loop);
+void ku_ifstmt(kuvm *__nonnull vm, kuloop *__nullable loop);
 int ku_emitjump(kuvm *__nonnull vm, k_op op);
 void ku_patchjump(kuvm *__nonnull vm, int offset);
 void ku_emitloop(kuvm *__nonnull vm, int start);
-void ku_whilestmt(kuvm *__nonnull vm, kuloop *__nonnull loop);
-void ku_forstmt(kuvm *__nonnull vm, kuloop *__nonnull loop);
+void ku_whilestmt(kuvm *__nonnull vm, kuloop *__nullable loop);
+void ku_forstmt(kuvm *__nonnull vm, kuloop *__nullable loop);
 int ku_jumpdis(kuvm *__nonnull vm, const char *__nonnull name, int sign, kuchunk *__nonnull chunk, int offset);
 void ku_and(kuvm *__nonnull vm, bool lhs);
 void ku_or(kuvm *__nonnull vm, bool lhs);

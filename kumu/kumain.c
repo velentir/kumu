@@ -101,7 +101,7 @@ kures ku_runfile(kuvm *__nonnull vm, const char *__nonnull file) {
   if (source == NULL) {
     return KVM_FILE_NOTFOUND;
   }
-  kures res = ku_exec(vm, source);
+  kures res = ku_exec(vm, KU_NONNULL(source));
   free(source);
   return res;
 }
@@ -306,7 +306,7 @@ int ku_main(int argc, const char *__nonnull argv[__nullable]) {
   if (file == NULL) {
     ku_repl(vm);
   } else {
-    kures res = ku_runfile(vm, file);
+    kures res = ku_runfile(vm, KU_NONNULL(file));
     if (res == KVM_ERR_RUNTIME) {
       ku_free(vm);
       exit(70);

@@ -22,6 +22,7 @@ endif # CC
 C_STD?=c11
 CFLAGS+=-std=$(C_STD)
 CFLAGS+=-Wall -Wextra -Werror -pedantic
+CFLAGS+=-Wnullable-to-nonnull-conversion
 CFLAGS+=-Wno-gnu-statement-expression -Wno-gnu-zero-variadic-macro-arguments -Wno-nullability-extension
 LLVMCOVFLAGS=-fprofile-instr-generate -fcoverage-mapping
 LLVMCOVLDFLAGS=-fprofile-instr-generate
