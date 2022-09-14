@@ -178,7 +178,8 @@ void ku_arrinit(kuvm *__nonnull vm, kuarr *__nonnull array);
 void ku_arrwrite(kuvm *__nonnull vm, kuarr *__nonnull array, kuval value);
 
 // ********************** memory **********************
-char *__nonnull ku_alloc(kuvm *__nonnull vm, void *__nullable p, size_t oldsize, size_t newsize);
+char *__nonnull ku_alloc(kuvm *__nonnull vm, void *__nullable ptr, size_t oldsize, size_t newsize);
+void ku_free(kuvm *__nonnull vm, void *__nullable ptr, size_t oldsize);
 kuobj *__nonnull ku_objalloc(kuvm *__nonnull vm, size_t size, kuobj_t type);
 
 // ********************** bytecodes **********************
