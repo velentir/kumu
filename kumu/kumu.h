@@ -553,7 +553,7 @@ typedef struct kuvm {
 
 #define ku_new()  ku_newvm(STACK_MAX)
 kuvm *__nonnull ku_newvm(int stack_size);
-void ku_free(kuvm *__nonnull vm);
+void ku_freevm(kuvm *__nonnull vm);
 kures ku_run(kuvm *__nonnull vm);
 kures ku_runfile(kuvm *__nonnull vm, const char *__nonnull file);
 kures ku_exec(kuvm *__nonnull vm, char *__nonnull source);

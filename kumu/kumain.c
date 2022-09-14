@@ -308,19 +308,19 @@ int ku_main(int argc, const char *__nonnull argv[__nullable]) {
   } else {
     kures res = ku_runfile(vm, KU_NONNULL(file));
     if (res == KVM_ERR_RUNTIME) {
-      ku_free(vm);
+      ku_freevm(vm);
       exit(70);
     }
     if (res == KVM_ERR_SYNTAX)  {
-      ku_free(vm);
+      ku_freevm(vm);
       exit(65);
     }
     if (res == KVM_FILE_NOTFOUND) {
       fprintf(stderr, "file error '%s'\n", argv[1]);
-      ku_free(vm);
+      ku_freevm(vm);
       exit(74);
     }
   }
-  ku_free(vm);
+  ku_freevm(vm);
   return 0;
 }

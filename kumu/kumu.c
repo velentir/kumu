@@ -1723,7 +1723,7 @@ static void ku_freeobjects(kuvm *__nonnull vm) {
   }
 }
 
-void ku_free(kuvm *__nonnull vm) {
+void ku_freevm(kuvm *__nonnull vm) {
   vm->initstr = NULL; // free_objects will take care of it
   vm->countstr = NULL;
 
@@ -3276,7 +3276,7 @@ static kuval ku_eval(KU_UNUSED kuvm *__nonnull vm, int argc, kuval *__nullable a
       kustr *__nonnull key = ku_strfrom(temp, "_", 1);
       ku_tabget(temp, &temp->globals, key, &ret);
     }
-    ku_free(temp);
+    ku_freevm(temp);
     return ret;
   }
   return NULL_VAL;
