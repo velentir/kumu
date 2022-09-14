@@ -1671,38 +1671,56 @@ kuval ku_peek(kuvm *__nonnull vm, int distance) {
   return vm->sp[-1 - distance];
 }
 
-kuvm *__nonnull ku_newvm(int stack_max) {
-  kuvm *__nullable nullable_vm = malloc(sizeof(kuvm) + stack_max*sizeof(kuval));
-  kuvm *__nonnull vm = KU_NONNULL(nullable_vm); // TODO: figure out code coverage
+static void *__nonnull _kuenv_alloc(size_t size) {
+  void *__nullable ptr = malloc(size);
+  return KU_NONNULL(ptr); // TODO: figure out code coverage
+}
 
-  vm->debugger = NULL;
-  vm->allocated = sizeof(kuvm);
-  vm->max_params = 255;
-  vm->max_const = UINT8_MAX;
-  vm->max_closures = UPSTACK_MAX;
-  vm->max_jump = UINT16_MAX;
-  vm->max_body = UINT16_MAX;
-  vm->max_frames = FRAMES_MAX;
-  vm->max_locals = LOCALS_MAX;
-  vm->max_patches = PATCH_MAX;
-  vm->max_stack = stack_max;
+static void *__nonnull _kuenv_realloc(void *__nullable ptr, size_t size) {
+  ptr = realloc(ptr, size);
+  return KU_NONNULL(ptr); // TODO: figure out code coverage
+}
 
-  vm->flags = 0;
-  vm->curclass = NULL;
-  vm->gcnext = 1024*1024;
-  vm->gccount = 0;
-  vm->gccap = 0;
-  vm->gcstack = NULL;
-  vm->err = false;
-  vm->objects = NULL;
-  vm->openupvals = NULL;
-  vm->compiler = NULL;
+static void _kuenv_free(void *__nullable p) {
+  if (p != NULL) {
+    free(p);
+  }
+}
+
+static kuenv g_kuenv_default = {
+  .alloc = _kuenv_alloc,
+  .realloc = _kuenv_realloc,
+  .free = _kuenv_free,
+};
+
+kuvm *__nonnull ku_newvm(int stack_max, kuenv *__nullable env) {
+  if (env == NULL) {
+    env = &g_kuenv_default;
+  }
+
+  size_t size = sizeof(kuvm) + stack_max*sizeof(kuval);
+  kuvm *__nonnull vm = env->alloc(size);
+
+  *vm = (kuvm){
+    .env = *env,
+    .allocated = sizeof(kuvm),
+    .max_params = 255,
+    .max_const = UINT8_MAX,
+    .max_closures = UPSTACK_MAX,
+    .max_jump = UINT16_MAX,
+    .max_body = UINT16_MAX,
+    .max_frames = FRAMES_MAX,
+    .max_locals = LOCALS_MAX,
+    .max_patches = PATCH_MAX,
+    .max_stack = stack_max,
+    .gcnext = 1024*1024,
+  };
+
   ku_tabinit(vm, &vm->strings);
   ku_tabinit(vm, &vm->globals);
   ku_tabinit(vm, &vm->gconst);
   ku_reset(vm);
-  vm->initstr = NULL; // GC can run when we do str_copy below
-  vm->countstr = NULL;
+
   vm->initstr = ku_strfrom(vm, "init", 4);
   vm->countstr = ku_strfrom(vm, "count", 5);
 
@@ -1733,8 +1751,8 @@ void ku_freevm(kuvm *__nonnull vm) {
   ku_tabfree(vm, &vm->gconst);
   vm->allocated -= sizeof(kuvm);
   assert(vm->allocated == 0); // TODO: figure out code coverage
-  free(vm->gcstack);
-  free(vm);
+  vm->env.free(vm->gcstack);
+  vm->env.free(vm);
 }
 
 void ku_err(kuvm *__nonnull vm, const char *__nonnull fmt, ...) {

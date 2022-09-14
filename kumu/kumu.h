@@ -499,8 +499,19 @@ typedef kures(*debugcallback)(kuvm *__nonnull vm);
 #define KVM_F_GCSTRESS  0x00000080   // GC every alloc increase
 #define KVM_F_GCLOG     0x00000100   // Log GC action
 
+typedef void *__nonnull (*ku_alloc_t)(size_t size);
+typedef void *__nonnull (*ku_realloc_t)(void *__nullable ptr, size_t size);
+typedef void (*ku_free_t)(void *__nullable ptr);
+typedef struct kuenv {
+  ku_alloc_t __nonnull alloc;
+  ku_realloc_t __nonnull realloc;
+  ku_free_t __nonnull free;
+} kuenv;
+
 typedef struct kuvm {
   uint64_t flags;
+
+  kuenv env;
 
   int max_stack;
   int max_params;
@@ -551,8 +562,8 @@ typedef struct kuvm {
   kuval stack[];
 } kuvm;
 
-#define ku_new()  ku_newvm(STACK_MAX)
-kuvm *__nonnull ku_newvm(int stack_size);
+#define ku_new()  ku_newvm(STACK_MAX, NULL)
+kuvm *__nonnull ku_newvm(int stack_size, kuenv *__nullable env);
 void ku_freevm(kuvm *__nonnull vm);
 kures ku_run(kuvm *__nonnull vm);
 kures ku_runfile(kuvm *__nonnull vm, const char *__nonnull file);

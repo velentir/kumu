@@ -301,7 +301,7 @@ int ku_main(int argc, const char *__nonnull argv[__nullable]) {
     }
   }
 
-  kuvm *__nonnull vm = ku_newvm(stack == 0 ? STACK_MAX : stack);
+  kuvm *__nonnull vm = ku_newvm(stack == 0 ? STACK_MAX : stack, NULL);
   ku_reglibs(vm);
   if (file == NULL) {
     ku_repl(vm);
