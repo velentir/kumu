@@ -30,7 +30,7 @@
 
 #endif // USE_READLINE
 
-void trim_line(char *buffer) {
+void trim_line(char *__nonnull buffer) {
   size_t l = strlen(buffer);
   if (l > 0 && buffer[l-1] == '\n') {
     buffer[l-1] = '\0';
@@ -38,21 +38,21 @@ void trim_line(char *buffer) {
 }
 
 #ifdef TRACE_ENABLED
-kuchunk *ku_chunk_runtime(kuvm *vm);
-int ku_bytedis(kuvm *vm, kuchunk *chunk, int offset);
+kuchunk *__nonnull ku_chunk_runtime(kuvm *__nonnull vm);
+int ku_bytedis(kuvm *__nonnull vm, kuchunk *__nonnull chunk, int offset);
 #endif // TRACE_ENABLED
 
-kures debugger(kuvm *vm) {
+kures debugger(kuvm *__nonnull vm) {
 
 #ifdef TRACE_ENABLED
-  kuframe *frame = &vm->frames[vm->framecount - 1];
+  kuframe *__nonnull frame = &vm->frames[vm->framecount - 1];
 
-  kuchunk *ck = ku_chunk_runtime(vm);
+  kuchunk *__nonnull ck = ku_chunk_runtime(vm);
   ku_bytedis(vm, ck, (int) (frame->ip - ck->code));
 #endif // TRACE_ENABLED
 
   char line[KU_MAXINPUT];
-  char *b = line;
+  char *__nonnull b = line;
   int readstatus = ku_readline(vm, b, "\ndbg: ");
   if (readstatus == 0)
     return KVM_CONT;
@@ -68,8 +68,8 @@ kures debugger(kuvm *vm) {
   return KVM_CONT;
 }
 
-static char *ku_readfile(KU_UNUSED kuvm *vm, const char *path) {
-  FILE * file = fopen(path , "rb");
+static char *__nullable ku_readfile(KU_UNUSED kuvm *__nonnull vm, const char *__nonnull path) {
+  FILE *__nullable file = fopen(path , "rb");
 
   if (file == NULL) {
     return NULL;
@@ -77,7 +77,7 @@ static char *ku_readfile(KU_UNUSED kuvm *vm, const char *path) {
   fseek(file , 0L , SEEK_END);
   size_t fsize = ftell(file);
   rewind(file);
-  char * buffer = (char *) malloc(fsize + 1);
+  char *__nullable buffer = (char *)malloc(fsize + 1);
 
   if (!buffer) {
     fclose(file);
@@ -95,19 +95,19 @@ static char *ku_readfile(KU_UNUSED kuvm *vm, const char *path) {
   return buffer ;
 }
 
-kures ku_runfile(kuvm *vm, const char *file) {
-  char *source = ku_readfile(vm, file);
+kures ku_runfile(kuvm *__nonnull vm, const char *__nonnull file) {
+  char *__nullable source = ku_readfile(vm, file);
 
   if (source == NULL) {
     return KVM_FILE_NOTFOUND;
   }
-  kures res = ku_exec(vm, source);
+  kures res = ku_exec(vm, KU_NONNULL(source));
   free(source);
   return res;
 }
 
 typedef struct {
-  const char *name;
+  const char *__nonnull name;
   uint64_t mask;
 } ku_repl_flag;
 
@@ -118,8 +118,7 @@ static ku_repl_flag ku_repl_flags[] = {
   { "noexec", KVM_F_NOEXEC },
 };
 
-static bool ku_check_flag(kuvm *vm, char *line,
-                       const char *name, uint64_t flag) {
+static bool ku_check_flag(kuvm *__nonnull vm, char *__nonnull line, const char *__nonnull name, uint64_t flag) {
   char buff[256];
 
   sprintf(buff, ".%s", name);
@@ -143,9 +142,9 @@ static bool ku_check_flag(kuvm *vm, char *line,
   return false;
 }
 
-static bool ku_check_flags(kuvm *vm, char *line) {
+static bool ku_check_flags(kuvm *__nonnull vm, char *__nonnull line) {
   for (size_t i = 0; i < sizeof(ku_repl_flags)/sizeof(ku_repl_flag); i++) {
-    ku_repl_flag *flag = &ku_repl_flags[i];
+    ku_repl_flag *__nonnull flag = &ku_repl_flags[i];
     if (ku_check_flag(vm, line, flag->name, flag->mask)) {
       return true;
     }
@@ -153,8 +152,8 @@ static bool ku_check_flags(kuvm *vm, char *line) {
   return false;
 }
 
-static void ku_printarr(kuvm* vm, kuval arr) {
-  kuaobj* ao = AS_ARRAY(arr);
+static void ku_printarr(kuvm *__nonnull vm, kuval arr) {
+  kuaobj *__nonnull ao = AS_ARRAY(arr);
   int limit = ao->elements.count < 5 ? ao->elements.count : 5;
 
   ku_printf(vm, "[");
@@ -171,7 +170,7 @@ static void ku_printarr(kuvm* vm, kuval arr) {
   ku_printf(vm, "]");
 }
 
-static void ku_printr(kuvm* vm, kuval v) {
+static void ku_printr(kuvm *__nonnull vm, kuval v) {
   if (IS_ARRAY(v)) {
     ku_printarr(vm, v);
   }
@@ -180,10 +179,10 @@ static void ku_printr(kuvm* vm, kuval v) {
   }
 }
 
-static void ku_replexec(kuvm *vm, char *expr, kustr *under) {
+static void ku_replexec(kuvm *__nonnull vm, char *__nonnull expr, kustr *__nonnull under) {
   uint64_t oldflags = vm->flags;
   vm->flags |= KVM_F_QUIET;
-  kufunc *fn = ku_compile(vm, expr);
+  kufunc *__nullable fn = ku_compile(vm, expr);
   if (fn == NULL) {
     size_t len = strlen(expr);
     char alt[1024];
@@ -209,7 +208,7 @@ static void ku_replexec(kuvm *vm, char *expr, kustr *under) {
 
 }
 
-static void ku_printbuild(kuvm *vm) {
+static void ku_printbuild(kuvm *__nonnull vm) {
   printf("kumu v%d.%d [", KVM_MAJOR, KVM_MINOR);
 #ifdef DEBUG
   printf("D");
@@ -232,15 +231,15 @@ static void ku_printbuild(kuvm *vm) {
   printf(".quit to exit\n");
 
 }
-static void ku_repl(kuvm *vm) {
+static void ku_repl(kuvm *__nonnull vm) {
   ku_printbuild(vm);
-  kustr* under = ku_strfrom(vm, "_", 1);
+  kustr *__nonnull under = ku_strfrom(vm, "_", 1);
   ku_tabset(vm, &vm->globals, under, NULL_VAL);
 
   ku_initreadline(vm);
   while(true) {
     char line[KU_MAXINPUT];
-    char *b = line;
+    char *__nonnull b = line;
     int readstatus = ku_readline(vm, b, "> ");
     if (readstatus == 0)
       continue;
@@ -267,7 +266,7 @@ static void ku_repl(kuvm *vm) {
 
     if (strcmp(b, ".help") == 0) {
       for (size_t i = 0; i < sizeof(ku_repl_flags)/sizeof(ku_repl_flag); i++) {
-        ku_repl_flag *flag = &ku_repl_flags[i];
+        ku_repl_flag *__nonnull flag = &ku_repl_flags[i];
         printf(".%s\n", flag->name);
       }
       continue;
@@ -289,13 +288,12 @@ static void ku_repl(kuvm *vm) {
   }
 }
 
-int ku_main(int argc, const char * argv[]) {
+int ku_main(int argc, const char *__nonnull argv[__nullable]) {
   int stack = STACK_MAX;
-  const char *file = NULL;
-
+  const char *__nullable file = NULL;
 
   for (int i = 1; i < argc; i++) {
-    const char *a = argv[i];
+    const char *__nonnull a = argv[i];
     if (strncmp(a, "-s=", 3) == 0) {
       stack = atoi(&a[3]);
     } else {
@@ -303,12 +301,12 @@ int ku_main(int argc, const char * argv[]) {
     }
   }
 
-  kuvm *vm = ku_newvm(stack == 0 ? STACK_MAX : stack);
+  kuvm *__nonnull vm = ku_newvm(stack == 0 ? STACK_MAX : stack);
   ku_reglibs(vm);
   if (file == NULL) {
     ku_repl(vm);
   } else {
-    kures res = ku_runfile(vm, file);
+    kures res = ku_runfile(vm, KU_NONNULL(file));
     if (res == KVM_ERR_RUNTIME) {
       ku_free(vm);
       exit(70);

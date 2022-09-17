@@ -12,11 +12,11 @@
 static int ktest_pass = 0;
 int ktest_fail = 0;
 int ktest_warn = 0;
-const char* last_test = "";
+const char *__nonnull last_test = "";
 
 #define print_failure() printf("[  FAILED  ]\n  (line %d)", __LINE__)
 
-// EXPECT_TRUE(kuvm* vm, bool b, const char* m)
+// EXPECT_TRUE(kuvm *__nonnull vm, bool b, const char *__nonnull m)
 #define EXPECT_TRUE(vm, b, m) \
   do { \
     last_test = (m); \
@@ -29,7 +29,7 @@ const char* last_test = "";
     } \
   } while (0)
 
-// EXPECT_INT(kuvm *vm, int v1, int v2, const char *m
+// EXPECT_INT(kuvm *__nonnull vm, int v1, int v2, const char *__nonnull m)
 #define EXPECT_INT(vm, v1, v2, m) \
   do { \
     last_test = (m); \
@@ -42,7 +42,7 @@ const char* last_test = "";
     } \
   } while (0)
 
-// EXPECT_STR(kuvm *vm, kuval v, const char *s, const char *m)
+// EXPECT_STR(kuvm *__nonnull vm, kuval v, const char *__nonnull s, const char *__nonnull m)
 #define EXPECT_STR(vm, v, s, m) \
   do { \
     last_test = (m); \
@@ -57,7 +57,7 @@ const char* last_test = "";
     } \
   } while (0)
 
-// EXPECT_VAL(kuvm* vm, kuval v1, kuval v2, const char *m)
+// EXPECT_VAL(kuvm *__nonnull vm, kuval v1, kuval v2, const char *__nonnull m)
 #define EXPECT_VAL(vm, v1, v2, m) \
   do { \
     last_test = m; \
@@ -83,9 +83,9 @@ static void ku_test_summary() {
   printf("[  FAILED  ] %d test\n", ktest_fail);
 }
 
-kuval ku_get_global(kuvm* vm, const char* name) {
+kuval ku_get_global(kuvm *__nonnull vm, const char *__nonnull name) {
   kuval value;
-  kustr* key = ku_strfrom(vm, name, (int)strlen(name));
+  kustr *__nonnull key = ku_strfrom(vm, name, (int)strlen(name));
   if (!ku_tabget(vm, &vm->globals, key, &value)) {
     return NULL_VAL;
   }
@@ -93,7 +93,7 @@ kuval ku_get_global(kuvm* vm, const char* name) {
   return value;
 }
 
-kuval ku_test_eval(kuvm* vm, const char* expr) {
+kuval ku_test_eval(kuvm *__nonnull vm, const char *__nonnull expr) {
   char buff[255];
   sprintf(buff, "let x = %s;", expr);
   kures res = ku_exec(vm, buff);
@@ -103,8 +103,8 @@ kuval ku_test_eval(kuvm* vm, const char* expr) {
   return ku_get_global(vm, "x");
 }
 
-kuvm *kut_new(bool reglibs) {
-  kuvm *vm = ku_new();
+kuvm *__nonnull kut_new(bool reglibs) {
+  kuvm *__nonnull vm = ku_new();
   vm->flags |= KVM_F_QUIET | KVM_F_LIST;
 
   if (reglibs) {
@@ -113,17 +113,17 @@ kuvm *kut_new(bool reglibs) {
   return vm;
 }
 
-static kuval kutest_native_add(KU_UNUSED kuvm *vm, int argc, KU_UNUSED kuval *argv) {
+static kuval kutest_native_add(KU_UNUSED kuvm *__nonnull vm, int argc, KU_UNUSED kuval *__nullable argv) {
   assert(argc == 2);
   kuval b = argv[0];
   kuval a = argv[1];
   return NUM_VAL(AS_NUM(a) + AS_NUM(b));
 }
 
-static int kut_table_count(KU_UNUSED kuvm *vm, kutab *tab) {
+static int kut_table_count(KU_UNUSED kuvm *__nonnull vm, kutab *__nonnull tab) {
   int count = 0;
-  for (int i=0; i < tab->capacity; i++) {
-    kuentry *s = &tab->entries[i];
+  for (int i = 0; i < tab->capacity; i++) {
+    kuentry *__nonnull s = &tab->entries[i];
     if (s->key != NULL) {
       count++;
     }
@@ -133,12 +133,12 @@ static int kut_table_count(KU_UNUSED kuvm *vm, kutab *tab) {
 
 int debug_call_count = 0;
 
-kures test_debugger_stop(KU_UNUSED kuvm* vm) {
+kures test_debugger_stop(KU_UNUSED kuvm *__nonnull vm) {
   debug_call_count++;
   return KVM_OK;
 }
 
-kures test_debugger_cont(KU_UNUSED kuvm* vm) {
+kures test_debugger_cont(KU_UNUSED kuvm *__nonnull vm) {
   debug_call_count++;
   return KVM_CONT;
 }
@@ -160,68 +160,74 @@ typedef struct {
   double value;
 } test_inst;
 
-kuval test_cons(kuvm *vm, KU_UNUSED int argc, kuval *argv) {
+kuval test_cons(kuvm *__nonnull vm, KU_UNUSED int argc, kuval *__nullable argv) {
   assert(argc == 1);
   tclass_cons++;
-  test_inst *i = (test_inst*)ku_objalloc(vm, sizeof(test_inst), OBJ_CINST);
+  test_inst *__nonnull i = (test_inst *)ku_objalloc(vm, sizeof(test_inst), OBJ_CINST);
   i->value = AS_NUM(argv[0]);
   return OBJ_VAL(i);
 }
 
-kuval test_scall(KU_UNUSED kuvm *vm, KU_UNUSED kustr *m, int argc, KU_UNUSED kuval *argv) {
+kuval test_scall(
+    KU_UNUSED kuvm *__nonnull vm, KU_UNUSED kustr *__nonnull m, int argc, KU_UNUSED kuval *__nullable argv) {
   tclass_scall = argc;
   return NULL_VAL;
 }
 
-kuval test_sget(KU_UNUSED kuvm *vm, KU_UNUSED kustr *p) {
+kuval test_sget(KU_UNUSED kuvm *__nonnull vm, KU_UNUSED kustr *__nonnull p) {
   tclass_sget++;
   return NULL_VAL;
 }
-kuval test_sput(KU_UNUSED kuvm *vm, KU_UNUSED kustr *p, kuval v) {
+kuval test_sput(KU_UNUSED kuvm *__nonnull vm, KU_UNUSED kustr *__nonnull p, kuval v) {
   tclass_sput = (int)AS_NUM(v);
   return NULL_VAL;
 }
 
-kuval test_sfree(KU_UNUSED kuvm *vm, KU_UNUSED kuobj *cc) {
+kuval test_sfree(KU_UNUSED kuvm *__nonnull vm, KU_UNUSED kuobj *__nonnull cc) {
   tclass_sfree++;
   return NULL_VAL;
 }
 
-kuval test_smark(KU_UNUSED kuvm *vm, KU_UNUSED kuobj *cc) {
+kuval test_smark(KU_UNUSED kuvm *__nonnull vm, KU_UNUSED kuobj *__nonnull cc) {
   tclass_smark++;
   return NULL_VAL;
 }
 
-kuval test_icall(KU_UNUSED kuvm *vm, KU_UNUSED kuobj *o, KU_UNUSED kustr *m, KU_UNUSED int argc, KU_UNUSED kuval *argv) {
+kuval test_icall(
+    KU_UNUSED kuvm *__nonnull vm,
+    KU_UNUSED kuobj *__nonnull o,
+    KU_UNUSED kustr *__nonnull m,
+    KU_UNUSED int argc,
+    KU_UNUSED kuval *__nonnull argv) {
   tclass_icall++;
   return NULL_VAL;
 }
 
-kuval test_iget(KU_UNUSED kuvm *vm, kuobj *o, KU_UNUSED kustr *p) {
-  test_inst *ti = (test_inst*)o;
+kuval test_iget(KU_UNUSED kuvm *__nonnull vm, kuobj *__nonnull o, KU_UNUSED kustr *__nonnull p) {
+  test_inst *__nonnull ti = (test_inst *)o;
   tclass_iget++;
   return NUM_VAL(ti->value);
 }
 
-kuval test_iput(KU_UNUSED kuvm *vm, kuobj *o, KU_UNUSED kustr *p, KU_UNUSED kuval v) {
+kuval test_iput(KU_UNUSED kuvm *__nonnull vm, kuobj *__nonnull o, KU_UNUSED kustr *__nonnull p, KU_UNUSED kuval v) {
   tclass_iput++;
-  test_inst *ti = (test_inst*)o;
+  test_inst *__nonnull ti = (test_inst *)o;
   ti->value = AS_NUM(v);
   return NULL_VAL;
 }
 
-kuval test_ifree(kuvm *vm, kuobj *o) {
+kuval test_ifree(kuvm *__nonnull vm, kuobj *__nonnull o) {
   tclass_ifree++;
   ku_alloc(vm, o, sizeof(test_inst), 0);
   return NULL_VAL;
 }
 
-kuval test_imark(KU_UNUSED kuvm *vm, KU_UNUSED kuobj *cc) {
+kuval test_imark(KU_UNUSED kuvm *__nonnull vm, KU_UNUSED kuobj *__nonnull cc) {
   tclass_imark++;
   return NULL_VAL;
 }
 
-void tclass_reset(KU_UNUSED kuvm *vm) {
+void tclass_reset(KU_UNUSED kuvm *__nonnull vm) {
   tclass_cons = 0;
   tclass_scall = 0;
   tclass_sget = 0;
@@ -248,9 +254,9 @@ void tclass_reset(KU_UNUSED kuvm *vm) {
 
 #define ALL     0x00000fff
 
-void tclass_init(kuvm *vm, uint64_t flags) {
+void tclass_init(kuvm *__nonnull vm, uint64_t flags) {
   tclass_reset(vm);
-  kucclass *cc = ku_cclassnew(vm, "test");
+  kucclass *__nonnull cc = ku_cclassnew(vm, "test");
 
   if (flags & SCALL) cc->scall = test_scall;
   if (flags & SGET) cc->sget = test_sget;
@@ -269,7 +275,7 @@ void tclass_init(kuvm *vm, uint64_t flags) {
 #define APPROX(a,b) ((AS_NUM(a)-(b)) < 0.00000001)
 
 
-void kut_free(kuvm* vm) {
+void kut_free(kuvm *__nonnull vm) {
   if (vm->sp > vm->stack) {
     printf(">>> [%s] warning stack at %d\n", last_test, (int)(vm->sp - vm->stack));
     ktest_warn++;
@@ -286,7 +292,7 @@ void kut_free(kuvm* vm) {
 }
 
 int ku_test() {
-  kuvm *vm = kut_new(false);
+  kuvm *__nonnull vm = kut_new(false);
   kures res = ku_exec(vm, "let x= -1+4;");
   EXPECT_INT(vm, res, KVM_OK, "let x= -1+4 res");
   kut_free(vm);
@@ -600,7 +606,7 @@ int ku_test() {
   v = ku_test_eval(vm, "\"hello \" + \"world\"");
   EXPECT_INT(vm, IS_OBJ(v), true, "stradd type obj");
   EXPECT_INT(vm, AS_OBJ(v)->type, OBJ_STR, "stradd obj is str");
-  char* chars = AS_CSTR(v);
+  char *__nonnull chars = AS_CSTR(v);
   EXPECT_INT(vm, strcmp(chars, "hello world"), 0, "str val");
   kut_free(vm);
 
@@ -622,10 +628,10 @@ int ku_test() {
   vm = kut_new(false);
   kutab map;
   ku_tabinit(vm, &map);
-  kustr* k1 = ku_strfrom(vm, "key1", 4);
-  kustr* k2 = ku_strfrom(vm, "key1", 4);
+  kustr *__nonnull k1 = ku_strfrom(vm, "key1", 4);
+  kustr *__nonnull k2 = ku_strfrom(vm, "key1", 4);
   EXPECT_TRUE(vm, k1 == k2, "string intern equal");
-  kustr* k3 = ku_strfrom(vm, "key2", 4);
+  kustr *__nonnull k3 = ku_strfrom(vm, "key2", 4);
   EXPECT_TRUE(vm, k3 != k2, "string intern not equal");
   bool isnew = ku_tabset(vm, &map, k1, NUM_VAL(3.14));
   EXPECT_TRUE(vm, isnew, "map set new");
@@ -1442,7 +1448,7 @@ int ku_test() {
   EXPECT_INT(vm, res, KVM_OK, "string.format res");
   v = ku_get_global(vm, "x");
   EXPECT_TRUE(vm, IS_STR(v), "string.format ret");
-  kustr *str = AS_STR(v);
+  kustr *__nonnull str = AS_STR(v);
   EXPECT_INT(vm, strcmp(str->chars, "ABC 123.45,FF,true,false"), 0, "string.format value");
   kut_free(vm);
 
@@ -1560,7 +1566,7 @@ int ku_test() {
   kut_free(vm);
 
   vm = kut_new(false);
-  kuaobj *ao = ku_arrnew(vm, 0);
+  kuaobj *__nonnull ao = ku_arrnew(vm, 0);
   EXPECT_TRUE(vm, ao->elements.capacity == 0, "array(0) alloc free");
   kut_free(vm);
 
