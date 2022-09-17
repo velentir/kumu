@@ -1,5 +1,11 @@
 #!/usr/bin/make -f
 
+# Standard make paths
+prefix?=/usr/local
+exec_prefix?=$(prefix)
+bindir?=$(exec_prefix)/bin
+binpath?=$(bindir)/kumu
+
 # Declare the help target first, so that it is the default target.
 usage=help::;@echo "  $(1)		$(2)"
 .PHONY: help
@@ -48,6 +54,17 @@ out/kumu: build/release/kumu.o build/release/kumain.o build/release/main.o | out
 out/test: build/debug/kumu.o build/debug/kutest.o build/debug/testmain.o | out
 	$(CC) $(LDFLAGS) $(LDLIBS) $(LLVMCOVLDFLAGS) $^ -o $@
 
+$(call usage,install,Install the kumu REPL CLI ($(binpath)).)
+all:: install
+.PHONY: install
+install: out/kumu
+	cp -f $< $(binpath)
+
+$(call usage,uninstall,Uninstall the kumu REPL CLI ($(binpath)).)
+.PHONY: uninstall
+uninstall:
+	rm -f $(binpath)
+
 $(call usage,kumu,Build the REPL CLI (out/kumu).)
 all:: kumu
 .PHONY: kumu
@@ -78,5 +95,9 @@ $(call usage,clean,Prints this usage message.)
 clean:
 	$(RM) -r build/*
 	$(RM) -r out/*
+
+.PHONY: env
+env:
+	@echo bindir: $(bindir)
 
 help::;@echo ""
