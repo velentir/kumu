@@ -490,15 +490,11 @@ typedef enum {
 
 typedef kures(*debugcallback)(kuvm *__nonnull vm);
 
-#define KVM_F_TRACE     0x00000001   // trace each instruction as it runs
-#define KVM_F_STACK     0x00000002   // print stack in repl
-#define KVM_F_LIST      0x00000004   // list instructions after compile
-#define KVM_F_QUIET     0x00000008   // Supress error output (for tests)
-#define KVM_F_TRACEMEM  0x00000010   // Trace memory
-#define KVM_F_DISASM    0x00000020   // Disassemble after compile
-#define KVM_F_NOEXEC    0x00000040   // Disable execution only compile
-#define KVM_F_GCSTRESS  0x00000080   // GC every alloc increase
-#define KVM_F_GCLOG     0x00000100   // Log GC action
+#define KVM_F_QUIET     0x00000001   // Supress error output (for tests)
+#define KVM_F_TRACEMEM  0x00000002   // Trace memory
+#define KVM_F_NOEXEC    0x00000004   // Disable execution only compile
+#define KVM_F_GCSTRESS  0x00000008   // GC every alloc increase
+#define KVM_F_GCLOG     0x00000010   // Log GC action
 
 typedef void *__nonnull (*ku_alloc_t)(size_t size);
 typedef void *__nonnull (*ku_realloc_t)(void *__nullable ptr, size_t size);

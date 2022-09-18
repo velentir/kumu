@@ -105,7 +105,7 @@ kuval ku_test_eval(kuvm *__nonnull vm, const char *__nonnull expr) {
 
 kuvm *__nonnull kut_new(bool reglibs) {
   kuvm *__nonnull vm = ku_new();
-  vm->flags |= KVM_F_QUIET | KVM_F_LIST;
+  vm->flags |= KVM_F_QUIET;
 
   if (reglibs) {
     ku_reglibs(vm);
@@ -339,11 +339,6 @@ int ku_test() {
   res = ku_exec(vm, "let x = (1+2)*3;");
   EXPECT_INT(vm, res, KVM_OK, "grouping res");
   EXPECT_VAL(vm, ku_get_global(vm, "x"), NUM_VAL(9), "grouping ret");
-  kut_free(vm);
-
-  vm = kut_new(false);
-  vm->flags |= KVM_F_LIST;
-  res = ku_exec(vm, "(1+2)*3");
   kut_free(vm);
 
   vm = kut_new(false);
@@ -671,13 +666,6 @@ int ku_test() {
   EXPECT_VAL(vm, ku_get_global(vm, "x"), NUM_VAL(30), "global set");
   kut_free(vm);
 
-  vm = kut_new(true);
-  vm->flags |= KVM_F_TRACE | KVM_F_DISASM | KVM_F_QUIET;
-  res = ku_exec(vm, "printf(12/3);");
-  res = ku_exec(vm, "printf(\"hello\");");
-  res = ku_exec(vm, "printf(true);");
-  kut_free(vm);
-
   vm = kut_new(false);
   res = ku_exec(vm, "let x = 20; let y = 0; { let a=x*20; y = a; }");
   EXPECT_INT(vm, res, KVM_OK, "local decl");
@@ -708,12 +696,6 @@ int ku_test() {
   vm = kut_new(false);
   res = ku_exec(vm, "{ let a = a; }");
   EXPECT_INT(vm, res, KVM_ERR_SYNTAX, "local own init");
-  kut_free(vm);
-
-  vm = kut_new(false);
-  vm->flags = KVM_F_DISASM | KVM_F_QUIET;
-  res = ku_exec(vm, "{ let a = 1; let b = 2; }");
-  EXPECT_INT(vm, res, KVM_OK, "local op print");
   kut_free(vm);
 
   vm = kut_new(false);
@@ -996,12 +978,6 @@ int ku_test() {
   EXPECT_INT(vm, kut_table_count(vm, &vm->strings), sc+3, "string intern");
   kut_free(vm);
 
-  vm = kut_new(false);
-  vm->flags = KVM_F_TRACEMEM | KVM_F_TRACE | KVM_F_STACK | KVM_F_QUIET;
-  res = ku_exec(vm, "let x=1; let y=x*2;");
-  EXPECT_INT(vm, res, KVM_OK, "tracing and printing");
-  kut_free(vm);
-
   vm = kut_new(true);
   res = ku_exec(vm, "class Foo {}\nprintf(Foo);");
   EXPECT_INT(vm, res, KVM_OK, "class decl");
@@ -1034,7 +1010,6 @@ int ku_test() {
   kut_free(vm);
 
   vm = kut_new(false);
-  vm->flags = KVM_F_STACK | KVM_F_TRACE;
   res = ku_exec(vm, "let x=1;\nclass C{ M() { x=3; } }\nlet c=C();\nlet m=c.M;\nm();");
   EXPECT_INT(vm, res, KVM_OK, "bound method res");
   EXPECT_VAL(vm, ku_get_global(vm, "x"), NUM_VAL(3), "bound method ret");
@@ -1591,12 +1566,6 @@ int ku_test() {
   vm = kut_new(true);
   res = ku_exec(vm, "let x=[1,2,3;");
   EXPECT_INT(vm, res, KVM_ERR_SYNTAX, "array missing ']'");
-  kut_free(vm);
-
-  vm = kut_new(true);
-  vm->flags |= KVM_F_LIST | KVM_F_NOEXEC;
-  res = ku_exec(vm, "let x=[1,2,3,4,5];");
-  EXPECT_INT(vm, res, KVM_OK, "OP_ARRAY disassemble");
   kut_free(vm);
 
   vm = kut_new(true);
