@@ -288,7 +288,7 @@ void kut_free(kuvm *__nonnull vm) {
   }
 #endif // STACK_CHECK
 
-  ku_free(vm);
+  ku_freevm(vm);
 }
 
 int ku_test() {

@@ -178,7 +178,8 @@ void ku_arrinit(kuvm *__nonnull vm, kuarr *__nonnull array);
 void ku_arrwrite(kuvm *__nonnull vm, kuarr *__nonnull array, kuval value);
 
 // ********************** memory **********************
-char *__nonnull ku_alloc(kuvm *__nonnull vm, void *__nullable p, size_t oldsize, size_t newsize);
+char *__nonnull ku_alloc(kuvm *__nonnull vm, void *__nullable ptr, size_t oldsize, size_t newsize);
+void ku_free(kuvm *__nonnull vm, void *__nullable ptr, size_t oldsize);
 kuobj *__nonnull ku_objalloc(kuvm *__nonnull vm, size_t size, kuobj_t type);
 
 // ********************** bytecodes **********************
@@ -499,8 +500,19 @@ typedef kures(*debugcallback)(kuvm *__nonnull vm);
 #define KVM_F_GCSTRESS  0x00000080   // GC every alloc increase
 #define KVM_F_GCLOG     0x00000100   // Log GC action
 
+typedef void *__nonnull (*ku_alloc_t)(size_t size);
+typedef void *__nonnull (*ku_realloc_t)(void *__nullable ptr, size_t size);
+typedef void (*ku_free_t)(void *__nullable ptr);
+typedef struct kuenv {
+  ku_alloc_t __nonnull alloc;
+  ku_realloc_t __nonnull realloc;
+  ku_free_t __nonnull free;
+} kuenv;
+
 typedef struct kuvm {
   uint64_t flags;
+
+  kuenv env;
 
   int max_stack;
   int max_params;
@@ -551,9 +563,9 @@ typedef struct kuvm {
   kuval stack[];
 } kuvm;
 
-#define ku_new()  ku_newvm(STACK_MAX)
-kuvm *__nonnull ku_newvm(int stack_size);
-void ku_free(kuvm *__nonnull vm);
+#define ku_new()  ku_newvm(STACK_MAX, NULL)
+kuvm *__nonnull ku_newvm(int stack_size, kuenv *__nullable env);
+void ku_freevm(kuvm *__nonnull vm);
 kures ku_run(kuvm *__nonnull vm);
 kures ku_runfile(kuvm *__nonnull vm, const char *__nonnull file);
 kures ku_exec(kuvm *__nonnull vm, char *__nonnull source);
