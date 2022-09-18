@@ -2764,7 +2764,6 @@ int ku_bytedis(kuvm *__nonnull vm, kuchunk *__nonnull chunk, int offset) {
       ku_printf(vm, "Unknown opcode %d\n", op);
       return offset + 1;
   }
-#undef OP_DEF1
 }
 
 // ------------------------------------------------------------
