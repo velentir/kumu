@@ -103,7 +103,6 @@ int ku_bytedis(kuvm *__nonnull vm, kuchunk *__nonnull chunk, int offset) {
     case OP_METHOD: return ku_constdis(vm, "OP_METHOD", chunk, offset);
     case OP_INVOKE: return ku_invokedis(vm, "OP_INVOKE", chunk, offset);
     case OP_SUPER_INVOKE:
-      // TODO: add code coverage
       return ku_invokedis(vm, "OP_SUPER_INVOKE", chunk, offset);
     case OP_INHERIT: return ku_opdis(vm, "OP_INHERIT", offset);
     case OP_CONST: return ku_constdis(vm, "OP_CONST", chunk, offset);
@@ -113,15 +112,12 @@ int ku_bytedis(kuvm *__nonnull vm, kuchunk *__nonnull chunk, int offset) {
     case OP_GET_LOCAL: return ku_opslotdis(vm, "OP_GET_LOCAL", chunk, offset);
     case OP_SET_LOCAL: return ku_opslotdis(vm, "OP_SET_LOCAL", chunk, offset);
     case OP_GET_UPVAL:
-      // TODO: add code coverage
       return ku_opslotdis(vm, "OP_GET_UPVAL", chunk, offset);
     case OP_SET_PROP: return ku_opslotdis(vm, "OP_SET_PROP", chunk, offset);
     case OP_GET_PROP: return ku_opslotdis(vm, "OP_GET_PROP", chunk, offset);
     case OP_SET_UPVAL:
-      // TODO: add code coverage
       return ku_opslotdis(vm, "OP_SET_UPVAL", chunk, offset);
     case OP_GET_SUPER:
-      // TODO: add code coverage
       return ku_constdis(vm, "OP_GET_SUPER", chunk, offset);
     case OP_JUMP: return ku_jumpdis(vm, "OP_JUMP", 1, chunk, offset);
     case OP_JUMP_IF_FALSE: return ku_jumpdis(vm, "OP_JUMP_IF_FALSE", 1, chunk, offset);
