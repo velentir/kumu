@@ -393,6 +393,10 @@ static void ku_repl(kuvm *__nonnull vm) {
   }
 }
 
+void repl_print(const char *fmt, va_list args) {
+    vprintf(fmt, args);
+}
+
 int ku_main(int argc, const char *__nonnull argv[__nullable]) {
   int stack = STACK_MAX;
   const char *__nullable file = NULL;
@@ -407,6 +411,7 @@ int ku_main(int argc, const char *__nonnull argv[__nullable]) {
   }
 
   kuvm *__nonnull vm = ku_newvm(stack == 0 ? STACK_MAX : stack, NULL);
+  vm->print = repl_print;
   ku_reglibs(vm);
   if (file == NULL) {
     ku_repl(vm);

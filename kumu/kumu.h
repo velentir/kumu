@@ -488,13 +488,14 @@ typedef enum {
   KVM_FILE_NOTFOUND,
 } kures;
 
-typedef kures(*debugcallback)(kuvm *__nonnull vm);
+typedef kures(*kuhook)(kuvm *__nonnull vm);
+typedef void(*kuprint)(const char *_Nullable fmt, va_list);
 
-#define KVM_F_QUIET     0x00000001   // Supress error output (for tests)
-#define KVM_F_TRACEMEM  0x00000002   // Trace memory
-#define KVM_F_NOEXEC    0x00000004   // Disable execution only compile
-#define KVM_F_GCSTRESS  0x00000008   // GC every alloc increase
-#define KVM_F_GCLOG     0x00000010   // Log GC action
+
+#define KVM_F_TRACEMEM  0x00000001   // Trace memory
+#define KVM_F_NOEXEC    0x00000002   // Disable execution only compile
+#define KVM_F_GCSTRESS  0x00000004   // GC every alloc increase
+#define KVM_F_GCLOG     0x00000008   // Log GC action
 
 typedef void *__nonnull (*ku_alloc_t)(size_t size);
 typedef void *__nonnull (*ku_realloc_t)(void *__nullable ptr, size_t size);
@@ -520,7 +521,8 @@ typedef struct kuvm {
   int max_locals;
   int max_patches;
 
-  debugcallback __nullable debugger;
+  kuhook __nullable debugger;
+  kuprint __nullable print;
 
   bool err;
   size_t allocated;

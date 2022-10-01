@@ -65,7 +65,6 @@ const char *__nonnull last_test = "";
       ktest_pass++; \
     } else { \
       uint64_t f = vm->flags; \
-      vm->flags &= ~KVM_F_QUIET; \
       ktest_fail++; \
       print_failure(); \
       printf("expected: "); \
@@ -105,8 +104,6 @@ kuval ku_test_eval(kuvm *__nonnull vm, const char *__nonnull expr) {
 
 kuvm *__nonnull kut_new(bool reglibs) {
   kuvm *__nonnull vm = ku_new();
-  vm->flags |= KVM_F_QUIET;
-
   if (reglibs) {
     ku_reglibs(vm);
   }
@@ -934,7 +931,7 @@ int ku_test() {
   kut_free(vm);
 
   vm = kut_new(false);
-  vm->flags = KVM_F_GCSTRESS | KVM_F_GCLOG | KVM_F_QUIET;
+  vm->flags = KVM_F_GCSTRESS | KVM_F_GCLOG;
   res = ku_exec(vm, "let x = \"hello\"; x=null;");
   ku_gc(vm);
   EXPECT_INT(vm, res, KVM_OK, "gc res");
@@ -942,7 +939,7 @@ int ku_test() {
   kut_free(vm);
 
   vm = kut_new(false);
-  vm->flags = KVM_F_GCLOG | KVM_F_QUIET;
+  vm->flags = KVM_F_GCLOG;
   vm->gcnext = 0;
   res = ku_exec(vm, "let x = \"hello\"; x=null;");
   EXPECT_INT(vm, res, KVM_OK, "gcnext res");
@@ -956,7 +953,7 @@ int ku_test() {
   kut_free(vm);
 
   vm = kut_new(false);
-  vm->flags = KVM_F_GCSTRESS | KVM_F_GCLOG | KVM_F_QUIET;
+  vm->flags = KVM_F_GCSTRESS | KVM_F_GCLOG;
   res = ku_exec(vm, "function M(x) { let m = x; function e() { return m*m; } return e; }\n let z = M(5); let x = z(); x = null;");
   ku_gc(vm);
   EXPECT_INT(vm, res, KVM_OK, "gc closure res");
@@ -964,7 +961,7 @@ int ku_test() {
   kut_free(vm);
 
   vm = kut_new(false);
-  vm->flags = KVM_F_GCSTRESS | KVM_F_GCLOG | KVM_F_QUIET;
+  vm->flags = KVM_F_GCSTRESS | KVM_F_GCLOG;
   res = ku_exec(vm, "function M(x) { let m = x; let mm=x*2; function e(n) { return m*n*mm; } return e; }\n let z = M(5); let x = z(3); x = null;");
   EXPECT_INT(vm, res, KVM_OK, "gc closure2 res");
   EXPECT_VAL(vm, ku_get_global(vm, "x"), NULL_VAL, "gc closure2 val");
@@ -1176,7 +1173,7 @@ int ku_test() {
   kut_free(vm);
 
   vm = kut_new(false);
-  vm->flags = KVM_F_GCSTRESS | KVM_F_GCLOG | KVM_F_QUIET;
+  vm->flags = KVM_F_GCSTRESS | KVM_F_GCLOG;
   res = ku_exec(vm, "class A{ f(){}} let a=A(); let z=a.f; a=null;");
   ku_gc(vm);
   EXPECT_INT(vm, res, KVM_OK, "gc class res");

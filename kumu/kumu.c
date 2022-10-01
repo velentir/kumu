@@ -1684,6 +1684,8 @@ kuvm *__nonnull ku_newvm(int stack_max, kuenv *__nullable env) {
   kuvm *__nonnull vm = env->alloc(size);
 
   *vm = (kuvm){
+    .debugger = NULL,
+    .print = NULL,
     .env = *env,
     .allocated = sizeof(kuvm),
     .max_params = 255,
@@ -3127,7 +3129,6 @@ static kuval ku_eval(kuvm *__nonnull vm, int argc, kuval *__nullable argv) {
   if (argc > 0 && IS_STR(argv[0])) {
     int stack = (argc > 1 && IS_NUM(argv[1])) ? (int)AS_NUM(argv[1]) : 128;
     kuvm *__nonnull temp = ku_newvm(stack, &vm->env);
-    temp->flags = KVM_F_QUIET;
     const char *__nonnull line = AS_STR(argv[0])->chars;
     size_t len = strlen(line) + 8;
     char *__nonnull buffer = vm->env.alloc(len);
@@ -3686,13 +3687,10 @@ kubound *__nonnull ku_boundnew(kuvm *__nonnull vm, kuval receiver, kuclosure *__
 // ********************** print **********************
 void ku_printf(kuvm *__nonnull vm, const char *__nonnull fmt, ...) {
   va_list args;
-
-  if (vm->flags & KVM_F_QUIET) {
-    return;
-  }
-
   va_start(args, fmt);
-  vprintf(fmt, args);
+  if (vm->print) {
+    vm->print(fmt, args);
+  }
   va_end(args);
 }
 
