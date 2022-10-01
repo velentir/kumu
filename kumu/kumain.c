@@ -306,33 +306,13 @@ static void ku_printr(kuvm *__nonnull vm, kuval v) {
   }
 }
 
-static void ku_replexec(kuvm *__nonnull vm, char *__nonnull expr, kustr *__nonnull under) {
-  uint64_t oldflags = vm->flags;
-  vm->flags |= KVM_F_QUIET;
-  kufunc *__nullable fn = ku_compile(vm, expr);
-  if (fn == NULL) {
-    size_t len = strlen(expr);
-    char alt[1024];
-    sprintf(alt, "_ = %s", expr);
-    if (expr[len-1] != ';') {
-      strcat(alt, ";");
-      vm->flags = oldflags;
-      ku_exec(vm, alt);
-      kuval v;
-      ku_tabget(vm, &vm->globals, under, &v);
-      ku_printr(vm, v);
-      printf("\n");
-    }
-  } else {
-    vm->flags = oldflags;
+static void ku_replexec(kuvm *__nonnull vm, char *__nonnull expr) {
     ku_exec(vm, expr);
     if (vm->sp > vm->stack) {
       kuval v = ku_pop(vm);
       ku_printr(vm, v);
       printf("\n");
     }
-  }
-
 }
 
 static void ku_printbuild(kuvm *__nonnull vm) {
@@ -360,8 +340,6 @@ static void ku_printbuild(kuvm *__nonnull vm) {
 }
 static void ku_repl(kuvm *__nonnull vm) {
   ku_printbuild(vm);
-  kustr *__nonnull under = ku_strfrom(vm, "_", 1);
-  ku_tabset(vm, &vm->globals, under, NULL_VAL);
 
   ku_initreadline(vm);
   while(true) {
@@ -410,7 +388,7 @@ static void ku_repl(kuvm *__nonnull vm) {
       ku_gc(vm);
       continue;;
     }
-    ku_replexec(vm, b, under);
+    ku_replexec(vm, b);
     ku_freeline(vm, b);
   }
 }
