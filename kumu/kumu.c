@@ -589,7 +589,6 @@ kutok ku_scan(kuvm *__nonnull vm) {
         return ku_tokmake(vm, TOK_AND);
       }
       return ku_tokmake(vm, TOK_AMP);
-
     case '|':
       if (ku_lexmatch(vm, '|')) {
         return ku_tokmake(vm, TOK_OR);
