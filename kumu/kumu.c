@@ -511,7 +511,6 @@ static kutok_t ku_lexkey(
 
 static kutok_t ku_keyword(kuvm *__nonnull vm) {
   switch (vm->scanner.start[0]) {
-    case 'a': return ku_lexkey(vm, 1,2,"nd", TOK_AND);
     case 'b': return ku_lexkey(vm, 1,4,"reak", TOK_BREAK);
     case 'c': {
       if (vm->scanner.curr - vm->scanner.start > 1) {
@@ -585,7 +584,12 @@ kutok ku_scan(kuvm *__nonnull vm) {
     case '+': return ku_tokmake(vm, TOK_PLUS);
     case '-': return ku_tokmake(vm, TOK_MINUS);
     case '*': return ku_tokmake(vm, TOK_STAR);
-    case '&': return ku_tokmake(vm, TOK_AMP);
+    case '&':
+      if (ku_lexmatch(vm, '&')) {
+        return ku_tokmake(vm, TOK_AND);
+      }
+      return ku_tokmake(vm, TOK_AMP);
+
     case '|':
       if (ku_lexmatch(vm, '|')) {
         return ku_tokmake(vm, TOK_OR);

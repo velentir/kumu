@@ -381,9 +381,9 @@ int ku_test() {
   kut_free(vm);
 
   vm = kut_new(false);
-  ku_lexinit(vm, "and class else false for function if null || return super this true while {}[]!+-*/=!==><>=<= === => break continue const far\ttrick\nart\rcool eek too functiond");
+  ku_lexinit(vm, "&& class else false for function if null || return super this true while {}[]!+-*/=!==><>=<= === => break continue const far\ttrick\nart\rcool eek too functiond");
   kutok t = ku_scan(vm);
-  EXPECT_INT(vm, t.type, TOK_AND, "[and]");
+  EXPECT_INT(vm, t.type, TOK_AND, "[&&]");
   t = ku_scan(vm);
   EXPECT_INT(vm, t.type, TOK_CLASS, "[class]");
   t = ku_scan(vm);
@@ -726,23 +726,23 @@ int ku_test() {
   kut_free(vm);
 
   vm = kut_new(false);
-  res = ku_exec(vm, "let x = false and true;");
-  EXPECT_VAL(vm, ku_get_global(vm, "x"), BOOL_VAL(false), "false and true");
+  res = ku_exec(vm, "let x = false && true;");
+  EXPECT_VAL(vm, ku_get_global(vm, "x"), BOOL_VAL(false), "false && true");
   kut_free(vm);
 
   vm = kut_new(false);
-  res = ku_exec(vm, "let x = false and false;");
-  EXPECT_VAL(vm, ku_get_global(vm, "x"), BOOL_VAL(false), "false and false");
+  res = ku_exec(vm, "let x = false && false;");
+  EXPECT_VAL(vm, ku_get_global(vm, "x"), BOOL_VAL(false), "false && false");
   kut_free(vm);
 
   vm = kut_new(false);
-  res = ku_exec(vm, "let x = true and false;");
-  EXPECT_VAL(vm, ku_get_global(vm, "x"), BOOL_VAL(false), "true and false");
+  res = ku_exec(vm, "let x = true && false;");
+  EXPECT_VAL(vm, ku_get_global(vm, "x"), BOOL_VAL(false), "true && false");
   kut_free(vm);
 
   vm = kut_new(false);
-  res = ku_exec(vm, "let x = true and true;");
-  EXPECT_VAL(vm, ku_get_global(vm, "x"), BOOL_VAL(true), "true and true");
+  res = ku_exec(vm, "let x = true && true;");
+  EXPECT_VAL(vm, ku_get_global(vm, "x"), BOOL_VAL(true), "true && true");
   kut_free(vm);
 
   vm = kut_new(false);
@@ -1817,8 +1817,8 @@ int ku_test() {
 
   vm = kut_new(true);
   res = ku_exec(vm, "let x = 0xf7f1 & 0x9854;");
-  EXPECT_INT(vm, res, KVM_OK, "bit and res");
-  EXPECT_VAL(vm, ku_get_global(vm, "x"), NUM_VAL(36944), "bit and ret");
+  EXPECT_INT(vm, res, KVM_OK, "bit && res");
+  EXPECT_VAL(vm, ku_get_global(vm, "x"), NUM_VAL(36944), "bit && ret");
   kut_free(vm);
 
   vm = kut_new(true);
@@ -1828,7 +1828,7 @@ int ku_test() {
 
   vm = kut_new(true);
   res = ku_exec(vm, "let x = 0xf7f1 & true;");
-  EXPECT_INT(vm, res, KVM_ERR_RUNTIME, "bit and invalid res");
+  EXPECT_INT(vm, res, KVM_ERR_RUNTIME, "bit && invalid res");
   kut_free(vm);
 
   vm = kut_new(true);
@@ -1940,7 +1940,7 @@ int ku_test() {
   kut_free(vm);
 
   vm = kut_new(true);
-  res = ku_exec(vm, "let x=2; let a = (x > 2) and 7 || 6;");
+  res = ku_exec(vm, "let x=2; let a = (x > 2) && 7 || 6;");
   EXPECT_INT(vm, res, KVM_OK, "tertiary res");
   EXPECT_VAL(vm, ku_get_global(vm, "a"), NUM_VAL(6), "tertiary ret");
   kut_free(vm);
@@ -2006,14 +2006,14 @@ int ku_test() {
   kut_free(vm);
 
   vm = kut_new(true);
-  res = ku_exec(vm, "let comp = (a, b) => ( (a < b) and -1 || ( (a > b) and 1 || 0)) ;");
+  res = ku_exec(vm, "let comp = (a, b) => ( (a < b) && -1 || ( (a > b) && 1 || 0)) ;");
   EXPECT_INT(vm, res, KVM_OK, "tertiary comp res");
   res = ku_exec(vm, "let x = comp(9, 7);");
   EXPECT_VAL(vm, ku_get_global(vm, "x"), NUM_VAL(1), "tertiary comp ret");
   kut_free(vm);
 
   vm = kut_new(true);
-  res = ku_exec(vm, "let comp = (a, b) => ( (a < b) and -1 || ( (a > b) and 1 || 0)) ;");
+  res = ku_exec(vm, "let comp = (a, b) => ( (a < b) && -1 || ( (a > b) && 1 || 0)) ;");
   EXPECT_INT(vm, res, KVM_OK, "db comp res");
   res = ku_exec(vm, "let db = [ { \"name\" = \"mohsen\", \"age\"=55 }, { \"name\" = \"josh\", \"age\"=40 }];");
   EXPECT_INT(vm, res, KVM_OK, "db init res");
