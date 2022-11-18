@@ -536,7 +536,6 @@ static kutok_t ku_keyword(kuvm *__nonnull vm) {
     case 'i': return ku_lexkey(vm, 1,1,"f", TOK_IF);
     case 'l': return ku_lexkey(vm, 1,2,"et", TOK_LET);
     case 'n': return ku_lexkey(vm, 1,3,"ull", TOK_NULL);
-    case 'o': return ku_lexkey(vm, 1,1,"r", TOK_OR);
     case 'r': return ku_lexkey(vm, 1,5,"eturn", TOK_RETURN);
     case 's': return ku_lexkey(vm, 1,4,"uper", TOK_SUPER);
     case 't':
@@ -590,8 +589,13 @@ kutok ku_scan(kuvm *__nonnull vm) {
         return ku_tokmake(vm, TOK_AND);
       }
       return ku_tokmake(vm, TOK_AMP);
-    case '|': return ku_tokmake(vm, TOK_PIPE);
-    case '/': return ku_tokmake(vm, TOK_SLASH);
+    case '|':
+      if (ku_lexmatch(vm, '|')) {
+        return ku_tokmake(vm, TOK_OR);
+      }
+      return ku_tokmake(vm, TOK_PIPE);
+    case '/':
+      return ku_tokmake(vm, TOK_SLASH);
     case '!':
       if (ku_lexmatch(vm, '=') && ku_lexmatch(vm, '=')) {
         return ku_tokmake(vm, TOK_NE);
