@@ -524,7 +524,17 @@ static kutok_t ku_keyword(kuvm *__nonnull vm) {
       }
       break;
     }
-    case 'e': return ku_lexkey(vm, 1,3,"lse", TOK_ELSE);
+    case 'e':
+      if (vm->scanner.curr - vm->scanner.start > 1) {
+        switch (vm->scanner.start[1]) {
+          case 'l': return ku_lexkey(vm, 1,3,"se", TOK_ELSE);
+          case 'x': return ku_lexkey(vm, 1,3,"tends", TOK_EXTENDS);
+        }
+
+
+        // TODO
+      }
+      break;
     case 'f':
       if (vm->scanner.curr - vm->scanner.start > 1) {
         switch (vm->scanner.start[1]) {
@@ -1229,7 +1239,7 @@ static void ku_classdecl(kuvm *__nonnull vm) {
   cc.hassuper = false;
   vm->curclass = &cc;
 
-  if (ku_pmatch(vm, TOK_LT)) {
+  if (ku_pmatch(vm, TOK_EXTENDS)) {
     ku_pconsume(vm, TOK_IDENT, "class name expected");
     ku_pvar(vm, false); //  [.. GET_GLOBAL <name>;]
 
@@ -1600,6 +1610,7 @@ kuprule ku_rules[] = {
   [TOK_AND] =         { NULL,        ku_and,   P_AND },
   [TOK_CLASS] =       { NULL,        NULL,     P_NONE },
   [TOK_ELSE] =        { NULL,        NULL,     P_NONE },
+  [TOK_EXTENDS] =     { NULL,        NULL,     P_NONE },
   [TOK_FALSE] =       { ku_lit,      NULL,     P_NONE },
   [TOK_FOR] =         { NULL,        NULL,     P_NONE },
   [TOK_FUN] =         { ku_funcexpr, NULL,     P_NONE },

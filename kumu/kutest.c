@@ -1046,17 +1046,17 @@ int ku_test() {
   kut_free(vm);
 
   vm = kut_new(false);
-  res = ku_exec(vm, "class A < A {}");
+  res = ku_exec(vm, "class A extends A {}");
   EXPECT_INT(vm, res, KVM_ERR_SYNTAX, "class ownsubclass res");
   kut_free(vm);
 
   vm = kut_new(false);
-  res = ku_exec(vm, "class A < 12 {}");
+  res = ku_exec(vm, "class A extends 12 {}");
   EXPECT_INT(vm, res, KVM_ERR_SYNTAX, "class bad inherit static res");
   kut_free(vm);
 
   vm = kut_new(false);
-  res = ku_exec(vm, "let B = 9; class A < B {}");
+  res = ku_exec(vm, "let B = 9; class A extends B {}");
   EXPECT_INT(vm, res, KVM_ERR_RUNTIME, "class bad inherit run res");
   kut_free(vm);
 
@@ -1071,20 +1071,20 @@ int ku_test() {
   kut_free(vm);
 
   vm = kut_new(false);
-  res = ku_exec(vm, "let x=0; class A { f() { x=2; } }\nclass B < A {}\nlet b=B(); b.f();");
+  res = ku_exec(vm, "let x=0; class A { f() { x=2; } }\nclass B extends A {}\nlet b=B(); b.f();");
   EXPECT_INT(vm, res, KVM_OK, "super res");
   EXPECT_VAL(vm, ku_get_global(vm, "x"), NUM_VAL(2), "super ret");
   kut_free(vm);
 
   vm = kut_new(false);
   vm->flags = 0;
-  res = ku_exec(vm, "class A { f() { return 2; } }\nclass B < A { f() { let z=super.f; return z()*3; }}\nlet b=B(); let x = b.f();");
+  res = ku_exec(vm, "class A { f() { return 2; } }\nclass B extends A { f() { let z=super.f; return z()*3; }}\nlet b=B(); let x = b.f();");
   EXPECT_INT(vm, res, KVM_OK, "super call res");
   EXPECT_VAL(vm, ku_get_global(vm, "x"), NUM_VAL(6), "super call ret");
   kut_free(vm);
 
   vm = kut_new(false);
-  res = ku_exec(vm, "class A { f() { return 2; } }\nclass B < A { f() { return super.f()*3; }}\nlet b=B(); let x = b.f();");
+  res = ku_exec(vm, "class A { f() { return 2; } }\nclass B extends A { f() { return super.f()*3; }}\nlet b=B(); let x = b.f();");
   EXPECT_INT(vm, res, KVM_OK, "super invoke res");
   EXPECT_VAL(vm, ku_get_global(vm, "x"), NUM_VAL(6), "super invoke ret");
   kut_free(vm);
