@@ -527,12 +527,9 @@ static kutok_t ku_keyword(kuvm *__nonnull vm) {
     case 'e':
       if (vm->scanner.curr - vm->scanner.start > 1) {
         switch (vm->scanner.start[1]) {
-          case 'l': return ku_lexkey(vm, 1,3,"se", TOK_ELSE);
-          case 'x': return ku_lexkey(vm, 1,3,"tends", TOK_EXTENDS);
+          case 'l': return ku_lexkey(vm, 2,2,"se", TOK_ELSE);
+          case 'x': return ku_lexkey(vm, 2,5,"tends", TOK_EXTENDS);
         }
-
-
-        // TODO
       }
       break;
     case 'f':

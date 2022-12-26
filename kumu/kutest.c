@@ -381,7 +381,7 @@ int ku_test() {
   kut_free(vm);
 
   vm = kut_new(false);
-  ku_lexinit(vm, "&& class else false for function if null || return super this true while {}[]!+-*/=!==><>=<= === => break continue const far\ttrick\nart\rcool eek too functiond");
+  ku_lexinit(vm, "&& class else false for function if null || return super this true while extends {}[]!+-*/=!==><>=<= === => break continue const far\ttrick\nart\rcool eek too functiond");
   kutok t = ku_scan(vm);
   EXPECT_INT(vm, t.type, TOK_AND, "[&&]");
   t = ku_scan(vm);
@@ -410,6 +410,8 @@ int ku_test() {
   EXPECT_INT(vm, t.type, TOK_TRUE, "[true]");
   t = ku_scan(vm);
   EXPECT_INT(vm, t.type, TOK_WHILE, "[while]");
+  t = ku_scan(vm);
+  EXPECT_INT(vm, t.type, TOK_EXTENDS, "[extends]");
   t = ku_scan(vm);
   EXPECT_INT(vm, t.type, TOK_LBRACE, "[{]");
   t = ku_scan(vm);
@@ -1140,7 +1142,7 @@ int ku_test() {
   kut_free(vm);
 
   vm = kut_new(false);
-  res = ku_exec(vm, "class A{} class B<A{ f() { super.x(); }} let b=B(); b.f();");
+  res = ku_exec(vm, "class A{} class B extends A{ f() { super.x(); }} let b=B(); b.f();");
   EXPECT_INT(vm, res, KVM_ERR_RUNTIME, "invoke invalid super");
   kut_free(vm);
 
@@ -1156,7 +1158,7 @@ int ku_test() {
   kut_free(vm);
 
   vm = kut_new(false);
-  res = ku_exec(vm, "class A{} class B<A{ f() { let m = super.x; }} let b=B(); b.f();");
+  res = ku_exec(vm, "class A{} class B extends A{ f() { let m = super.x; }} let b=B(); b.f();");
   EXPECT_INT(vm, res, KVM_ERR_RUNTIME, "invalid get super");
   kut_free(vm);
 
