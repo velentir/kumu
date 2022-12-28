@@ -212,6 +212,7 @@ typedef enum {
   OP_METHOD,
   OP_MUL,
   OP_NEG,
+  OP_NEW,
   OP_NULL,
   OP_NOT,
   OP_POP,
@@ -395,7 +396,7 @@ typedef enum {
   TOK_IDENT, TOK_STR, TOK_STRESC, TOK_NUM, TOK_HEX,
   // Keywords.
   TOK_AND, TOK_CLASS, TOK_ELSE, TOK_EXTENDS, TOK_FALSE, TOK_FOR, TOK_FUN,
-  TOK_IF, TOK_NULL, TOK_OR, TOK_RETURN, TOK_SUPER,
+  TOK_IF, TOK_NEW, TOK_NULL, TOK_OR, TOK_RETURN, TOK_SUPER,
   TOK_THIS, TOK_TRUE, TOK_LET, TOK_WHILE, TOK_ERR, TOK_EOF,
   TOK_BREAK, TOK_CONTINUE, TOK_CONST,
 } kutok_t;
@@ -561,7 +562,6 @@ typedef struct kuvm {
   kuval stack[];
 } kuvm;
 
-#define ku_new()  ku_newvm(STACK_MAX, NULL)
 kuvm *__nonnull ku_newvm(int stack_size, kuenv *__nullable env);
 void ku_freevm(kuvm *__nonnull vm);
 kures ku_run(kuvm *__nonnull vm);

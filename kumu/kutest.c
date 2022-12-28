@@ -103,7 +103,7 @@ kuval ku_test_eval(kuvm *__nonnull vm, const char *__nonnull expr) {
 }
 
 kuvm *__nonnull kut_new(bool reglibs) {
-  kuvm *__nonnull vm = ku_new();
+  kuvm *__nonnull vm = ku_newvm(STACK_MAX, NULL);
   if (reglibs) {
     ku_reglibs(vm);
   }
@@ -381,7 +381,7 @@ int ku_test() {
   kut_free(vm);
 
   vm = kut_new(false);
-  ku_lexinit(vm, "&& class else false for function if null || return super this true while extends {}[]!+-*/=!==><>=<= === => break continue const far\ttrick\nart\rcool eek too functiond");
+  ku_lexinit(vm, "&& class else false for function if new null || return super this true while extends {}[]!+-*/=!==><>=<= === => break continue const far\ttrick\nart\rcool eek too functiond");
   kutok t = ku_scan(vm);
   EXPECT_INT(vm, t.type, TOK_AND, "[&&]");
   t = ku_scan(vm);
@@ -396,6 +396,8 @@ int ku_test() {
   EXPECT_INT(vm, t.type, TOK_FUN, "[function]");
   t = ku_scan(vm);
   EXPECT_INT(vm, t.type, TOK_IF, "[if]");
+  t = ku_scan(vm);
+  EXPECT_INT(vm, t.type, TOK_NEW, "[new]");
   t = ku_scan(vm);
   EXPECT_INT(vm, t.type, TOK_NULL, "[null]");
   t = ku_scan(vm);
@@ -978,13 +980,18 @@ int ku_test() {
   kut_free(vm);
 
   vm = kut_new(true);
-  res = ku_exec(vm, "class Foo {}\nprintf(Foo);");
+  res = ku_exec(vm, "class Foo {}\n printf(Foo);");
   EXPECT_INT(vm, res, KVM_OK, "class decl");
   kut_free(vm);
 
   vm = kut_new(true);
-  res = ku_exec(vm, "class Foo {}\nlet f = Foo(); printf(f);");
+  res = ku_exec(vm, "class Foo {}\n let f = new Foo(); printf(f);");
   EXPECT_INT(vm, res, KVM_OK, "class cons");
+  kut_free(vm);
+
+  vm = kut_new(true);
+  res = ku_exec(vm, "function Foo() {}\n let f = new Foo();");
+  EXPECT_INT(vm, res, KVM_ERR_RUNTIME, "non-class parameter to new");
   kut_free(vm);
 
   vm = kut_new(false);
@@ -998,24 +1005,24 @@ int ku_test() {
   kut_free(vm);
 
   vm = kut_new(false);
-  res = ku_exec(vm, "class C{}\nlet c=C(); c.p=9; let x=c.p;");
+  res = ku_exec(vm, "class C{}\n let c = new C(); c.p = 9; let x = c.p;");
   EXPECT_INT(vm, res, KVM_OK, "set/get prop res");
   EXPECT_VAL(vm, ku_get_global(vm, "x"), NUM_VAL(9), "set/get prop ret");
   kut_free(vm);
 
   vm = kut_new(false);
-  res = ku_exec(vm, "class C{}\nlet c=C(); c.p=9; let x=c.z;");
+  res = ku_exec(vm, "class C{}\n let c = new C(); c.p=9; let x=c.z;");
   EXPECT_INT(vm, res, KVM_ERR_RUNTIME, "set/get prop not found");
   kut_free(vm);
 
   vm = kut_new(false);
-  res = ku_exec(vm, "let x=1;\nclass C{ M() { x=3; } }\nlet c=C();\nlet m=c.M;\nm();");
+  res = ku_exec(vm, "let x=1;\n class C { M() { x=3; } }\n let c = new C();\n let m = c.M;\n m();");
   EXPECT_INT(vm, res, KVM_OK, "bound method res");
   EXPECT_VAL(vm, ku_get_global(vm, "x"), NUM_VAL(3), "bound method ret");
   kut_free(vm);
 
   vm = kut_new(false);
-  res = ku_exec(vm, "let x=1; class C{ M() { this.z=3; } }\nlet c=C(); c.M(); x=c.z;");
+  res = ku_exec(vm, "let x=1; class C{ M() { this.z=3; } }\n let c = new C(); c.M(); x=c.z;");
   EXPECT_INT(vm, res, KVM_OK, "this res");
   EXPECT_VAL(vm, ku_get_global(vm, "x"), NUM_VAL(3), "this ret");
   kut_free(vm);
@@ -1026,23 +1033,23 @@ int ku_test() {
   kut_free(vm);
 
   vm = kut_new(false);
-  res = ku_exec(vm, "class C {}\nlet c=C(12,14);");
+  res = ku_exec(vm, "class C {}\n let c = new C(12,14);");
   EXPECT_INT(vm, res, KVM_ERR_RUNTIME, "no init with args");
   kut_free(vm);
 
   vm = kut_new(false);
-  res = ku_exec(vm, "class C { init(x) { this.x = x; }}\nlet c=C(12);let x = c.x;");
+  res = ku_exec(vm, "class C { init(x) { this.x = x; }}\n let c = new C(12); let x = c.x;");
   EXPECT_INT(vm, res, KVM_OK, "init args res");
   EXPECT_VAL(vm, ku_get_global(vm, "x"), NUM_VAL(12), "init args ret");
   kut_free(vm);
 
   vm = kut_new(false);
-  res = ku_exec(vm, "class C { init(x) { this.x = x; return 7; }}\nlet c=C(12);let x = c.x;");
+  res = ku_exec(vm, "class C { init(x) { this.x = x; return 7; }}\n let c = new C(12); let x = c.x;");
   EXPECT_INT(vm, res, KVM_ERR_RUNTIME, "init return res");
   kut_free(vm);
 
   vm = kut_new(false);
-  res = ku_exec(vm, "let x=1; class C { init() { function f() { x=8; } this.f = f; } }\nlet c = C(); c.f();");
+  res = ku_exec(vm, "let x=1; class C { init() { function f() { x=8; } this.f = f; } }\n let c = new C(); c.f();");
   EXPECT_INT(vm, res, KVM_OK, "field invoke res");
   EXPECT_VAL(vm, ku_get_global(vm, "x"), NUM_VAL(8), "field invoke ret");
   kut_free(vm);
@@ -1073,20 +1080,20 @@ int ku_test() {
   kut_free(vm);
 
   vm = kut_new(false);
-  res = ku_exec(vm, "let x=0; class A { f() { x=2; } }\nclass B extends A {}\nlet b=B(); b.f();");
+  res = ku_exec(vm, "let x=0; class A { f() { x=2; } }\n class B extends A {}\n let b = new B(); b.f();");
   EXPECT_INT(vm, res, KVM_OK, "super res");
   EXPECT_VAL(vm, ku_get_global(vm, "x"), NUM_VAL(2), "super ret");
   kut_free(vm);
 
   vm = kut_new(false);
   vm->flags = 0;
-  res = ku_exec(vm, "class A { f() { return 2; } }\nclass B extends A { f() { let z=super.f; return z()*3; }}\nlet b=B(); let x = b.f();");
+  res = ku_exec(vm, "class A { f() { return 2; } }\n class B extends A { f() { let z = super.f; return z()*3; }}\n let b = new B(); let x = b.f();");
   EXPECT_INT(vm, res, KVM_OK, "super call res");
   EXPECT_VAL(vm, ku_get_global(vm, "x"), NUM_VAL(6), "super call ret");
   kut_free(vm);
 
   vm = kut_new(false);
-  res = ku_exec(vm, "class A { f() { return 2; } }\nclass B extends A { f() { return super.f()*3; }}\nlet b=B(); let x = b.f();");
+  res = ku_exec(vm, "class A { f() { return 2; } }\nclass B extends A { f() { return super.f()*3; }}\n let b = new B(); let x = b.f();");
   EXPECT_INT(vm, res, KVM_OK, "super invoke res");
   EXPECT_VAL(vm, ku_get_global(vm, "x"), NUM_VAL(6), "super invoke ret");
   kut_free(vm);
@@ -1132,17 +1139,17 @@ int ku_test() {
   kut_free(vm);
 
   vm = kut_new(false);
-  res = ku_exec(vm, "class A{}\nlet a=A(); a.x();");
+  res = ku_exec(vm, "class A{}\n let a = new A(); a.x();");
   EXPECT_INT(vm, res, KVM_ERR_RUNTIME, "invoke invalid prop");
   kut_free(vm);
 
   vm = kut_new(false);
-  res = ku_exec(vm, "class A{}\nlet a=7; a.x();");
+  res = ku_exec(vm, "class A{}\n let a = 7; a.x();");
   EXPECT_INT(vm, res, KVM_ERR_RUNTIME, "invoke invalid receiver");
   kut_free(vm);
 
   vm = kut_new(false);
-  res = ku_exec(vm, "class A{} class B extends A{ f() { super.x(); }} let b=B(); b.f();");
+  res = ku_exec(vm, "class A {} class B extends A { f() { super.x(); }} let b = new B(); b.f();");
   EXPECT_INT(vm, res, KVM_ERR_RUNTIME, "invoke invalid super");
   kut_free(vm);
 
@@ -1158,7 +1165,7 @@ int ku_test() {
   kut_free(vm);
 
   vm = kut_new(false);
-  res = ku_exec(vm, "class A{} class B extends A{ f() { let m = super.x; }} let b=B(); b.f();");
+  res = ku_exec(vm, "class A {} class B extends A { f() { let m = super.x; }} let b = new B(); b.f();");
   EXPECT_INT(vm, res, KVM_ERR_RUNTIME, "invalid get super");
   kut_free(vm);
 
@@ -1176,7 +1183,7 @@ int ku_test() {
 
   vm = kut_new(false);
   vm->flags = KVM_F_GCSTRESS | KVM_F_GCLOG;
-  res = ku_exec(vm, "class A{ f(){}} let a=A(); let z=a.f; a=null;");
+  res = ku_exec(vm, "class A{ f(){}} let a = new A(); let z = a.f; a = null;");
   ku_gc(vm);
   EXPECT_INT(vm, res, KVM_OK, "gc class res");
   EXPECT_VAL(vm, ku_get_global(vm, "a"), NULL_VAL, "gc class val");
