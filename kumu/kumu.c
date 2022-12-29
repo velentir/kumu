@@ -39,7 +39,7 @@ kuval ku_peek(kuvm *__nonnull vm, int distance);
 static void ku_printobj(kuvm *__nonnull vm, kuval val);
 static void ku_printfunc(kuvm *__nonnull vm, kufunc *__nonnull fn);
 
-static void ku_function(kuvm *__nonnull vm, kufunc_t type);
+static void kup_function(kuvm *__nonnull vm, kufunc_t type);
 static kuval string_iget(kuvm *__nonnull vm, kuobj *__nonnull obj, kustr *__nonnull prop);
 static kuval string_icall(kuvm *__nonnull vm, kuobj *__nonnull o, kustr *__nonnull m, int argc, kuval *__nullable argv);
 static bool array_invoke(kuvm *__nonnull vm, kuval arr, kustr *__nonnull method, int argc, kuval *__nullable argv);
@@ -73,7 +73,7 @@ void ku_objfree(kuvm *__nonnull vm, kuobj *__nonnull obj) {
   switch (obj->type) {
     case OBJ_FUNC: {
       kufunc *__nonnull fn = (kufunc*)obj;
-      ku_chunkfree(vm, &fn->chunk);
+      kup_chunkfree(vm, &fn->chunk);
       KU_FREE(vm, kufunc, obj);
     }
       break;
@@ -672,7 +672,7 @@ static void ku_perr(kuvm *__nonnull vm, const char *__nonnull msg) {
   ku_perrat(vm, &vm->parser.curr, msg);
 }
 
-static void ku_pnext(kuvm *__nonnull vm) {
+static void kup_pnext(kuvm *__nonnull vm) {
   vm->parser.prev = vm->parser.curr;
 
   while (true) {
@@ -682,68 +682,69 @@ static void ku_pnext(kuvm *__nonnull vm) {
   }
 }
 
-static void ku_pconsume(kuvm *__nonnull vm, kutok_t type, const char *__nonnull msg) {
+static void kup_pconsume(kuvm *__nonnull vm, kutok_t type, const char *__nonnull msg) {
   if (vm->parser.curr.type == type) {
-    ku_pnext(vm);
+    kup_pnext(vm);
     return;
   }
   ku_perr(vm, msg);
 }
 
-kuchunk *__nonnull ku_chunk(kuvm *__nonnull vm) {
+kuchunk *__nonnull kup_chunk(kuvm *__nonnull vm) {
   return &vm->compiler->function->chunk;
 }
 
-static void ku_emitbyte(kuvm *__nonnull vm, uint8_t byte) {
-  ku_chunkwrite(vm, ku_chunk(vm), byte, vm->parser.prev.line);
+static void kup_emitbyte(kuvm *__nonnull vm, uint8_t byte) {
+  kup_chunkwrite(vm, kup_chunk(vm), byte, vm->parser.prev.line);
 }
 
-static void ku_emitop(kuvm *__nonnull vm, uint8_t byte) {
-  ku_emitbyte(vm, byte);
+static void kup_emitop(kuvm *__nonnull vm, uint8_t byte) {
+  kup_emitbyte(vm, byte);
 }
 
-static void ku_emitbytes(kuvm *__nonnull vm, uint8_t b1, uint8_t b2);
-static void ku_emitop2(kuvm *__nonnull vm, uint8_t b1, uint8_t b2);
+static void kup_emitbytes(kuvm *__nonnull vm, uint8_t b1, uint8_t b2);
+static void kup_emitop2(kuvm *__nonnull vm, uint8_t b1, uint8_t b2);
 
-static void ku_emitret(kuvm *__nonnull vm, bool lambda) {
+static void kup_emitret(kuvm *__nonnull vm, bool lambda) {
   if (lambda) {
-    ku_emitop(vm, OP_RET);
+    kup_emitop(vm, OP_RET);
     return;
   }
   if (vm->compiler->type == FUNC_INIT) {
-    ku_emitop2(vm, OP_GET_LOCAL, 0);
+    kup_emitop2(vm, OP_GET_LOCAL, 0);
   } else {
-    ku_emitop(vm, OP_NULL);
+    kup_emitop(vm, OP_NULL);
   }
-  ku_emitop(vm, OP_RET);
+  kup_emitop(vm, OP_RET);
 }
 
-static kufunc *__nullable ku_pend(kuvm *__nonnull vm, bool lambda) {
-  ku_emitret(vm, lambda);
+static kufunc *__nullable kup_pend(kuvm *__nonnull vm, bool lambda) {
+  kup_emitret(vm, lambda);
   kufunc *__nullable fn = vm->compiler->function;
   vm->compiler = vm->compiler->enclosing;
   return fn;
 }
 
-static void ku_emitbytes(kuvm *__nonnull vm, uint8_t b1, uint8_t b2) {
-  ku_emitbyte(vm, b1);
-  ku_emitbyte(vm, b2);
+static void kup_emitbytes(kuvm *__nonnull vm, uint8_t b1, uint8_t b2) {
+  kup_emitbyte(vm, b1);
+  kup_emitbyte(vm, b2);
 }
 
-static void ku_emitop2(kuvm*__nonnull  vm, uint8_t b1, uint8_t b2) {
-  ku_emitbytes(vm, b1, b2);
+static void kup_emitop2(kuvm*__nonnull  vm, uint8_t b1, uint8_t b2) {
+  kup_emitbytes(vm, b1, b2);
 }
 
-static uint8_t ku_pconst(kuvm *__nonnull vm, kuval val) {
-  int cons = ku_chunkconst(vm, ku_chunk(vm), val);
+static uint8_t kup_pconst(kuvm *__nonnull vm, kuval val) {
+  int cons = kup_chunkconst(vm, kup_chunk(vm), val);
   if (cons > vm->max_const) {
     ku_perr(vm, "out of constant space");
     return 0;
   }
   return (uint8_t)cons;
 }
-static void ku_emitconst(kuvm *__nonnull vm, kuval val) {
-  ku_emitop2(vm, OP_CONST, ku_pconst(vm, val));
+
+static void kup_emitconst(kuvm *__nonnull vm, kuval val) {
+  kup_emitop2(vm, OP_CONST, kup_pconst(vm, val));
 }
 
 typedef enum {
@@ -770,23 +771,23 @@ typedef struct {
   kup_precedence precedence;
 } kuprule;
 
-static kuprule *__nonnull ku_getrule(kuvm *__nonnull vm, kutok_t optype);
+static kuprule *__nonnull kup_getrule(kuvm *__nonnull vm, kutok_t optype);
 
-static bool ku_pcheck(kuvm *__nonnull vm, kutok_t type) {
+static bool kup_pcheck(kuvm *__nonnull vm, kutok_t type) {
   return vm->parser.curr.type == type;
 }
 
-static bool ku_pmatch(kuvm *__nonnull vm, kutok_t type) {
-  if (!ku_pcheck(vm, type)) {
+static bool kup_pmatch(kuvm *__nonnull vm, kutok_t type) {
+  if (!kup_pcheck(vm, type)) {
     return false;
   }
-  ku_pnext(vm);
+  kup_pnext(vm);
   return true;
 }
 
-static void ku_prec(kuvm *__nonnull vm, kup_precedence prec) {
-  ku_pnext(vm);
-  kupfunc __nullable prefix = ku_getrule(vm, vm->parser.prev.type)->prefix;
+static void kup_prec(kuvm *__nonnull vm, kup_precedence prec) {
+  kup_pnext(vm);
+  kupfunc __nullable prefix = kup_getrule(vm, vm->parser.prev.type)->prefix;
   if (prefix == NULL) {
     ku_perr(vm, "expected expression");
     return;
@@ -795,27 +796,27 @@ static void ku_prec(kuvm *__nonnull vm, kup_precedence prec) {
   bool lhs = prec <= P_ASSIGN;
   prefix(vm, lhs);
 
-  while (prec <= ku_getrule(vm, vm->parser.curr.type)->precedence) {
-    ku_pnext(vm);
-    kupfunc infix = ku_getrule(vm, vm->parser.prev.type)->infix;
+  while (prec <= kup_getrule(vm, vm->parser.curr.type)->precedence) {
+    kup_pnext(vm);
+    kupfunc infix = kup_getrule(vm, vm->parser.prev.type)->infix;
     infix(vm, lhs);
   }
 
-  if (lhs && ku_pmatch(vm, TOK_EQ)) {
+  if (lhs && kup_pmatch(vm, TOK_EQ)) {
     ku_perr(vm, "invalid assignment target");
   }
 }
 
-static void ku_lit(kuvm *__nonnull vm, KU_UNUSED bool lhs) {
+static void kup_lit(kuvm *__nonnull vm, KU_UNUSED bool lhs) {
   switch (vm->parser.prev.type) {
-    case TOK_FALSE: ku_emitop(vm, OP_FALSE); break;
-    case TOK_TRUE: ku_emitop(vm, OP_TRUE); break;
-    case TOK_NULL: ku_emitop(vm, OP_NULL); break;
+    case TOK_FALSE: kup_emitop(vm, OP_FALSE); break;
+    case TOK_TRUE: kup_emitop(vm, OP_TRUE); break;
+    case TOK_NULL: kup_emitop(vm, OP_NULL); break;
     default: return; // unreachable - TODO: figure out code coverage
   }
 }
 
-static void ku_xstring(kuvm *__nonnull vm, KU_UNUSED bool lhs) {
+static void kup_xstring(kuvm *__nonnull vm, KU_UNUSED bool lhs) {
   const char *__nonnull chars = vm->parser.prev.start + 1;
   int len = vm->parser.prev.len - 2;
 
@@ -848,17 +849,17 @@ static void ku_xstring(kuvm *__nonnull vm, KU_UNUSED bool lhs) {
     }
   }
 
-  ku_emitconst(vm, OBJ_VAL(ku_strfrom(vm, encoded, esclen)));
+  kup_emitconst(vm, OBJ_VAL(ku_strfrom(vm, encoded, esclen)));
   ku_free(vm, encoded, len);
 }
 
-static void ku_string(kuvm *__nonnull vm, KU_UNUSED bool lhs) {
+static void kup_string(kuvm *__nonnull vm, KU_UNUSED bool lhs) {
   const char *__nonnull chars = vm->parser.prev.start + 1;
   int len = vm->parser.prev.len - 2;
-  ku_emitconst(vm, OBJ_VAL(ku_strfrom(vm, chars, len)));
+  kup_emitconst(vm, OBJ_VAL(ku_strfrom(vm, chars, len)));
 }
 
-static void ku_hex(kuvm *__nonnull vm, KU_UNUSED bool lhs) {
+static void kup_hex(kuvm *__nonnull vm, KU_UNUSED bool lhs) {
   const char *__nonnull start = vm->parser.prev.start + 2;  // skip 0x
   int len = vm->parser.prev.len - 2;
 
@@ -873,52 +874,52 @@ static void ku_hex(kuvm *__nonnull vm, KU_UNUSED bool lhs) {
       val = val*16 + (double)(ch - 'A' + 10);
     }
   }
-  ku_emitconst(vm, NUM_VAL(val));
+  kup_emitconst(vm, NUM_VAL(val));
 }
 
-static void ku_number(kuvm *__nonnull vm, KU_UNUSED bool lhs) {
+static void kup_number(kuvm *__nonnull vm, KU_UNUSED bool lhs) {
   double val = strtod(vm->parser.prev.start, NULL);
-  ku_emitconst(vm, NUM_VAL(val));
+  kup_emitconst(vm, NUM_VAL(val));
 }
 
-static void ku_funcexpr(kuvm *__nonnull vm, KU_UNUSED bool lhs) {
-  ku_function(vm, FUNC_STD);
+static void kup_funcexpr(kuvm *__nonnull vm, KU_UNUSED bool lhs) {
+  kup_function(vm, FUNC_STD);
 }
 
-static void ku_expr(kuvm *__nonnull vm) {
-  ku_prec(vm, P_ASSIGN);
+static void kup_expr(kuvm *__nonnull vm) {
+  kup_prec(vm, P_ASSIGN);
 }
 
-static uint8_t ku_arglist(kuvm *__nonnull vm, kutok_t right) {
+static uint8_t kup_arglist(kuvm *__nonnull vm, kutok_t right) {
   uint8_t argc = 0;
-  if (!ku_pcheck(vm, right)) {
+  if (!kup_pcheck(vm, right)) {
     do {
-      ku_expr(vm);
+      kup_expr(vm);
       if (argc > vm->max_params) {
         ku_perr(vm, "too many parameters");
       }
       argc++;
-    } while (ku_pmatch(vm, TOK_COMMA));
+    } while (kup_pmatch(vm, TOK_COMMA));
   }
 
   if (right == TOK_RPAR)
-    ku_pconsume(vm, right, "')' expected");
+    kup_pconsume(vm, right, "')' expected");
   else
-    ku_pconsume(vm, right, "']' expected");
+    kup_pconsume(vm, right, "']' expected");
   return argc;
 }
 
-static void ku_call(kuvm *__nonnull vm, KU_UNUSED bool lhs) {
-  uint8_t argc = ku_arglist(vm, TOK_RPAR);
-  ku_emitop2(vm, OP_CALL, argc);
+static void kup_call(kuvm *__nonnull vm, KU_UNUSED bool lhs) {
+  uint8_t argc = kup_arglist(vm, TOK_RPAR);
+  kup_emitop2(vm, OP_CALL, argc);
 }
 
-static void ku_grouping(kuvm *__nonnull vm, KU_UNUSED bool lhs) {
-  ku_expr(vm);
-  ku_pconsume(vm, TOK_RPAR, "')' expected");
+static void kup_grouping(kuvm *__nonnull vm, KU_UNUSED bool lhs) {
+  kup_expr(vm);
+  kup_pconsume(vm, TOK_RPAR, "')' expected");
 }
 
-static bool ku_peek_lambda(kuvm *__nonnull vm) {
+static bool kup_peek_lambda(kuvm *__nonnull vm) {
   bool ret = false;
   const char *__nonnull start = vm->scanner.start;
   const char *__nonnull curr = vm->scanner.curr;
@@ -941,119 +942,119 @@ static bool ku_peek_lambda(kuvm *__nonnull vm) {
   return ret;
 }
 
-static void ku_params(kuvm *__nonnull vm);
-static void ku_lbody(kuvm *__nonnull vm, kucomp *__nonnull compiler);
+static void kup_params(kuvm *__nonnull vm);
+static void kup_lbody(kuvm *__nonnull vm, kucomp *__nonnull compiler);
 
-static void ku_lambda_or_group(kuvm *__nonnull vm, bool lhs) {
-  if (ku_peek_lambda(vm)) {
+static void kup_lambda_or_group(kuvm *__nonnull vm, bool lhs) {
+  if (kup_peek_lambda(vm)) {
     kucomp compiler;
-    ku_compinit(vm, &compiler, FUNC_STD);
-    ku_beginscope(vm);
-    ku_params(vm);
-    ku_pconsume(vm, TOK_RPAR, "')' expected");
-    ku_pconsume(vm, TOK_ARROW, "'=>' expected");
-    ku_lbody(vm, &compiler);
+    kup_compinit(vm, &compiler, FUNC_STD);
+    kup_beginscope(vm);
+    kup_params(vm);
+    kup_pconsume(vm, TOK_RPAR, "')' expected");
+    kup_pconsume(vm, TOK_ARROW, "'=>' expected");
+    kup_lbody(vm, &compiler);
     return;
   }
 
-  ku_grouping(vm, lhs);
+  kup_grouping(vm, lhs);
 }
 
-static void ku_array(kuvm *__nonnull vm, KU_UNUSED bool lhs) {
-  int count = ku_arglist(vm, TOK_RBRACKET);
-  ku_emitop(vm, OP_ARRAY);
-  ku_emitbyte(vm, (count >> 8) & 0xff);
-  ku_emitbyte(vm, count & 0xff);
+static void kup_array(kuvm *__nonnull vm, KU_UNUSED bool lhs) {
+  int count = kup_arglist(vm, TOK_RBRACKET);
+  kup_emitop(vm, OP_ARRAY);
+  kup_emitbyte(vm, (count >> 8) & 0xff);
+  kup_emitbyte(vm, count & 0xff);
 }
 
-static void ku_index(kuvm *__nonnull vm, bool lhs) {
-  ku_expr(vm);
-  ku_pconsume(vm, TOK_RBRACKET, "']' expected");
-  if (lhs && ku_pmatch(vm, TOK_EQ)) {
-    ku_expr(vm);
-    ku_emitop(vm, OP_ASET);
+static void kup_index(kuvm *__nonnull vm, bool lhs) {
+  kup_expr(vm);
+  kup_pconsume(vm, TOK_RBRACKET, "']' expected");
+  if (lhs && kup_pmatch(vm, TOK_EQ)) {
+    kup_expr(vm);
+    kup_emitop(vm, OP_ASET);
   } else {
-    ku_emitop(vm, OP_AGET);
+    kup_emitop(vm, OP_AGET);
   }
 }
 
-static void ku_unary(kuvm *__nonnull vm, KU_UNUSED bool lhs) {
+static void kup_unary(kuvm *__nonnull vm, KU_UNUSED bool lhs) {
   kutok_t optype = vm->parser.prev.type;
 
-  ku_prec(vm, P_UNARY);
+  kup_prec(vm, P_UNARY);
 
   switch (optype) {
-    case TOK_MINUS: ku_emitop(vm, OP_NEG); break;
-    case TOK_BANG: ku_emitop(vm, OP_NOT); break;
+    case TOK_MINUS: kup_emitop(vm, OP_NEG); break;
+    case TOK_BANG: kup_emitop(vm, OP_NOT); break;
     default: return; // unreachable - TODO: figure out code coverage
   }
 }
 
-static void ku_exprstmt(kuvm *__nonnull vm, KU_UNUSED kuloop *__nullable loop) {
-  ku_expr(vm);
-  ku_pconsume(vm, TOK_SEMI, "; expected");
-  ku_emitop(vm, OP_POP);
+static void kup_exprstmt(kuvm *__nonnull vm, KU_UNUSED kuloop *__nullable loop) {
+  kup_expr(vm);
+  kup_pconsume(vm, TOK_SEMI, "; expected");
+  kup_emitop(vm, OP_POP);
 }
 
-static void ku_return(kuvm *__nonnull vm, KU_UNUSED kuloop *__nullable loop) {
+static void kup_return(kuvm *__nonnull vm, KU_UNUSED kuloop *__nullable loop) {
   if (vm->compiler->type == FUNC_MAIN) {
     ku_perr(vm, "can't return from top-level");
   }
 
-  if (ku_pmatch(vm, TOK_SEMI)) {
-    ku_emitret(vm, false);
+  if (kup_pmatch(vm, TOK_SEMI)) {
+    kup_emitret(vm, false);
   } else {
 
     if (vm->compiler->type == FUNC_INIT) {
       ku_err(vm, "cannot return from initializer");
     }
-    ku_expr(vm);
-    ku_pconsume(vm, TOK_SEMI, "';' expected");
-    ku_emitop(vm, OP_RET);
+    kup_expr(vm);
+    kup_pconsume(vm, TOK_SEMI, "';' expected");
+    kup_emitop(vm, OP_RET);
   }
 }
 
-static void ku_break(kuvm *__nonnull vm, kuloop *__nullable loop) {
+static void kup_break(kuvm *__nonnull vm, kuloop *__nullable loop) {
   if (loop == NULL) {
     ku_perr(vm, "break must be in a loop");
   } else {
-    ku_pconsume(vm, TOK_SEMI, "; expected");
-    ku_emitpatch(vm, &loop->breakpatch, OP_JUMP);
+    kup_pconsume(vm, TOK_SEMI, "; expected");
+    kup_emitpatch(vm, &loop->breakpatch, OP_JUMP);
   }
 }
 
-static void ku_continue(kuvm *__nonnull vm, kuloop *__nullable loop) {
+static void kup_continue(kuvm *__nonnull vm, kuloop *__nullable loop) {
   if (loop == NULL) {
     ku_perr(vm, "continue must be in a loop");
   } else {
-    ku_pconsume(vm, TOK_SEMI, "; expected");
-    ku_emitpatch(vm, &loop->continuepatch, OP_LOOP);
+    kup_pconsume(vm, TOK_SEMI, "; expected");
+    kup_emitpatch(vm, &loop->continuepatch, OP_LOOP);
   }
 }
 
-static void ku_stmt(kuvm *__nonnull vm, kuloop *__nullable loop) {
-  if (ku_pmatch(vm, TOK_IF)) {
-    ku_ifstmt(vm, loop);
-  } else if (ku_pmatch(vm, TOK_RETURN)) {
-    ku_return(vm, loop);
-  } else if (ku_pmatch(vm, TOK_WHILE)) {
-    ku_whilestmt(vm, loop);
-  } else if (ku_pmatch(vm, TOK_FOR)) {
-    ku_forstmt(vm, loop);
-  } else if (ku_pmatch(vm, TOK_BREAK)) {
-    ku_break(vm, loop);
-  } else if (ku_pmatch(vm, TOK_CONTINUE)) {
-    ku_continue(vm, loop);
-  } else if (ku_pmatch(vm, TOK_LBRACE)) {
-    ku_beginscope(vm);
-    ku_block(vm, loop);
-    ku_endscope(vm);
+static void kup_stmt(kuvm *__nonnull vm, kuloop *__nullable loop) {
+  if (kup_pmatch(vm, TOK_IF)) {
+    kup_ifstmt(vm, loop);
+  } else if (kup_pmatch(vm, TOK_RETURN)) {
+    kup_return(vm, loop);
+  } else if (kup_pmatch(vm, TOK_WHILE)) {
+    kup_whilestmt(vm, loop);
+  } else if (kup_pmatch(vm, TOK_FOR)) {
+    kup_forstmt(vm, loop);
+  } else if (kup_pmatch(vm, TOK_BREAK)) {
+    kup_break(vm, loop);
+  } else if (kup_pmatch(vm, TOK_CONTINUE)) {
+    kup_continue(vm, loop);
+  } else if (kup_pmatch(vm, TOK_LBRACE)) {
+    kup_beginscope(vm);
+    kup_block(vm, loop);
+    kup_endscope(vm);
   } else {
-    ku_exprstmt(vm, loop);
+    kup_exprstmt(vm, loop);
   }
 }
 
-static void ku_pskip(kuvm *__nonnull vm) {
+static void kup_pskip(kuvm *__nonnull vm) {
   vm->parser.panic = false;
 
   while (vm->parser.curr.type != TOK_EOF) {
@@ -1075,36 +1076,36 @@ static void ku_pskip(kuvm *__nonnull vm) {
       ;
     }
 
-    ku_pnext(vm);
+    kup_pnext(vm);
   }
 }
 
-static uint8_t ku_pidconst(kuvm *__nonnull vm, kutok *__nonnull name) {
-  return ku_pconst(vm, OBJ_VAL(ku_strfrom(vm, name->start, name->len)));
+static uint8_t kup_pidconst(kuvm *__nonnull vm, kutok *__nonnull name) {
+  return kup_pconst(vm, OBJ_VAL(ku_strfrom(vm, name->start, name->len)));
 }
 
-static uint8_t ku_strtoname(kuvm *__nonnull vm, kutok *__nonnull name) {
+static uint8_t kup_strtoname(kuvm *__nonnull vm, kutok *__nonnull name) {
   const char *__nonnull chars = name->start + 1;
   int len = name->len - 2;
-  return ku_pconst(vm, OBJ_VAL(ku_strfrom(vm, chars, len)));
+  return kup_pconst(vm, OBJ_VAL(ku_strfrom(vm, chars, len)));
 }
 
-static uint8_t ku_let(kuvm *__nonnull vm, bool isconst, const char *__nonnull msg) {
-  ku_pconsume(vm, TOK_IDENT, msg);
-  ku_declare_let(vm, isconst);
+static uint8_t kup_let(kuvm *__nonnull vm, bool isconst, const char *__nonnull msg) {
+  kup_pconsume(vm, TOK_IDENT, msg);
+  kup_declare_let(vm, isconst);
   if (vm->compiler->depth > 0) {
     return 0;
   }
-  return ku_pidconst(vm, &vm->parser.prev);
+  return kup_pidconst(vm, &vm->parser.prev);
 }
 
-static void ku_vardef(kuvm *__nonnull vm, uint8_t index, bool isconst) {
+static void kup_vardef(kuvm *__nonnull vm, uint8_t index, bool isconst) {
   if (vm->compiler->depth > 0) {
-    ku_markinit(vm);
+    kup_markinit(vm);
     return;
   }
   if (isconst) {
-    kustr *__nonnull key = AS_STR(ku_chunk(vm)->constants.values[index]);
+    kustr *__nonnull key = AS_STR(kup_chunk(vm)->constants.values[index]);
     kuval cinit;
     if (ku_tabget(vm, &vm->gconst, key, &cinit)) {
         ku_perr(vm, "const already defined");
@@ -1112,178 +1113,178 @@ static void ku_vardef(kuvm *__nonnull vm, uint8_t index, bool isconst) {
       ku_tabset(vm, &vm->gconst, key, NULL_VAL);
     }
   }
-  ku_emitop2(vm, OP_DEF_GLOBAL, index);
+  kup_emitop2(vm, OP_DEF_GLOBAL, index);
 }
 
-static void ku_vardecl(kuvm *__nonnull vm, bool isconst) {
+static void kup_vardecl(kuvm *__nonnull vm, bool isconst) {
   do {
-    uint8_t g = ku_let(vm, isconst, "name expected");
-    if (ku_pmatch(vm, TOK_EQ)) {
-      ku_expr(vm);
+    uint8_t g = kup_let(vm, isconst, "name expected");
+    if (kup_pmatch(vm, TOK_EQ)) {
+      kup_expr(vm);
     }
     else {
-      ku_emitop(vm, OP_NULL);
+      kup_emitop(vm, OP_NULL);
     }
-    ku_vardef(vm, g, isconst);
-  } while(ku_pmatch(vm, TOK_COMMA));
+    kup_vardef(vm, g, isconst);
+  } while(kup_pmatch(vm, TOK_COMMA));
 
-  ku_pconsume(vm, TOK_SEMI, "; expected");
+  kup_pconsume(vm, TOK_SEMI, "; expected");
 }
 
 // common between functions and lambdas
-static void ku_functail(kuvm *__nonnull vm, kucomp *__nonnull compiler, bool lambda) {
-  kufunc *__nullable fn = ku_pend(vm, lambda);
-  ku_emitbytes(vm, OP_CLOSURE, ku_pconst(vm, OBJ_VAL(fn)));
+static void kup_functail(kuvm *__nonnull vm, kucomp *__nonnull compiler, bool lambda) {
+  kufunc *__nullable fn = kup_pend(vm, lambda);
+  kup_emitbytes(vm, OP_CLOSURE, kup_pconst(vm, OBJ_VAL(fn)));
   for (int i = 0; i < fn->upcount; i++) {
-    ku_emitbyte(vm, compiler->upvals[i].local ? 1: 0);
-    ku_emitbyte(vm, compiler->upvals[i].index);
+    kup_emitbyte(vm, compiler->upvals[i].local ? 1: 0);
+    kup_emitbyte(vm, compiler->upvals[i].index);
   }
 }
 
-static void ku_params(kuvm *__nonnull vm) {
+static void kup_params(kuvm *__nonnull vm) {
   do {
     vm->compiler->function->arity++;
     if (vm->compiler->function->arity > vm->max_params) {
       ku_perr(vm, "too many params");
     }
 
-    uint8_t constant = ku_let(vm, false, "expected parameter name");
-    ku_vardef(vm, constant, false);
-  } while(ku_pmatch(vm, TOK_COMMA));
+    uint8_t constant = kup_let(vm, false, "expected parameter name");
+    kup_vardef(vm, constant, false);
+  } while(kup_pmatch(vm, TOK_COMMA));
 }
 
-static void ku_lbody(kuvm *__nonnull vm, kucomp *__nonnull compiler) {
-  if (ku_pmatch(vm, TOK_LBRACE)) {
-    ku_block(vm, NULL);
-    ku_functail(vm, compiler, false);
+static void kup_lbody(kuvm *__nonnull vm, kucomp *__nonnull compiler) {
+  if (kup_pmatch(vm, TOK_LBRACE)) {
+    kup_block(vm, NULL);
+    kup_functail(vm, compiler, false);
   } else {
-    ku_expr(vm);
-    ku_functail(vm, compiler, true);
+    kup_expr(vm);
+    kup_functail(vm, compiler, true);
   }
 }
 
-static void ku_lblock(kuvm *__nonnull vm, KU_UNUSED bool lhs) {
-  if (ku_pcheck(vm, TOK_STR)) {
-    ku_emitop(vm, OP_TABLE);
+static void kup_lblock(kuvm *__nonnull vm, KU_UNUSED bool lhs) {
+  if (kup_pcheck(vm, TOK_STR)) {
+    kup_emitop(vm, OP_TABLE);
     do {
-      ku_emitop(vm, OP_DUP);
-      ku_pconsume(vm, TOK_STR, "string expected");
-      uint8_t name = ku_strtoname(vm, &vm->parser.prev);
-      ku_pconsume(vm, TOK_EQ, "table '=' expected");
-      ku_expr(vm);
-      ku_emitop2(vm, OP_SET_PROP, name);
-      ku_emitop(vm, OP_POP); // remove the value
-    } while (ku_pmatch(vm, TOK_COMMA));
-    ku_pconsume(vm, TOK_RBRACE, "'}' expected");
+      kup_emitop(vm, OP_DUP);
+      kup_pconsume(vm, TOK_STR, "string expected");
+      uint8_t name = kup_strtoname(vm, &vm->parser.prev);
+      kup_pconsume(vm, TOK_EQ, "table '=' expected");
+      kup_expr(vm);
+      kup_emitop2(vm, OP_SET_PROP, name);
+      kup_emitop(vm, OP_POP); // remove the value
+    } while (kup_pmatch(vm, TOK_COMMA));
+    kup_pconsume(vm, TOK_RBRACE, "'}' expected");
     // leave table on the stack
     return;
   }
 }
 
-static void ku_function(kuvm *__nonnull vm, kufunc_t type) {
+static void kup_function(kuvm *__nonnull vm, kufunc_t type) {
   kucomp compiler;
-  ku_compinit(vm, &compiler, type);
-  ku_beginscope(vm);
-  ku_pconsume(vm, TOK_LPAR, "'(' expected after function name");
-  if (!ku_pcheck(vm, TOK_RPAR)) {
-    ku_params(vm);
+  kup_compinit(vm, &compiler, type);
+  kup_beginscope(vm);
+  kup_pconsume(vm, TOK_LPAR, "'(' expected after function name");
+  if (!kup_pcheck(vm, TOK_RPAR)) {
+    kup_params(vm);
   }
-  ku_pconsume(vm, TOK_RPAR, "')' expected after parameters");
-  ku_pconsume(vm, TOK_LBRACE, "'{' expected before function body");
-  ku_block(vm, NULL);
-  ku_functail(vm, &compiler, false);
+  kup_pconsume(vm, TOK_RPAR, "')' expected after parameters");
+  kup_pconsume(vm, TOK_LBRACE, "'{' expected before function body");
+  kup_block(vm, NULL);
+  kup_functail(vm, &compiler, false);
 }
 
 
-static void ku_funcdecl(kuvm *__nonnull vm) {
-  uint8_t global = ku_let(vm, false, "function name expected");
-  ku_markinit(vm);
-  ku_function(vm, FUNC_STD);
-  ku_vardef(vm, global, false);
+static void kup_funcdecl(kuvm *__nonnull vm) {
+  uint8_t global = kup_let(vm, false, "function name expected");
+  kup_markinit(vm);
+  kup_function(vm, FUNC_STD);
+  kup_vardef(vm, global, false);
 }
 
-static void ku_method(kuvm *__nonnull vm) {
-  ku_pconsume(vm, TOK_IDENT, "method name expected");
-  uint8_t name = ku_pidconst(vm, &vm->parser.prev);
+static void kup_method(kuvm *__nonnull vm) {
+  kup_pconsume(vm, TOK_IDENT, "method name expected");
+  uint8_t name = kup_pidconst(vm, &vm->parser.prev);
   kufunc_t type = FUNC_METHOD;
 
   if (vm->parser.prev.len == 4 && memcmp(vm->parser.prev.start, "init", 4) == 0) {
     type = FUNC_INIT;
   }
-  ku_function(vm, type);
-  ku_emitop2(vm, OP_METHOD, name);
+  kup_function(vm, type);
+  kup_emitop2(vm, OP_METHOD, name);
 }
 
-static void ku_namedvar(kuvm *__nonnull vm, kutok name, bool lhs);
-static void ku_pvar(kuvm *__nonnull vm, bool lhs);
+static void kup_namedvar(kuvm *__nonnull vm, kutok name, bool lhs);
+static void kup_pvar(kuvm *__nonnull vm, bool lhs);
 
-static kutok ku_maketok(KU_UNUSED kuvm *__nonnull vm, const char *__nonnull text) {
+static kutok kup_maketok(KU_UNUSED kuvm *__nonnull vm, const char *__nonnull text) {
   kutok tok;
   tok.start = text;
   tok.len = (int)strlen(text);
   return tok;
 }
 
-static void ku_classdecl(kuvm *__nonnull vm) {
-  ku_pconsume(vm, TOK_IDENT, "class name expected");
+static void kup_classdecl(kuvm *__nonnull vm) {
+  kup_pconsume(vm, TOK_IDENT, "class name expected");
   kutok cname = vm->parser.prev;
-  uint8_t name = ku_pidconst(vm, &vm->parser.prev);
-  ku_declare_let(vm, false);
-  ku_emitop2(vm, OP_CLASS, name);
-  ku_vardef(vm, name, false);
+  uint8_t name = kup_pidconst(vm, &vm->parser.prev);
+  kup_declare_let(vm, false);
+  kup_emitop2(vm, OP_CLASS, name);
+  kup_vardef(vm, name, false);
   kuclasscomp cc;
   cc.enclosing = vm->curclass;
   cc.hassuper = false;
   vm->curclass = &cc;
 
-  if (ku_pmatch(vm, TOK_EXTENDS)) {
-    ku_pconsume(vm, TOK_IDENT, "class name expected");
-    ku_pvar(vm, false); //  [.. GET_GLOBAL <name>;]
+  if (kup_pmatch(vm, TOK_EXTENDS)) {
+    kup_pconsume(vm, TOK_IDENT, "class name expected");
+    kup_pvar(vm, false); //  [.. GET_GLOBAL <name>;]
 
-    if (ku_identeq(vm, &cname, &vm->parser.prev)) {
+    if (kup_identeq(vm, &cname, &vm->parser.prev)) {
       ku_perr(vm, "cannot inherit from self");
     }
 
-    ku_beginscope(vm);
-    ku_addlocal(vm, ku_maketok(vm, "super"), false);
-    ku_vardef(vm, 0, false);
-    ku_namedvar(vm, cname, false);
-    ku_emitop(vm, OP_INHERIT);
+    kup_beginscope(vm);
+    kup_addlocal(vm, kup_maketok(vm, "super"), false);
+    kup_vardef(vm, 0, false);
+    kup_namedvar(vm, cname, false);
+    kup_emitop(vm, OP_INHERIT);
     cc.hassuper = true;
   }
 
-  ku_namedvar(vm, cname, false);
-  ku_pconsume(vm, TOK_LBRACE, "'{' expected");
-  while (!ku_pcheck(vm, TOK_RBRACE) && !ku_pcheck(vm, TOK_EOF)) {
-    ku_method(vm);
+  kup_namedvar(vm, cname, false);
+  kup_pconsume(vm, TOK_LBRACE, "'{' expected");
+  while (!kup_pcheck(vm, TOK_RBRACE) && !kup_pcheck(vm, TOK_EOF)) {
+    kup_method(vm);
   }
-  ku_pconsume(vm, TOK_RBRACE, "'}' expected");
-  ku_emitop(vm, OP_POP);
+  kup_pconsume(vm, TOK_RBRACE, "'}' expected");
+  kup_emitop(vm, OP_POP);
 
   if (cc.hassuper) {
-    ku_endscope(vm);
+    kup_endscope(vm);
   }
   vm->curclass = vm->curclass->enclosing;
 }
 
-static void ku_decl(kuvm *__nonnull vm, kuloop *__nullable loop) {
-  if (ku_pmatch(vm, TOK_CLASS)) {
-    ku_classdecl(vm);
-  } else if (ku_pmatch(vm, TOK_FUN)) {
-    ku_funcdecl(vm);
-  } else if (ku_pmatch(vm, TOK_LET)) {
-    ku_vardecl(vm, false);
-  } else if (ku_pmatch(vm, TOK_CONST)) {
-    ku_vardecl(vm, true);
+static void kup_decl(kuvm *__nonnull vm, kuloop *__nullable loop) {
+  if (kup_pmatch(vm, TOK_CLASS)) {
+    kup_classdecl(vm);
+  } else if (kup_pmatch(vm, TOK_FUN)) {
+    kup_funcdecl(vm);
+  } else if (kup_pmatch(vm, TOK_LET)) {
+    kup_vardecl(vm, false);
+  } else if (kup_pmatch(vm, TOK_CONST)) {
+    kup_vardecl(vm, true);
   } else {
-    ku_stmt(vm, loop);
+    kup_stmt(vm, loop);
   }
   if (vm->parser.panic) {
-    ku_pskip(vm);
+    kup_pskip(vm);
   }
 }
 
-static int ku_xvaladd(kuvm *__nonnull vm, kucomp *__nonnull compiler, uint8_t index, bool local) {
+static int kup_xvaladd(kuvm *__nonnull vm, kucomp *__nonnull compiler, uint8_t index, bool local) {
   int upcount = compiler->function->upcount;
 
   for (int i = 0; i < upcount; i++) {
@@ -1302,57 +1303,57 @@ static int ku_xvaladd(kuvm *__nonnull vm, kucomp *__nonnull compiler, uint8_t in
   return compiler->function->upcount++;
 }
 
-static int ku_xvalresolve(kuvm *__nonnull vm, kucomp *__nonnull compiler, kutok *__nonnull name) {
+static int kup_xvalresolve(kuvm *__nonnull vm, kucomp *__nonnull compiler, kutok *__nonnull name) {
   if (compiler->enclosing == NULL) {
     return -1;
   }
   kucomp *__nonnull enclosing = KU_NONNULL(compiler->enclosing); // TODO: figure out code coverage
 
-  int local = ku_resolvelocal(vm, enclosing, name);
+  int local = kup_resolvelocal(vm, enclosing, name);
   if (local != -1) {
     compiler->enclosing->locals[local].flags |= KU_LOCAL_CAPTURED;
-    return ku_xvaladd(vm, compiler, (uint8_t)local, true);
+    return kup_xvaladd(vm, compiler, (uint8_t)local, true);
   }
 
-  int upv = ku_xvalresolve(vm, enclosing, name);
+  int upv = kup_xvalresolve(vm, enclosing, name);
   if (upv != -1) {
-    return ku_xvaladd(vm, compiler, (uint8_t)upv, false);
+    return kup_xvaladd(vm, compiler, (uint8_t)upv, false);
   }
   return -1;
 }
 
-static void ku_lambda(kuvm *__nonnull vm, kutok name) {
+static void kup_lambda(kuvm *__nonnull vm, kutok name) {
   kucomp compiler;
-  ku_compinit(vm, &compiler, FUNC_STD);
-  ku_beginscope(vm);
-  ku_addlocal(vm, name, false);
-  ku_markinit(vm);
-  ku_lbody(vm, &compiler);
+  kup_compinit(vm, &compiler, FUNC_STD);
+  kup_beginscope(vm);
+  kup_addlocal(vm, name, false);
+  kup_markinit(vm);
+  kup_lbody(vm, &compiler);
   compiler.function->arity = 1;
 }
 
 
-static void ku_namedvar(kuvm *__nonnull vm, kutok name, bool lhs) {
+static void kup_namedvar(kuvm *__nonnull vm, kutok name, bool lhs) {
   kucomp *__nonnull compiler = KU_NONNULL(vm->compiler); // TODO: figure out code coverage
-  int arg = ku_resolvelocal(vm, compiler, &name);
+  int arg = kup_resolvelocal(vm, compiler, &name);
   uint8_t set, get;
   bool isglobal = false;
 
   if (arg != -1) {
     get = OP_GET_LOCAL;
     set = OP_SET_LOCAL;
-  } else if ((arg = ku_xvalresolve(vm, compiler, &name)) != -1) {
+  } else if ((arg = kup_xvalresolve(vm, compiler, &name)) != -1) {
     get = OP_GET_UPVAL;
     set = OP_SET_UPVAL;
   } else {
-    arg = ku_pidconst(vm, &name);
+    arg = kup_pidconst(vm, &name);
     get = OP_GET_GLOBAL;
     set = OP_SET_GLOBAL;
     isglobal = true;
   }
-  if (lhs && ku_pmatch(vm, TOK_EQ)) {
+  if (lhs && kup_pmatch(vm, TOK_EQ)) {
     if (isglobal) {
-        kustr *__nonnull key = AS_STR(ku_chunk(vm)->constants.values[arg]);
+        kustr *__nonnull key = AS_STR(kup_chunk(vm)->constants.values[arg]);
         kuval cinit;
         if (ku_tabget(vm, &vm->gconst, key, &cinit)) {
             ku_perr(vm, "const cannot be assigned");
@@ -1364,271 +1365,271 @@ static void ku_namedvar(kuvm *__nonnull vm, kutok name, bool lhs) {
         ku_perr(vm, "const cannot be assigned");
       }
     }
-    ku_expr(vm);
-    ku_emitop2(vm, set, (uint8_t)arg);
-  } else if (ku_pmatch(vm, TOK_ARROW)) {
-    ku_lambda(vm, name);
+    kup_expr(vm);
+    kup_emitop2(vm, set, (uint8_t)arg);
+  } else if (kup_pmatch(vm, TOK_ARROW)) {
+    kup_lambda(vm, name);
   } else {
-    ku_emitop2(vm, get, (uint8_t)arg);
+    kup_emitop2(vm, get, (uint8_t)arg);
   }
 }
 
-static void ku_pvar(kuvm *__nonnull vm, bool lhs) {
-  ku_namedvar(vm, vm->parser.prev, lhs);
+static void kup_pvar(kuvm *__nonnull vm, bool lhs) {
+  kup_namedvar(vm, vm->parser.prev, lhs);
 }
 
-static void ku_this(kuvm *__nonnull vm, KU_UNUSED bool lhs) {
+static void kup_this(kuvm *__nonnull vm, KU_UNUSED bool lhs) {
   if (vm->curclass == NULL) {
     ku_perr(vm, "cannot use this outside a class");
     return;
   }
-  ku_pvar(vm, false);
+  kup_pvar(vm, false);
 }
 
-static void ku_super(kuvm *__nonnull vm, KU_UNUSED bool lhs) {
+static void kup_super(kuvm *__nonnull vm, KU_UNUSED bool lhs) {
   if (vm->curclass == NULL) {
     ku_perr(vm, "'super' must be used inside a class");
   } else if (!vm->curclass->hassuper) {
     ku_perr(vm, "cannot use super in a class with no superclass");
   }
-  ku_pconsume(vm, TOK_DOT, "'.' expected after super");
-  ku_pconsume(vm, TOK_IDENT, "superclass method expected");
-  uint8_t name = ku_pidconst(vm, &vm->parser.prev);
-  ku_namedvar(vm, ku_maketok(vm, "this"), false); // [ ... GET_LOCAL <0> ]
+  kup_pconsume(vm, TOK_DOT, "'.' expected after super");
+  kup_pconsume(vm, TOK_IDENT, "superclass method expected");
+  uint8_t name = kup_pidconst(vm, &vm->parser.prev);
+  kup_namedvar(vm, kup_maketok(vm, "this"), false); // [ ... GET_LOCAL <0> ]
 
-  if (ku_pmatch(vm, TOK_LPAR)) {
-    uint8_t argc = ku_arglist(vm, TOK_RPAR);
-    ku_namedvar(vm, ku_maketok(vm, "super"), false);
-    ku_emitop2(vm, OP_SUPER_INVOKE, name);
-    ku_emitbyte(vm, argc);
+  if (kup_pmatch(vm, TOK_LPAR)) {
+    uint8_t argc = kup_arglist(vm, TOK_RPAR);
+    kup_namedvar(vm, kup_maketok(vm, "super"), false);
+    kup_emitop2(vm, OP_SUPER_INVOKE, name);
+    kup_emitbyte(vm, argc);
   } else {
-    ku_namedvar(vm, ku_maketok(vm, "super"), false); // [ ... GET_UPVAL <0> ]
-    ku_emitop2(vm, OP_GET_SUPER, name);
+    kup_namedvar(vm, kup_maketok(vm, "super"), false); // [ ... GET_UPVAL <0> ]
+    kup_emitop2(vm, OP_GET_SUPER, name);
   }
 }
 
-static void ku_bin(kuvm *__nonnull vm, KU_UNUSED bool lhs) {
+static void kup_bin(kuvm *__nonnull vm, KU_UNUSED bool lhs) {
   kutok_t optype = vm->parser.prev.type;
-  kuprule *__nonnull rule = ku_getrule(vm, optype);
-  ku_prec(vm, (kup_precedence)(rule->precedence + 1));
+  kuprule *__nonnull rule = kup_getrule(vm, optype);
+  kup_prec(vm, (kup_precedence)(rule->precedence + 1));
 
   switch (optype) {
-    case TOK_LTLT: ku_emitop(vm, OP_SHL); break;
-    case TOK_GTGT: ku_emitop(vm, OP_SHR); break;
-    case TOK_AMP: ku_emitop(vm, OP_BAND); break;
-    case TOK_PIPE: ku_emitop(vm, OP_BOR); break;
-    case TOK_PLUS: ku_emitop(vm, OP_ADD); break;
-    case TOK_MINUS: ku_emitop(vm, OP_SUB); break;
-    case TOK_STAR: ku_emitop(vm, OP_MUL); break;
-    case TOK_SLASH: ku_emitop(vm, OP_DIV); break;
-    case TOK_NE: ku_emitop2(vm, OP_EQ, OP_NOT); break;
-    case TOK_EQUALITY: ku_emitop(vm, OP_EQ); break;
-    case TOK_GT: ku_emitop(vm, OP_GT); break;
-    case TOK_GE: ku_emitop2(vm, OP_LT, OP_NOT); break;
-    case TOK_LT: ku_emitop(vm, OP_LT); break;
-    case TOK_LE: ku_emitop2(vm, OP_GT, OP_NOT); break;
+    case TOK_LTLT: kup_emitop(vm, OP_SHL); break;
+    case TOK_GTGT: kup_emitop(vm, OP_SHR); break;
+    case TOK_AMP: kup_emitop(vm, OP_BAND); break;
+    case TOK_PIPE: kup_emitop(vm, OP_BOR); break;
+    case TOK_PLUS: kup_emitop(vm, OP_ADD); break;
+    case TOK_MINUS: kup_emitop(vm, OP_SUB); break;
+    case TOK_STAR: kup_emitop(vm, OP_MUL); break;
+    case TOK_SLASH: kup_emitop(vm, OP_DIV); break;
+    case TOK_NE: kup_emitop2(vm, OP_EQ, OP_NOT); break;
+    case TOK_EQUALITY: kup_emitop(vm, OP_EQ); break;
+    case TOK_GT: kup_emitop(vm, OP_GT); break;
+    case TOK_GE: kup_emitop2(vm, OP_LT, OP_NOT); break;
+    case TOK_LT: kup_emitop(vm, OP_LT); break;
+    case TOK_LE: kup_emitop2(vm, OP_GT, OP_NOT); break;
     default: return; // unreachable - TODO: figure out code coverage
   }
 }
 
-static void ku_dot(kuvm *__nonnull vm, bool lhs) {
-  ku_pconsume(vm, TOK_IDENT, "property name expected");
-  uint8_t name = ku_pidconst(vm, &vm->parser.prev);
-  if (lhs && ku_pmatch(vm, TOK_EQ)) {
-    ku_expr(vm);
-    ku_emitop2(vm, OP_SET_PROP, name);
-  } else if (ku_pmatch(vm, TOK_LPAR)) {
-    uint8_t argc = ku_arglist(vm, TOK_RPAR);
-    ku_emitop2(vm, OP_INVOKE, name);
-    ku_emitbyte(vm, argc);
+static void kup_dot(kuvm *__nonnull vm, bool lhs) {
+  kup_pconsume(vm, TOK_IDENT, "property name expected");
+  uint8_t name = kup_pidconst(vm, &vm->parser.prev);
+  if (lhs && kup_pmatch(vm, TOK_EQ)) {
+    kup_expr(vm);
+    kup_emitop2(vm, OP_SET_PROP, name);
+  } else if (kup_pmatch(vm, TOK_LPAR)) {
+    uint8_t argc = kup_arglist(vm, TOK_RPAR);
+    kup_emitop2(vm, OP_INVOKE, name);
+    kup_emitbyte(vm, argc);
   } else {
-    ku_emitop2(vm, OP_GET_PROP, name);
+    kup_emitop2(vm, OP_GET_PROP, name);
   }
 }
 
-
-void ku_ifstmt(kuvm *__nonnull vm, kuloop *__nullable loop) {
-  ku_pconsume(vm, TOK_LPAR, "'(' expected after 'if'");
-  ku_expr(vm);
-  ku_pconsume(vm, TOK_RPAR, "'R' expected after condition");
-  int then_jump = ku_emitjump(vm, OP_JUMP_IF_FALSE);
-  ku_emitop(vm, OP_POP);
-  ku_stmt(vm, loop);
-  int else_jump = ku_emitjump(vm, OP_JUMP);
-  ku_patchjump(vm, then_jump);
-  ku_emitop(vm, OP_POP);
-  if (ku_pmatch(vm, TOK_ELSE)) {
-    ku_stmt(vm, loop);
+void kup_ifstmt(kuvm *__nonnull vm, kuloop *__nullable loop) {
+  kup_pconsume(vm, TOK_LPAR, "'(' expected after 'if'");
+  kup_expr(vm);
+  kup_pconsume(vm, TOK_RPAR, "'R' expected after condition");
+  int then_jump = kup_emitjump(vm, OP_JUMP_IF_FALSE);
+  kup_emitop(vm, OP_POP);
+  kup_stmt(vm, loop);
+  int else_jump = kup_emitjump(vm, OP_JUMP);
+  kup_patchjump(vm, then_jump);
+  kup_emitop(vm, OP_POP);
+  if (kup_pmatch(vm, TOK_ELSE)) {
+    kup_stmt(vm, loop);
   }
-  ku_patchjump(vm, else_jump);
+  kup_patchjump(vm, else_jump);
 }
 
-int ku_emitjump(kuvm *__nonnull vm, k_op op) {
-  ku_emitop(vm, op);
-  ku_emitbyte(vm, 0xff);
-  ku_emitbyte(vm, 0xff);
-  return ku_chunk(vm)->count - 2;
+int kup_emitjump(kuvm *__nonnull vm, k_op op) {
+  kup_emitop(vm, op);
+  kup_emitbyte(vm, 0xff);
+  kup_emitbyte(vm, 0xff);
+  return kup_chunk(vm)->count - 2;
 }
 
-void ku_patchjump(kuvm *__nonnull vm, int offset) {
-  int jump = ku_chunk(vm)->count - offset - 2;
+void kup_patchjump(kuvm *__nonnull vm, int offset) {
+  int jump = kup_chunk(vm)->count - offset - 2;
 
   if (jump > vm->max_jump) {
     ku_perr(vm, "too much code to jump over");
   }
 
-  ku_chunk(vm)->code[offset] = (jump >> 8) & 0xff;
-  ku_chunk(vm)->code[offset + 1] = jump & 0xff;
+  kup_chunk(vm)->code[offset] = (jump >> 8) & 0xff;
+  kup_chunk(vm)->code[offset + 1] = jump & 0xff;
 }
 
-void ku_emitloop(kuvm *__nonnull vm, int start) {
-  ku_emitop(vm, OP_LOOP);
-  int offset = ku_chunk(vm)->count - start + 2;
+void kup_emitloop(kuvm *__nonnull vm, int start) {
+  kup_emitop(vm, OP_LOOP);
+  int offset = kup_chunk(vm)->count - start + 2;
   if (offset > vm->max_body) {
     ku_perr(vm, "loop body too large");
   }
-  ku_emitbyte(vm, (offset >> 8) & 0xff);
-  ku_emitbyte(vm, offset  & 0xff);
+  kup_emitbyte(vm, (offset >> 8) & 0xff);
+  kup_emitbyte(vm, offset  & 0xff);
 }
 
-void ku_whilestmt(kuvm *__nonnull vm, KU_UNUSED kuloop *__nullable loop) {
-  int loop_start = ku_chunk(vm)->count;
-  ku_pconsume(vm, TOK_LPAR, "'(' expected after 'while'");
-  ku_expr(vm);
-  ku_pconsume(vm, TOK_RPAR, "')' expected after 'while'");
-  int jump_exit = ku_emitjump(vm, OP_JUMP_IF_FALSE);
-  ku_emitop(vm, OP_POP);
+void kup_whilestmt(kuvm *__nonnull vm, KU_UNUSED kuloop *__nullable loop) {
+  int loop_start = kup_chunk(vm)->count;
+  kup_pconsume(vm, TOK_LPAR, "'(' expected after 'while'");
+  kup_expr(vm);
+  kup_pconsume(vm, TOK_RPAR, "')' expected after 'while'");
+  int jump_exit = kup_emitjump(vm, OP_JUMP_IF_FALSE);
+  kup_emitop(vm, OP_POP);
   kuloop inner;
-  ku_loopinit(vm, &inner);
-  ku_stmt(vm, &inner);
-  ku_emitloop(vm, loop_start);
-  ku_patchjump(vm, jump_exit);
+  kup_loopinit(vm, &inner);
+  kup_stmt(vm, &inner);
+  kup_emitloop(vm, loop_start);
+  kup_patchjump(vm, jump_exit);
 
   //       +----------------------+
   //       |                      v See #37
   // POP; JUMP ; .... LOOP; POP; NULL; RET;
-  uint16_t loop_end = ku_chunk(vm)->count - 1;
-  ku_emitop(vm, OP_POP);
-  ku_patchall(vm, &inner.continuepatch, loop_start, true);
-  ku_patchall(vm, &inner.breakpatch, loop_end, false);
+  uint16_t loop_end = kup_chunk(vm)->count - 1;
+  kup_emitop(vm, OP_POP);
+  kup_patchall(vm, &inner.continuepatch, loop_start, true);
+  kup_patchall(vm, &inner.breakpatch, loop_end, false);
 }
 
-void ku_forstmt(kuvm *__nonnull vm, kuloop *__nullable loop) {
-  ku_beginscope(vm);
-  ku_pconsume(vm, TOK_LPAR, "'(' expected after 'for'");
-  if (ku_pmatch(vm, TOK_SEMI)) {
+void kup_forstmt(kuvm *__nonnull vm, kuloop *__nullable loop) {
+  kup_beginscope(vm);
+  kup_pconsume(vm, TOK_LPAR, "'(' expected after 'for'");
+  if (kup_pmatch(vm, TOK_SEMI)) {
     // no init
-  } else if (ku_pmatch(vm, TOK_LET)) {
-    ku_vardecl(vm, false);
+  } else if (kup_pmatch(vm, TOK_LET)) {
+    kup_vardecl(vm, false);
   } else {
-    ku_exprstmt(vm, loop);
+    kup_exprstmt(vm, loop);
   }
-  int loop_start = ku_chunk(vm)->count;
+  int loop_start = kup_chunk(vm)->count;
   int exit_jump = -1;
 
-  if (!ku_pmatch(vm, TOK_SEMI)) {
-    ku_expr(vm);
-    ku_pconsume(vm, TOK_SEMI, "';' expected");
-    exit_jump = ku_emitjump(vm, OP_JUMP_IF_FALSE);
-    ku_emitop(vm, OP_POP);
+  if (!kup_pmatch(vm, TOK_SEMI)) {
+    kup_expr(vm);
+    kup_pconsume(vm, TOK_SEMI, "';' expected");
+    exit_jump = kup_emitjump(vm, OP_JUMP_IF_FALSE);
+    kup_emitop(vm, OP_POP);
   }
 
-  if (!ku_pmatch(vm, TOK_RPAR)) {
-    int body_jump = ku_emitjump(vm, OP_JUMP);
-    int inc_start = ku_chunk(vm)->count;
-    ku_expr(vm);
-    ku_emitop(vm, OP_POP);
-    ku_pconsume(vm, TOK_RPAR, "')' expected");
-    ku_emitloop(vm, loop_start);
+  if (!kup_pmatch(vm, TOK_RPAR)) {
+    int body_jump = kup_emitjump(vm, OP_JUMP);
+    int inc_start = kup_chunk(vm)->count;
+    kup_expr(vm);
+    kup_emitop(vm, OP_POP);
+    kup_pconsume(vm, TOK_RPAR, "')' expected");
+    kup_emitloop(vm, loop_start);
     loop_start = inc_start;
-    ku_patchjump(vm, body_jump);
+    kup_patchjump(vm, body_jump);
   }
 
   kuloop inner;
-  ku_loopinit(vm, &inner);
-  ku_stmt(vm, &inner);
-  ku_emitloop(vm, loop_start);
+  kup_loopinit(vm, &inner);
+  kup_stmt(vm, &inner);
+  kup_emitloop(vm, loop_start);
 
   if (exit_jump != -1) {
-    ku_patchjump(vm, exit_jump);
-    ku_emitop(vm, OP_POP);
+    kup_patchjump(vm, exit_jump);
+    kup_emitop(vm, OP_POP);
   }
 
-  uint16_t loop_end = ku_chunk(vm)->count;
-  ku_patchall(vm, &inner.continuepatch, loop_start, true);
-  ku_patchall(vm, &inner.breakpatch, loop_end, false);
+  uint16_t loop_end = kup_chunk(vm)->count;
+  kup_patchall(vm, &inner.continuepatch, loop_start, true);
+  kup_patchall(vm, &inner.breakpatch, loop_end, false);
 
-  ku_endscope(vm);
+  kup_endscope(vm);
 }
 
-void ku_and(kuvm *__nonnull vm, KU_UNUSED bool lhs) {
-  int end_jump = ku_emitjump(vm, OP_JUMP_IF_FALSE);
-  ku_emitop(vm, OP_POP);
-  ku_prec(vm, P_AND);
-  ku_patchjump(vm, end_jump);
+void kup_and(kuvm *__nonnull vm, KU_UNUSED bool lhs) {
+  int end_jump = kup_emitjump(vm, OP_JUMP_IF_FALSE);
+  kup_emitop(vm, OP_POP);
+  kup_prec(vm, P_AND);
+  kup_patchjump(vm, end_jump);
 }
 
-void ku_or(kuvm *__nonnull vm, KU_UNUSED bool lhs) {
-  int else_jump = ku_emitjump(vm, OP_JUMP_IF_FALSE);
-  int end_jump = ku_emitjump(vm, OP_JUMP);
-  ku_patchjump(vm, else_jump);
-  ku_emitop(vm, OP_POP);
-  ku_prec(vm, P_OR);
-  ku_patchjump(vm, end_jump);
+void kup_or(kuvm *__nonnull vm, KU_UNUSED bool lhs) {
+  int else_jump = kup_emitjump(vm, OP_JUMP_IF_FALSE);
+  int end_jump = kup_emitjump(vm, OP_JUMP);
+  kup_patchjump(vm, else_jump);
+  kup_emitop(vm, OP_POP);
+  kup_prec(vm, P_OR);
+  kup_patchjump(vm, end_jump);
 }
-kuprule ku_rules[] = {
-  [TOK_LPAR] =        { ku_lambda_or_group, ku_call,  P_CALL },
-  [TOK_RPAR] =        { NULL,        NULL,     P_NONE },
-  [TOK_LBRACE] =      { ku_lblock,   NULL,     P_NONE },
-  [TOK_RBRACE] =      { NULL,        NULL,     P_NONE },
-  [TOK_LBRACKET] =    { ku_array,    ku_index, P_CALL },
-  [TOK_RBRACKET] =    { NULL,        NULL,     P_NONE },
 
-  [TOK_COMMA] =       { NULL,        NULL,     P_NONE },
-  [TOK_DOT] =         { NULL,        ku_dot,   P_CALL },
-  [TOK_MINUS] =       { ku_unary,    ku_bin,   P_TERM },
-  [TOK_PLUS] =        { NULL,        ku_bin,   P_TERM },
-  [TOK_SEMI] =        { NULL,        NULL,     P_NONE },
-  [TOK_SLASH] =       { NULL,        ku_bin,   P_FACTOR },
-  [TOK_STAR] =        { NULL,        ku_bin,   P_FACTOR },
-  [TOK_BANG] =        { ku_unary,    NULL,     P_NONE },
-  [TOK_NE] =          { NULL,        ku_bin,   P_EQ },
-  [TOK_EQ] =          { NULL,        NULL,     P_NONE },
-  [TOK_EQUALITY] =    { NULL,        ku_bin,   P_EQ },
-  [TOK_GT] =          { NULL,        ku_bin,   P_COMP },
-  [TOK_GE] =          { NULL,        ku_bin,   P_COMP },
-  [TOK_LT] =          { NULL,        ku_bin,   P_COMP },
-  [TOK_LE] =          { NULL,        ku_bin,   P_COMP },
-  [TOK_IDENT] =       { ku_pvar,     NULL,     P_NONE },
-  [TOK_STR] =         { ku_string,   NULL,     P_NONE },
-  [TOK_STRESC] =      { ku_xstring,  NULL,     P_NONE },
-  [TOK_NUM] =         { ku_number,   NULL,     P_NONE },
-  [TOK_HEX] =         { ku_hex,      NULL,     P_NONE },
-  [TOK_AND] =         { NULL,        ku_and,   P_AND },
-  [TOK_CLASS] =       { NULL,        NULL,     P_NONE },
-  [TOK_ELSE] =        { NULL,        NULL,     P_NONE },
-  [TOK_EXTENDS] =     { NULL,        NULL,     P_NONE },
-  [TOK_FALSE] =       { ku_lit,      NULL,     P_NONE },
-  [TOK_FOR] =         { NULL,        NULL,     P_NONE },
-  [TOK_FUN] =         { ku_funcexpr, NULL,     P_NONE },
-  [TOK_IF] =          { NULL,        NULL,     P_NONE },
-  [TOK_NULL] =        { ku_lit,      NULL,     P_NONE },
-  [TOK_OR] =          { NULL,        ku_or,    P_OR },
-  [TOK_SUPER] =       { ku_super,    NULL,     P_NONE },
-  [TOK_THIS] =        { ku_this,     NULL,     P_NONE },
-  [TOK_TRUE] =        { ku_lit,      NULL,     P_NONE },
-  [TOK_LET] =         { NULL,        NULL,     P_NONE },
-  [TOK_WHILE] =       { NULL,        NULL,     P_NONE },
-  [TOK_ERR] =         { NULL,        NULL,     P_NONE },
-  [TOK_EOF] =         { NULL,        NULL,     P_NONE },
-  [TOK_AMP] =         { NULL,        ku_bin,   P_BIT },
-  [TOK_PIPE] =        { NULL,        ku_bin,   P_BIT },
-  [TOK_LTLT] =        { NULL,        ku_bin,   P_SHIFT },
-  [TOK_GTGT] =        { NULL,        ku_bin,   P_SHIFT },
+kuprule kup_rules[] = {
+  [TOK_LPAR] =        { kup_lambda_or_group, kup_call,  P_CALL },
+  [TOK_RPAR] =        { NULL,         NULL,      P_NONE },
+  [TOK_LBRACE] =      { kup_lblock,   NULL,      P_NONE },
+  [TOK_RBRACE] =      { NULL,         NULL,      P_NONE },
+  [TOK_LBRACKET] =    { kup_array,    kup_index, P_CALL },
+  [TOK_RBRACKET] =    { NULL,         NULL,      P_NONE },
+
+  [TOK_COMMA] =       { NULL,         NULL,      P_NONE },
+  [TOK_DOT] =         { NULL,         kup_dot,   P_CALL },
+  [TOK_MINUS] =       { kup_unary,    kup_bin,   P_TERM },
+  [TOK_PLUS] =        { NULL,         kup_bin,   P_TERM },
+  [TOK_SEMI] =        { NULL,         NULL,      P_NONE },
+  [TOK_SLASH] =       { NULL,         kup_bin,   P_FACTOR },
+  [TOK_STAR] =        { NULL,         kup_bin,   P_FACTOR },
+  [TOK_BANG] =        { kup_unary,    NULL,      P_NONE },
+  [TOK_NE] =          { NULL,         kup_bin,   P_EQ },
+  [TOK_EQ] =          { NULL,         NULL,      P_NONE },
+  [TOK_EQUALITY] =    { NULL,         kup_bin,   P_EQ },
+  [TOK_GT] =          { NULL,         kup_bin,   P_COMP },
+  [TOK_GE] =          { NULL,         kup_bin,   P_COMP },
+  [TOK_LT] =          { NULL,         kup_bin,   P_COMP },
+  [TOK_LE] =          { NULL,         kup_bin,   P_COMP },
+  [TOK_IDENT] =       { kup_pvar,     NULL,      P_NONE },
+  [TOK_STR] =         { kup_string,   NULL,      P_NONE },
+  [TOK_STRESC] =      { kup_xstring,  NULL,      P_NONE },
+  [TOK_NUM] =         { kup_number,   NULL,      P_NONE },
+  [TOK_HEX] =         { kup_hex,      NULL,      P_NONE },
+  [TOK_AND] =         { NULL,         kup_and,   P_AND },
+  [TOK_CLASS] =       { NULL,         NULL,      P_NONE },
+  [TOK_ELSE] =        { NULL,         NULL,      P_NONE },
+  [TOK_EXTENDS] =     { NULL,         NULL,      P_NONE },
+  [TOK_FALSE] =       { kup_lit,      NULL,      P_NONE },
+  [TOK_FOR] =         { NULL,         NULL,      P_NONE },
+  [TOK_FUN] =         { kup_funcexpr, NULL,      P_NONE },
+  [TOK_IF] =          { NULL,         NULL,      P_NONE },
+  [TOK_NULL] =        { kup_lit,      NULL,      P_NONE },
+  [TOK_OR] =          { NULL,         kup_or,    P_OR },
+  [TOK_SUPER] =       { kup_super,    NULL,      P_NONE },
+  [TOK_THIS] =        { kup_this,     NULL,      P_NONE },
+  [TOK_TRUE] =        { kup_lit,      NULL,      P_NONE },
+  [TOK_LET] =         { NULL,         NULL,      P_NONE },
+  [TOK_WHILE] =       { NULL,         NULL,      P_NONE },
+  [TOK_ERR] =         { NULL,         NULL,      P_NONE },
+  [TOK_EOF] =         { NULL,         NULL,      P_NONE },
+  [TOK_AMP] =         { NULL,         kup_bin,   P_BIT },
+  [TOK_PIPE] =        { NULL,         kup_bin,   P_BIT },
+  [TOK_LTLT] =        { NULL,         kup_bin,   P_SHIFT },
+  [TOK_GTGT] =        { NULL,         kup_bin,   P_SHIFT },
 };
 
-static kuprule *__nonnull ku_getrule(KU_UNUSED kuvm *__nonnull vm, kutok_t optype) {
-  return &ku_rules[optype];
+static kuprule *__nonnull kup_getrule(KU_UNUSED kuvm *__nonnull vm, kutok_t optype) {
+  return &kup_rules[optype];
 }
 
 // ********************** virtual machine **********************
@@ -2495,16 +2496,16 @@ kures ku_run(kuvm *__nonnull vm) {
 
 kufunc *__nullable ku_compile(kuvm *__nonnull vm, char *__nonnull source) {
   kucomp compiler;
-  ku_compinit(vm, &compiler, FUNC_MAIN);
+  kup_compinit(vm, &compiler, FUNC_MAIN);
   ku_lexinit(vm, source);
   vm->parser.err = false;
   vm->parser.panic = false;
-  ku_pnext(vm);
-  while (!ku_pmatch(vm, TOK_EOF)) {
-    ku_decl(vm, NULL);
+  kup_pnext(vm);
+  while (!kup_pmatch(vm, TOK_EOF)) {
+    kup_decl(vm, NULL);
   }
 
-  kufunc *__nullable fn = ku_pend(vm, false);
+  kufunc *__nullable fn = kup_pend(vm, false);
 
   return vm->parser.err ? NULL : fn;
 }
@@ -2570,7 +2571,7 @@ void ku_free(kuvm *__nonnull vm, void *__nullable ptr, size_t oldsize) {
 }
 
 // ********************** chunk **********************
-void ku_chunkinit(kuvm *__nonnull vm, kuchunk *__nonnull chunk) {
+void kup_chunkinit(kuvm *__nonnull vm, kuchunk *__nonnull chunk) {
   chunk->count = 0;
   chunk->capacity = 0;
   chunk->code = NULL;
@@ -2578,7 +2579,7 @@ void ku_chunkinit(kuvm *__nonnull vm, kuchunk *__nonnull chunk) {
   ku_arrinit(vm, &chunk->constants);
 }
 
-void ku_chunkwrite(kuvm *__nonnull vm, kuchunk *__nonnull chunk, uint8_t byte, int line) {
+void kup_chunkwrite(kuvm *__nonnull vm, kuchunk *__nonnull chunk, uint8_t byte, int line) {
   if (chunk->capacity < chunk->count + 1) {
     int cap = chunk->capacity;
     chunk->capacity = KU_CAPACITY_GROW(cap);
@@ -2591,13 +2592,13 @@ void ku_chunkwrite(kuvm *__nonnull vm, kuchunk *__nonnull chunk, uint8_t byte, i
   chunk->count++;
 }
 
-void ku_chunkfree(kuvm *__nonnull vm, kuchunk *__nonnull chunk) {
+void kup_chunkfree(kuvm *__nonnull vm, kuchunk *__nonnull chunk) {
   KU_ARRAY_FREE(vm, uint8_t, chunk->code, chunk->capacity);
   KU_ARRAY_FREE(vm, int, chunk->lines, chunk->capacity);
   KU_ARRAY_FREE(vm, kuval, chunk->constants.values, chunk->constants.capacity);
 }
 
-int ku_chunkconst(kuvm *__nonnull vm, kuchunk *__nonnull chunk, kuval value) {
+int kup_chunkconst(kuvm *__nonnull vm, kuchunk *__nonnull chunk, kuval value) {
   ku_push(vm, value); // for GC
   for (int i = 0; i < chunk->constants.count; i++) {
     if (ku_equal(value, chunk->constants.values[i])) {
@@ -2633,13 +2634,13 @@ void ku_arrwrite(kuvm *__nonnull vm, kuarr *__nonnull array, kuval value) {
 // ------------------------------------------------------------
 // Locals
 // ------------------------------------------------------------
-void ku_compinit(kuvm *__nonnull vm, kucomp *__nonnull compiler, kufunc_t type) {
+void kup_compinit(kuvm *__nonnull vm, kucomp *__nonnull compiler, kufunc_t type) {
   compiler->function = NULL; // for GC
   compiler->enclosing = vm->compiler;
   compiler->count = 0;
   compiler->depth = 0;
   compiler->type = type;
-  compiler->function = ku_funcnew(vm);
+  compiler->function = kup_funcnew(vm);
 
   vm->compiler = compiler;
   if (type != FUNC_MAIN) {
@@ -2658,18 +2659,18 @@ void ku_compinit(kuvm *__nonnull vm, kucomp *__nonnull compiler, kufunc_t type) 
   }
 }
 
-void ku_block(kuvm *__nonnull vm, kuloop *__nullable loop) {
-  while (!ku_pcheck(vm, TOK_RBRACE) && !ku_pcheck(vm, TOK_EOF)) {
-    ku_decl(vm, loop);
+void kup_block(kuvm *__nonnull vm, kuloop *__nullable loop) {
+  while (!kup_pcheck(vm, TOK_RBRACE) && !kup_pcheck(vm, TOK_EOF)) {
+    kup_decl(vm, loop);
   }
-  ku_pconsume(vm, TOK_RBRACE, "'}' expected");
+  kup_pconsume(vm, TOK_RBRACE, "'}' expected");
 }
 
-void ku_beginscope(kuvm *__nonnull vm) {
+void kup_beginscope(kuvm *__nonnull vm) {
   vm->compiler->depth++;
 }
 
-void ku_endscope(kuvm *__nonnull vm) {
+void kup_endscope(kuvm *__nonnull vm) {
   vm->compiler->depth--;
 
   while (vm->compiler->count > 0 &&
@@ -2677,15 +2678,15 @@ void ku_endscope(kuvm *__nonnull vm) {
          vm->compiler->depth) {
 
     if (KU_IS_CAPTURED(vm->compiler->locals[vm->compiler->count - 1])) {
-      ku_emitop(vm, OP_CLOSE_UPVAL);
+      kup_emitop(vm, OP_CLOSE_UPVAL);
     } else {
-      ku_emitop(vm, OP_POP);
+      kup_emitop(vm, OP_POP);
     }
     vm->compiler->count--;
     }
 }
 
-void ku_declare_let(kuvm *__nonnull vm, bool isconst) {
+void kup_declare_let(kuvm *__nonnull vm, bool isconst) {
   kutok *__nonnull name = &vm->parser.prev;
 
   if (vm->compiler->depth == 0) {
@@ -2697,15 +2698,15 @@ void ku_declare_let(kuvm *__nonnull vm, bool isconst) {
       break;
     }
 
-    if (ku_identeq(vm, name, &local->name)) {
+    if (kup_identeq(vm, name, &local->name)) {
       // TODO: add code coverage
       ku_perr(vm, "local already defined");
     }
   }
-  ku_addlocal(vm, *name, isconst);
+  kup_addlocal(vm, *name, isconst);
 }
 
-void ku_addlocal(kuvm *__nonnull vm, kutok name, bool isconst) {
+void kup_addlocal(kuvm *__nonnull vm, kutok name, bool isconst) {
   if (vm->compiler->count == vm->max_locals) {
     ku_perr(vm, "too many locals");
     return;
@@ -2721,7 +2722,7 @@ void ku_addlocal(kuvm *__nonnull vm, kutok name, bool isconst) {
   local->flags = (isconst) ? KU_LOCAL_CONST : KU_LOCAL_NONE;
 }
 
-bool ku_identeq(KU_UNUSED kuvm *__nonnull vm, kutok *__nonnull a, kutok *__nonnull b) {
+bool kup_identeq(KU_UNUSED kuvm *__nonnull vm, kutok *__nonnull a, kutok *__nonnull b) {
   if (a->len != b->len) {
     return false;
   }
@@ -2729,10 +2730,10 @@ bool ku_identeq(KU_UNUSED kuvm *__nonnull vm, kutok *__nonnull a, kutok *__nonnu
   return memcmp(a->start, b->start, a->len) == 0;
 }
 
-int ku_resolvelocal(kuvm *__nonnull vm, kucomp *__nonnull compiler, kutok *__nonnull name) {
+int kup_resolvelocal(kuvm *__nonnull vm, kucomp *__nonnull compiler, kutok *__nonnull name) {
   for (int i = compiler->count - 1; i >= 0; i--) {
     kulocal *__nonnull local = &compiler->locals[i];
-    if (ku_identeq(vm, name, &local->name)) {
+    if (kup_identeq(vm, name, &local->name)) {
       if (local->depth == -1) {
         ku_perr(vm, "own initialization disallowed");
       }
@@ -2742,7 +2743,7 @@ int ku_resolvelocal(kuvm *__nonnull vm, kucomp *__nonnull compiler, kutok *__non
   return -1;
 }
 
-void ku_markinit(kuvm *__nonnull vm) {
+void kup_markinit(kuvm *__nonnull vm) {
   // functions can reference themselves unlike global
   // variables which can't use their own value in their
   // initialization
@@ -2759,12 +2760,12 @@ int ku_opslotdis(kuvm *__nonnull vm, const char *__nonnull name, kuchunk *__nonn
 }
 
 // ********************** function **********************
-kufunc *__nonnull ku_funcnew(kuvm *__nonnull vm) {
+kufunc *__nonnull kup_funcnew(kuvm *__nonnull vm) {
   kufunc *__nonnull fn = (kufunc *)KU_ALLOC_OBJ(vm, kufunc, OBJ_FUNC);
   fn->arity = 0;
   fn->upcount = 0;
   fn->name = NULL;
-  ku_chunkinit(vm, &fn->chunk);
+  kup_chunkinit(vm, &fn->chunk);
   return fn;
 }
 
@@ -3801,22 +3802,22 @@ void ku_printstack(kuvm *__nonnull vm) {
 }
 
 // ********************** loop patch **********************
-void ku_loopinit(KU_UNUSED kuvm *__nonnull vm, kuloop *__nonnull loop) {
+void kup_loopinit(KU_UNUSED kuvm *__nonnull vm, kuloop *__nonnull loop) {
   loop->breakpatch.count = 0;
   loop->continuepatch.count = 0;
 }
 
-void ku_emitpatch(kuvm *__nonnull vm, kupatch *__nonnull patch, uint8_t op) {
+void kup_emitpatch(kuvm *__nonnull vm, kupatch *__nonnull patch, uint8_t op) {
   if (patch->count == vm->max_patches) {
     ku_perr(vm, "max break / continue limit reached");
     return;
   }
-  patch->offset[patch->count++] = ku_emitjump(vm, op);
+  patch->offset[patch->count++] = kup_emitjump(vm, op);
 }
 
-void ku_patchall(kuvm *__nonnull vm, kupatch *__nonnull patch, uint16_t to, bool rev) {
+void kup_patchall(kuvm *__nonnull vm, kupatch *__nonnull patch, uint16_t to, bool rev) {
   for (int i = 0; i < patch->count; i++) {
-    kuchunk *__nonnull c = ku_chunk(vm);
+    kuchunk *__nonnull c = kup_chunk(vm);
     uint16_t delta = rev ? patch->offset[i] - to + 2 : to - patch->offset[i];
     c->code[patch->offset[i]] = (delta >> 8) & 0xff;
     c->code[patch->offset[i]+1] = delta & 0xff;

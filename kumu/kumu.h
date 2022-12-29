@@ -240,10 +240,10 @@ typedef struct {
   kuarr constants;
 } kuchunk;
 
-void ku_chunkinit(kuvm *__nonnull vm, kuchunk *__nonnull chunk);
-void ku_chunkwrite(kuvm *__nonnull vm, kuchunk *__nonnull chunk, uint8_t byte, int line);
-void ku_chunkfree(kuvm *__nonnull vm, kuchunk *__nonnull chunk);
-int ku_chunkconst(kuvm *__nonnull vm, kuchunk *__nonnull chunk, kuval value);
+void kup_chunkinit(kuvm *__nonnull vm, kuchunk *__nonnull chunk);
+void kup_chunkwrite(kuvm *__nonnull vm, kuchunk *__nonnull chunk, uint8_t byte, int line);
+void kup_chunkfree(kuvm *__nonnull vm, kuchunk *__nonnull chunk);
+int kup_chunkconst(kuvm *__nonnull vm, kuchunk *__nonnull chunk, kuval value);
 
 // ********************** upvalues **********************
 typedef struct kuxobj {
@@ -264,7 +264,7 @@ typedef struct {
   kustr *__nullable name;
 } kufunc;
 
-kufunc *__nonnull ku_funcnew(kuvm *__nonnull vm);
+kufunc *__nonnull kup_funcnew(kuvm *__nonnull vm);
 
 // ********************** closures **********************
 typedef struct {
@@ -447,14 +447,14 @@ typedef struct kucomp {
   int depth;
 } kucomp;
 
-void ku_compinit(kuvm *__nonnull vm, kucomp *__nonnull compiler, kufunc_t type);
-void ku_beginscope(kuvm *__nonnull vm);
-void ku_endscope(kuvm *__nonnull vm);
-void ku_declare_let(kuvm *__nonnull vm, bool isconst);
-void ku_addlocal(kuvm *__nonnull vm, kutok name, bool isconst);
-bool ku_identeq(kuvm *__nonnull vm, kutok *__nonnull a, kutok *__nonnull b);
-int ku_resolvelocal(kuvm *__nonnull vm, kucomp *__nonnull compiler, kutok *__nonnull name);
-void ku_markinit(kuvm *__nonnull vm);
+void kup_compinit(kuvm *__nonnull vm, kucomp *__nonnull compiler, kufunc_t type);
+void kup_beginscope(kuvm *__nonnull vm);
+void kup_endscope(kuvm *__nonnull vm);
+void kup_declare_let(kuvm *__nonnull vm, bool isconst);
+void kup_addlocal(kuvm *__nonnull vm, kutok name, bool isconst);
+bool kup_identeq(kuvm *__nonnull vm, kutok *__nonnull a, kutok *__nonnull b);
+int kup_resolvelocal(kuvm *__nonnull vm, kucomp *__nonnull compiler, kutok *__nonnull name);
+void kup_markinit(kuvm *__nonnull vm);
 int ku_opslotdis(kuvm *__nonnull vm, const char *__nonnull name, kuchunk *__nonnull chunk, int offset);
 void ku_markobj(kuvm *__nonnull vm, kuobj *__nullable o);
 
@@ -567,8 +567,8 @@ void ku_freevm(kuvm *__nonnull vm);
 kures ku_run(kuvm *__nonnull vm);
 kures ku_runfile(kuvm *__nonnull vm, const char *__nonnull file);
 kures ku_exec(kuvm *__nonnull vm, char *__nonnull source);
-kuchunk *__nonnull ku_chunk(kuvm *__nonnull vm);
-kufunc *__nullable ku_compile(kuvm *__nonnull vm, char *__nonnull source);
+kuchunk *__nonnull kup_chunk(kuvm *__nonnull vm);
+kufunc *__nullable kup_compile(kuvm *__nonnull vm, char *__nonnull source);
 
 // ********************** stack **********************
 void ku_reset(kuvm *__nonnull vm);
@@ -592,21 +592,21 @@ typedef struct {
   kupatch continuepatch;
 } kuloop;
 
-void ku_loopinit(kuvm *__nonnull vm, kuloop *__nonnull loop);
-void ku_emitpatch(kuvm *__nonnull vm, kupatch *__nonnull patch, uint8_t op);
-void ku_patchall(kuvm *__nonnull vm, kupatch *__nonnull patch, uint16_t to, bool rev);
+void kup_loopinit(kuvm *__nonnull vm, kuloop *__nonnull loop);
+void kup_emitpatch(kuvm *__nonnull vm, kupatch *__nonnull patch, uint8_t op);
+void kup_patchall(kuvm *__nonnull vm, kupatch *__nonnull patch, uint16_t to, bool rev);
 
 // ********************** branching **********************
-void ku_ifstmt(kuvm *__nonnull vm, kuloop *__nullable loop);
-int ku_emitjump(kuvm *__nonnull vm, k_op op);
-void ku_patchjump(kuvm *__nonnull vm, int offset);
-void ku_emitloop(kuvm *__nonnull vm, int start);
-void ku_whilestmt(kuvm *__nonnull vm, kuloop *__nullable loop);
-void ku_forstmt(kuvm *__nonnull vm, kuloop *__nullable loop);
-int ku_jumpdis(kuvm *__nonnull vm, const char *__nonnull name, int sign, kuchunk *__nonnull chunk, int offset);
-void ku_and(kuvm *__nonnull vm, bool lhs);
-void ku_or(kuvm *__nonnull vm, bool lhs);
-void ku_block(kuvm *__nonnull vm, kuloop *__nullable loop);
+void kup_ifstmt(kuvm *__nonnull vm, kuloop *__nullable loop);
+int kup_emitjump(kuvm *__nonnull vm, k_op op);
+void kup_patchjump(kuvm *__nonnull vm, int offset);
+void kup_emitloop(kuvm *__nonnull vm, int start);
+void kup_whilestmt(kuvm *__nonnull vm, kuloop *__nullable loop);
+void kup_forstmt(kuvm *__nonnull vm, kuloop *__nullable loop);
+int kup_jumpdis(kuvm *__nonnull vm, const char *__nonnull name, int sign, kuchunk *__nonnull chunk, int offset);
+void kup_and(kuvm *__nonnull vm, bool lhs);
+void kup_or(kuvm *__nonnull vm, bool lhs);
+void kup_block(kuvm *__nonnull vm, kuloop *__nullable loop);
 void ku_err(kuvm *__nonnull vm, const char *__nonnull fmt, ...);
 bool ku_invoke(kuvm *__nonnull vm, kustr *__nonnull name, int argc, bool *__nonnull native);
 kures ku_nativecall(kuvm *__nonnull vm, kuclosure *__nonnull cl, int argc);
