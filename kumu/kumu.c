@@ -3250,6 +3250,12 @@ kuval math_scall(KU_UNUSED kuvm *__nonnull vm, kustr *__nonnull m, int argc, kuv
   return NULL_VAL;
 }
 
+kuval math_sget(KU_UNUSED kuvm *__nonnull vm, kustr *__nonnull p) {
+  if (M2(p, "PI")) {
+    return NUM_VAL(M_PI);
+  }
+  return NULL_VAL;
+}
 
 // ********************** table **********************
 kuval table_cons(kuvm *__nonnull vm, KU_UNUSED int argc, KU_UNUSED kuval *__nullable argv) {
@@ -3429,13 +3435,6 @@ kuval string_icall(kuvm *__nonnull vm, kuobj *__nonnull o, kustr *__nonnull m, i
   return NULL_VAL;
 }
 
-kuval math_sget(KU_UNUSED kuvm *__nonnull vm, kustr *__nonnull p) {
-  if (M2(p, "pi")) {
-    return NUM_VAL(M_PI);
-  }
-  return NULL_VAL;
-}
-
 void ku_reglibs(kuvm *__nonnull vm) {
   ku_cfuncdef(vm, "clock", ku_clock);
   ku_cfuncdef(vm, "int", ku_intf);
@@ -3444,7 +3443,7 @@ void ku_reglibs(kuvm *__nonnull vm) {
   ku_cfuncdef(vm, "array", ku_arraycons);
   ku_cfuncdef(vm, "eval", ku_eval);
 
-  kucclass *__nonnull math = ku_cclassnew(vm, "math");
+  kucclass *__nonnull math = ku_cclassnew(vm, "Math");
   math->sget = math_sget;
   math->scall = math_scall;
   ku_cclassdef(vm, math);
