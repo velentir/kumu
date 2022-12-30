@@ -76,6 +76,16 @@ const char *__nonnull last_test = "";
     } \
   } while(0)
 
+// EXPECT_EXEC_SUCCESS_M(kuvm *__nonnull vm, const char *__nonnull code, const char *__nonnull errmsg)
+#define EXPECT_EXEC_SUCCESS_M(vm, code, errmsg) \
+  do { \
+    kures res = ku_exec((vm), (code)); \
+    EXPECT_INT((vm), res, KVM_OK, (errmsg)); \
+  } while (0)
+
+// EXPECT_EXEC_SUCCESS(kuvm *__nonnull vm, const char *__nonnull code)
+#define EXPECT_EXEC_SUCCESS(vm, code) EXPECT_EXEC_SUCCESS_M(vm, code, code)
+
 static void ku_test_summary() {
   printf("[  PASSED  ] %d test\n", ktest_pass);
   printf("[   WARN   ] %d test\n", ktest_warn);
@@ -289,26 +299,25 @@ void kut_free(kuvm *__nonnull vm) {
 }
 
 int ku_test() {
-  kuvm *__nonnull vm = kut_new(false);
-  kures res = ku_exec(vm, "let x= -1+4;");
-  EXPECT_INT(vm, res, KVM_OK, "let x= -1+4 res");
+  kuvm *__nonnull vm;
+  kures res;
+
+  vm = kut_new(false);
+  EXPECT_EXEC_SUCCESS(vm, "let x= -1+4;");
   kut_free(vm);
 
   vm = kut_new(false);
-  res = ku_exec(vm, "let x = -1+4;");
-  EXPECT_INT(vm, res, KVM_OK, "-1+4 res");
+  EXPECT_EXEC_SUCCESS_M(vm, "let x = -1+4;", "-1+4 res");
   EXPECT_VAL(vm, ku_get_global(vm, "x"), NUM_VAL(-1+4), "-1+4 ret");
   kut_free(vm);
 
   vm = kut_new(false);
-  res = ku_exec(vm, "let x = (-(1+2)-4)*5/6;");
-  EXPECT_INT(vm, res, KVM_OK, "ku_run res");
+  EXPECT_EXEC_SUCCESS_M(vm, "let x = (-(1+2)-4)*5/6;", "ku_run res");
   EXPECT_VAL(vm, ku_get_global(vm, "x"), NUM_VAL((-(1.0+2.0)-4.0)*5.0/6.0), "ku_run ret");
   kut_free(vm);
 
   vm = kut_new(false);
-  res = ku_exec(vm, "let x = 1+2;");
-  EXPECT_INT(vm, res, KVM_OK, "ku_exec res");
+  EXPECT_EXEC_SUCCESS_M(vm, "let x = 1+2;", "ku_exec res");
   EXPECT_VAL(vm, ku_get_global(vm, "x"), NUM_VAL(3), "ku_exec ret");
   kut_free(vm);
 
@@ -333,8 +342,7 @@ int ku_test() {
   kut_free(vm);
 
   vm = kut_new(false);
-  res = ku_exec(vm, "let x = (1+2)*3;");
-  EXPECT_INT(vm, res, KVM_OK, "grouping res");
+  EXPECT_EXEC_SUCCESS_M(vm, "let x = (1+2)*3;", "grouping res");
   EXPECT_VAL(vm, ku_get_global(vm, "x"), NUM_VAL(9), "grouping ret");
   kut_free(vm);
 
@@ -356,8 +364,7 @@ int ku_test() {
   kut_free(vm);
 
   vm = kut_new(false);
-  res = ku_exec(vm, "let x = -2*3;");
-  EXPECT_INT(vm, res, KVM_OK, "unary res");
+  EXPECT_EXEC_SUCCESS_M(vm, "let x = -2*3;", "unary res");
   EXPECT_VAL(vm, ku_get_global(vm, "x"), NUM_VAL(-6), "unary ret");
   kut_free(vm);
 
@@ -369,14 +376,14 @@ int ku_test() {
 
   // ku_print_val
   vm = kut_new(false);
-  res = ku_exec(vm, "let x = 2+3;");
+  EXPECT_EXEC_SUCCESS(vm, "let x = 2+3;");
   kuval v = ku_get_global(vm, "x");
   EXPECT_VAL(vm, v, NUM_VAL(5), "ku_print_val ret");
   ku_printval(vm, v);
   kut_free(vm);
 
   vm = kut_new(false);
-  res = ku_exec(vm, "let x = 12.3;");
+  EXPECT_EXEC_SUCCESS(vm, "let x = 12.3;");
   EXPECT_VAL(vm, ku_get_global(vm, "x"), NUM_VAL(12.3), "ku_lex_peeknext ret");
   kut_free(vm);
 
@@ -660,16 +667,14 @@ int ku_test() {
   kut_free(vm);
 
   vm = kut_new(false);
-  res = ku_exec(vm, "let x = 20;");
-  EXPECT_INT(vm, res, KVM_OK, "global decl");
+  EXPECT_EXEC_SUCCESS_M(vm, "let x = 20;", "global decl");
   EXPECT_VAL(vm, ku_get_global(vm, "x"), NUM_VAL(20), "global init");
-  res = ku_exec(vm, "x = 30;");
+  EXPECT_EXEC_SUCCESS_M(vm, "x = 30;", "global decl set");
   EXPECT_VAL(vm, ku_get_global(vm, "x"), NUM_VAL(30), "global set");
   kut_free(vm);
 
   vm = kut_new(false);
-  res = ku_exec(vm, "let x = 20; let y = 0; { let a=x*20; y = a; }");
-  EXPECT_INT(vm, res, KVM_OK, "local decl");
+  EXPECT_EXEC_SUCCESS_M(vm, "let x = 20; let y = 0; { let a=x*20; y = a; }", "local decl");
   EXPECT_VAL(vm, ku_get_global(vm, "y"), NUM_VAL(400), "local init");
   kut_free(vm);
 
@@ -684,8 +689,7 @@ int ku_test() {
   kut_free(vm);
 
   vm = kut_new(false);
-  res = ku_exec(vm, "const x=20; let y = 0; { const a=x*20; y = a; }");
-  EXPECT_INT(vm, res, KVM_OK, "const decl");
+  EXPECT_EXEC_SUCCESS_M(vm, "const x=20; let y = 0; { const a=x*20; y = a; }", "const decl");
   EXPECT_VAL(vm, ku_get_global(vm, "y"), NUM_VAL(400), "local const init");
   kut_free(vm);
 
@@ -700,23 +704,22 @@ int ku_test() {
   kut_free(vm);
 
   vm = kut_new(false);
-  res = ku_exec(vm, "let x = 10; if (true) { x = 30; }");
+  EXPECT_EXEC_SUCCESS(vm, "let x = 10; if (true) { x = 30; }");
   EXPECT_VAL(vm, ku_get_global(vm, "x"), NUM_VAL(30), "if true");
   kut_free(vm);
 
   vm = kut_new(false);
-  res = ku_exec(vm, "let x = 10; if (false) { x = 30; }");
+  EXPECT_EXEC_SUCCESS(vm, "let x = 10; if (false) { x = 30; }");
   EXPECT_VAL(vm, ku_get_global(vm, "x"), NUM_VAL(10), "if false");
   kut_free(vm);
 
   vm = kut_new(false);
-  res = ku_exec(vm, "let x = 10; if (false) x = 30;  else x = 20;");
+  EXPECT_EXEC_SUCCESS(vm, "let x = 10; if (false) x = 30;  else x = 20;");
   EXPECT_VAL(vm, ku_get_global(vm, "x"), NUM_VAL(20), "else");
   kut_free(vm);
 
   vm = kut_new(true);
-  res = ku_exec(vm, "if (true) { printf(222); }");
-  EXPECT_INT(vm, res, KVM_OK, "if print");
+  EXPECT_EXEC_SUCCESS_M(vm, "if (true) { printf(222); }", "if print");
   kut_free(vm);
 
   vm = kut_new(true);
@@ -730,48 +733,47 @@ int ku_test() {
   kut_free(vm);
 
   vm = kut_new(false);
-  res = ku_exec(vm, "let x = false && true;");
+  EXPECT_EXEC_SUCCESS(vm, "let x = false && true;");
   EXPECT_VAL(vm, ku_get_global(vm, "x"), BOOL_VAL(false), "false && true");
   kut_free(vm);
 
   vm = kut_new(false);
-  res = ku_exec(vm, "let x = false && false;");
+  EXPECT_EXEC_SUCCESS(vm, "let x = false && false;");
   EXPECT_VAL(vm, ku_get_global(vm, "x"), BOOL_VAL(false), "false && false");
   kut_free(vm);
 
   vm = kut_new(false);
-  res = ku_exec(vm, "let x = true && false;");
+  EXPECT_EXEC_SUCCESS(vm, "let x = true && false;");
   EXPECT_VAL(vm, ku_get_global(vm, "x"), BOOL_VAL(false), "true && false");
   kut_free(vm);
 
   vm = kut_new(false);
-  res = ku_exec(vm, "let x = true && true;");
+  EXPECT_EXEC_SUCCESS(vm, "let x = true && true;");
   EXPECT_VAL(vm, ku_get_global(vm, "x"), BOOL_VAL(true), "true && true");
   kut_free(vm);
 
   vm = kut_new(false);
-  res = ku_exec(vm, "let x = false || true;");
+  EXPECT_EXEC_SUCCESS(vm, "let x = false || true;");
   EXPECT_VAL(vm, ku_get_global(vm, "x"), BOOL_VAL(true), "false || true");
   kut_free(vm);
 
   vm = kut_new(false);
-  res = ku_exec(vm, "let x = false || false;");
+  EXPECT_EXEC_SUCCESS(vm, "let x = false || false;");
   EXPECT_VAL(vm, ku_get_global(vm, "x"), BOOL_VAL(false), "false || false");
   kut_free(vm);
 
   vm = kut_new(false);
-  res = ku_exec(vm, "let x = true || false;");
+  EXPECT_EXEC_SUCCESS(vm, "let x = true || false;");
   EXPECT_VAL(vm, ku_get_global(vm, "x"), BOOL_VAL(true), "true || false");
   kut_free(vm);
 
   vm = kut_new(false);
-  res = ku_exec(vm, "let x = true || true;");
+  EXPECT_EXEC_SUCCESS(vm, "let x = true || true;");
   EXPECT_VAL(vm, ku_get_global(vm, "x"), BOOL_VAL(true), "true || true");
   kut_free(vm);
 
   vm = kut_new(false);
-  res = ku_exec(vm, "let x = 1; while(x < 20) { x = x + 1; }");
-  EXPECT_INT(vm, res, KVM_OK, "while parse");
+  EXPECT_EXEC_SUCCESS_M(vm, "let x = 1; while(x < 20) { x = x + 1; }", "while parse");
   EXPECT_VAL(vm, ku_get_global(vm, "x"), NUM_VAL(20), "while simple");
   kut_free(vm);
 
@@ -786,8 +788,7 @@ int ku_test() {
   kut_free(vm);
 
   vm = kut_new(false);
-  res = ku_exec(vm, "let x = 0; for(let j=0; j < 10; j=j+1) x = j;");
-  EXPECT_INT(vm, res, KVM_OK, "for parse");
+  EXPECT_EXEC_SUCCESS_M(vm, "let x = 0; for(let j=0; j < 10; j=j+1) x = j;", "for parse");
   EXPECT_VAL(vm, ku_get_global(vm, "x"), NUM_VAL(9), "for simple");
   kut_free(vm);
 
@@ -798,20 +799,17 @@ int ku_test() {
 
   vm = kut_new(true);
   vm->flags = 0;
-  res = ku_exec(vm, "let x = 0; for(; x < 10; x=x+1) {printf(x); printf(\"\\n\");}");
-  EXPECT_INT(vm, res, KVM_OK, "for no init");
+  EXPECT_EXEC_SUCCESS_M(vm, "let x = 0; for(; x < 10; x=x+1) {printf(x); printf(\"\\n\");}", "for no init");
   EXPECT_VAL(vm, ku_get_global(vm, "x"), NUM_VAL(10), "for no init");
   kut_free(vm);
 
   vm = kut_new(false);
-  res = ku_exec(vm, "let x = 0; for(; x < 10; ) x=x+1;");
-  EXPECT_INT(vm, res, KVM_OK, "for no inc");
+  EXPECT_EXEC_SUCCESS_M(vm, "let x = 0; for(; x < 10; ) x=x+1;", "for no inc");
   EXPECT_VAL(vm, ku_get_global(vm, "x"), NUM_VAL(10), "for no inc");
   kut_free(vm);
 
   vm = kut_new(true);
-  res = ku_exec(vm, "function foo(a) { print(\"ok\"); }");
-  EXPECT_INT(vm, res, KVM_OK, "function def");
+  EXPECT_EXEC_SUCCESS_M(vm, "function foo(a) { print(\"ok\"); }", "function def");
   v = ku_get_global(vm, "foo");
   EXPECT_INT(vm, IS_OBJ(v),true, "function object");
   kut_free(vm);
@@ -823,8 +821,7 @@ int ku_test() {
   kut_free(vm);
 
   vm = kut_new(true);
-  res = ku_exec(vm, "function foo(a,b) { printf(2); }");
-  EXPECT_INT(vm, res, KVM_OK, "function call def");
+  EXPECT_EXEC_SUCCESS_M(vm, "function foo(a,b) { printf(2); }", "function call def");
   res = ku_exec(vm, "foo(1,2,3);");
   EXPECT_INT(vm, res, KVM_ERR_RUNTIME, "function call mismatch");
   kut_free(vm);
@@ -880,14 +877,12 @@ int ku_test() {
   kut_free(vm);
 
   vm = kut_new(false);
-  res = ku_exec(vm, "function f(a) { return a*2; }\nlet x = f(3);");
-  EXPECT_INT(vm, res, KVM_OK, "return expr res");
+  EXPECT_EXEC_SUCCESS_M(vm, "function f(a) { return a*2; }\nlet x = f(3);", "return expr res");
   EXPECT_VAL(vm, ku_get_global(vm, "x"), NUM_VAL(6), "return expr val");
   kut_free(vm);
 
   vm = kut_new(false);
-  res = ku_exec(vm, "function f(a) { let z = 2; }\nlet x = f(3);");
-  EXPECT_INT(vm, res, KVM_OK, "implicit return res");
+  EXPECT_EXEC_SUCCESS_M(vm, "function f(a) { let z = 2; }\nlet x = f(3);", "implicit return res");
   EXPECT_VAL(vm, ku_get_global(vm, "x"), NULL_VAL, "implicit return val");
   kut_free(vm);
 
@@ -899,38 +894,32 @@ int ku_test() {
   kut_free(vm);
 
   vm = kut_new(true);
-  res = ku_exec(vm, "let x = clock();");
-  EXPECT_INT(vm, res, KVM_OK, "clock res");
+  EXPECT_EXEC_SUCCESS_M(vm, "let x = clock();", "clock res");
   v = ku_get_global(vm, "x");
   EXPECT_INT(vm, IS_NUM(v), true, "clock return");
   kut_free(vm);
 
   vm = kut_new(true);
-  res = ku_exec(vm, "printf(12);");
-  EXPECT_INT(vm, res, KVM_OK, "printf res");
+  EXPECT_EXEC_SUCCESS_M(vm, "printf(12);", "printf res");
   kut_free(vm);
 
   vm = kut_new(false);
-  res = ku_exec(vm, "function M(x) { let m = x; function e(n) { return m*n; } return e; }\n let z = M(5); let x = z(3);");
-  EXPECT_INT(vm, res, KVM_OK, "closure res");
+  EXPECT_EXEC_SUCCESS_M(vm, "function M(x) { let m = x; function e(n) { return m*n; } return e; }\n let z = M(5); let x = z(3);", "closure res");
   EXPECT_VAL(vm, ku_get_global(vm, "x"), NUM_VAL(15), "closure val");
   kut_free(vm);
 
   vm = kut_new(false);
-  res = ku_exec(vm, "function o() { let a=7; let b=8; function i() { return a+b; } return i; }\n let z = o(); let x = z();");
-  EXPECT_INT(vm, res, KVM_OK, "closure2 res");
+  EXPECT_EXEC_SUCCESS_M(vm, "function o() { let a=7; let b=8; function i() { return a+b; } return i; }\n let z = o(); let x = z();", "closure2 res");
   EXPECT_VAL(vm, ku_get_global(vm, "x"), NUM_VAL(15), "closure2 val");
   kut_free(vm);
 
   vm = kut_new(false);
-  res = ku_exec(vm, "function f1(){let a1=1; function f2() {let a2=2; function f3(){ return a1+a2; } return f3; } return f2; }\n let v1=f1(); let v2=v1(); let v3=v2();");
-  EXPECT_INT(vm, res, KVM_OK, "closure3 res");
+  EXPECT_EXEC_SUCCESS_M(vm, "function f1(){let a1=1; function f2() {let a2=2; function f3(){ return a1+a2; } return f3; } return f2; }\n let v1=f1(); let v2=v1(); let v3=v2();", "closure3 res");
   EXPECT_VAL(vm, ku_get_global(vm, "v3"), NUM_VAL(3), "closure3 val");
   kut_free(vm);
 
   vm = kut_new(false);
-  res = ku_exec(vm, "function M(x) { let m = x; function e() { return m*m; } return e; }\n let z = M(5); let x = z();");
-  EXPECT_INT(vm, res, KVM_OK, "closure4 res");
+  EXPECT_EXEC_SUCCESS_M(vm, "function M(x) { let m = x; function e() { return m*m; } return e; }\n let z = M(5); let x = z();", "closure4 res");
   EXPECT_VAL(vm, ku_get_global(vm, "x"), NUM_VAL(25), "closure4 val");
   kut_free(vm);
 
@@ -950,10 +939,8 @@ int ku_test() {
   EXPECT_VAL(vm, ku_get_global(vm, "x"), NULL_VAL, "gcnext val");
   kut_free(vm);
 
-
   vm = kut_new(true);
-  res = ku_exec(vm, "printf(null);");
-  EXPECT_INT(vm, res, KVM_OK, "printf null");
+  EXPECT_EXEC_SUCCESS_M(vm, "printf(null);", "printf null");
   kut_free(vm);
 
   vm = kut_new(false);
@@ -972,21 +959,19 @@ int ku_test() {
   kut_free(vm);
 
   vm = kut_new(false);
-  res = ku_exec(vm, "let x = \"hello \" + \"world\";");
+  EXPECT_EXEC_SUCCESS(vm, "let x = \"hello \" + \"world\";");
   int sc = kut_table_count(vm, &vm->strings);
-  res = ku_exec(vm, "let y = \"hello\" + \" world\";");
+  EXPECT_EXEC_SUCCESS(vm, "let y = \"hello\" + \" world\";");
   // +1 for the y value, +2 for two different substrings
   EXPECT_INT(vm, kut_table_count(vm, &vm->strings), sc+3, "string intern");
   kut_free(vm);
 
   vm = kut_new(true);
-  res = ku_exec(vm, "class Foo {}\n printf(Foo);");
-  EXPECT_INT(vm, res, KVM_OK, "class decl");
+  EXPECT_EXEC_SUCCESS_M(vm, "class Foo {}\n printf(Foo);", "class decl");
   kut_free(vm);
 
   vm = kut_new(true);
-  res = ku_exec(vm, "class Foo {}\n let f = new Foo(); printf(f);");
-  EXPECT_INT(vm, res, KVM_OK, "class cons");
+  EXPECT_EXEC_SUCCESS_M(vm, "class Foo {}\n let f = new Foo(); printf(f);", "class cons");
   kut_free(vm);
 
   vm = kut_new(true);
@@ -1005,8 +990,7 @@ int ku_test() {
   kut_free(vm);
 
   vm = kut_new(false);
-  res = ku_exec(vm, "class C{}\n let c = new C(); c.p = 9; let x = c.p;");
-  EXPECT_INT(vm, res, KVM_OK, "set/get prop res");
+  EXPECT_EXEC_SUCCESS_M(vm, "class C{}\n let c = new C(); c.p = 9; let x = c.p;", "set/get prop res");
   EXPECT_VAL(vm, ku_get_global(vm, "x"), NUM_VAL(9), "set/get prop ret");
   kut_free(vm);
 
@@ -1016,14 +1000,12 @@ int ku_test() {
   kut_free(vm);
 
   vm = kut_new(false);
-  res = ku_exec(vm, "let x=1;\n class C { M() { x=3; } }\n let c = new C();\n let m = c.M;\n m();");
-  EXPECT_INT(vm, res, KVM_OK, "bound method res");
+  EXPECT_EXEC_SUCCESS_M(vm, "let x=1;\n class C { M() { x=3; } }\n let c = new C();\n let m = c.M;\n m();", "bound method res");
   EXPECT_VAL(vm, ku_get_global(vm, "x"), NUM_VAL(3), "bound method ret");
   kut_free(vm);
 
   vm = kut_new(false);
-  res = ku_exec(vm, "let x=1; class C{ M() { this.z=3; } }\n let c = new C(); c.M(); x=c.z;");
-  EXPECT_INT(vm, res, KVM_OK, "this res");
+  EXPECT_EXEC_SUCCESS_M(vm, "let x=1; class C{ M() { this.z=3; } }\n let c = new C(); c.M(); x=c.z;", "this res");
   EXPECT_VAL(vm, ku_get_global(vm, "x"), NUM_VAL(3), "this ret");
   kut_free(vm);
 
@@ -1038,8 +1020,7 @@ int ku_test() {
   kut_free(vm);
 
   vm = kut_new(false);
-  res = ku_exec(vm, "class C { constructor(x) { this.x = x; }}\n let c = new C(12); let x = c.x;");
-  EXPECT_INT(vm, res, KVM_OK, "ctor args res");
+  EXPECT_EXEC_SUCCESS_M(vm, "class C { constructor(x) { this.x = x; }}\n let c = new C(12); let x = c.x;", "ctor args res");
   EXPECT_VAL(vm, ku_get_global(vm, "x"), NUM_VAL(12), "ctor args ret");
   kut_free(vm);
 
@@ -1049,8 +1030,7 @@ int ku_test() {
   kut_free(vm);
 
   vm = kut_new(false);
-  res = ku_exec(vm, "let x=1; class C { constructor() { function f() { x=8; } this.f = f; } }\n let c = new C(); c.f();");
-  EXPECT_INT(vm, res, KVM_OK, "field invoke res");
+  EXPECT_EXEC_SUCCESS_M(vm, "let x=1; class C { constructor() { function f() { x=8; } this.f = f; } }\n let c = new C(); c.f();", "field invoke res");
   EXPECT_VAL(vm, ku_get_global(vm, "x"), NUM_VAL(8), "field invoke ret");
   kut_free(vm);
 
@@ -1080,8 +1060,7 @@ int ku_test() {
   kut_free(vm);
 
   vm = kut_new(false);
-  res = ku_exec(vm, "let x=0; class A { f() { x=2; } }\n class B extends A {}\n let b = new B(); b.f();");
-  EXPECT_INT(vm, res, KVM_OK, "super res");
+  EXPECT_EXEC_SUCCESS_M(vm, "let x=0; class A { f() { x=2; } }\n class B extends A {}\n let b = new B(); b.f();", "super res");
   EXPECT_VAL(vm, ku_get_global(vm, "x"), NUM_VAL(2), "super ret");
   kut_free(vm);
 
@@ -1093,8 +1072,7 @@ int ku_test() {
   kut_free(vm);
 
   vm = kut_new(false);
-  res = ku_exec(vm, "class A { f() { return 2; } }\nclass B extends A { f() { return super.f()*3; }}\n let b = new B(); let x = b.f();");
-  EXPECT_INT(vm, res, KVM_OK, "super invoke res");
+  EXPECT_EXEC_SUCCESS_M(vm, "class A { f() { return 2; } }\nclass B extends A { f() { return super.f()*3; }}\n let b = new B(); let x = b.f();", "super invoke res");
   EXPECT_VAL(vm, ku_get_global(vm, "x"), NUM_VAL(6), "super invoke ret");
   kut_free(vm);
 
@@ -1110,8 +1088,7 @@ int ku_test() {
   kut_free(vm);
 
   vm = kut_new(false);
-  res = ku_exec(vm, "function f() { return; }");
-  EXPECT_INT(vm, res, KVM_OK, "simple ret");
+  EXPECT_EXEC_SUCCESS_M(vm, "function f() { return; }", "simple ret");
   kut_free(vm);
 
   vm = kut_new(false);
@@ -1159,8 +1136,7 @@ int ku_test() {
   kut_free(vm);
 
   vm = kut_new(false);
-  res = ku_exec(vm, "function O() { let a=1; let b=2; function e() { a=9; return a*b; } return e; }\n let z=O(); let x=z();");
-  EXPECT_INT(vm, res, KVM_OK, "closure set res");
+  EXPECT_EXEC_SUCCESS_M(vm, "function O() { let a=1; let b=2; function e() { a=9; return a*b; } return e; }\n let z=O(); let x=z();", "closure set res");
   EXPECT_VAL(vm, ku_get_global(vm, "x"), NUM_VAL(18), "closure set ret");
   kut_free(vm);
 
@@ -1190,14 +1166,12 @@ int ku_test() {
   kut_free(vm);
 
   vm = kut_new(false);
-  res = ku_exec(vm, "let f=function(a) {return a*2;}; let x=f(3);");
-  EXPECT_INT(vm, res, KVM_OK, "anonymous function res");
+  EXPECT_EXEC_SUCCESS_M(vm, "let f=function(a) {return a*2;}; let x=f(3);", "anonymous function res");
   EXPECT_VAL(vm, ku_get_global(vm, "x"), NUM_VAL(6), "anonymous function ret");
   kut_free(vm);
 
   vm = kut_new(false);
-  res = ku_exec(vm, "function f(x) { return x(7);} let x=f(function(a) { return a*2; });");
-  EXPECT_INT(vm, res, KVM_OK, "function arg res");
+  EXPECT_EXEC_SUCCESS_M(vm, "function f(x) { return x(7);} let x=f(function(a) { return a*2; });", "function arg res");
   EXPECT_VAL(vm, ku_get_global(vm, "x"), NUM_VAL(14), "function arg ret");
   kut_free(vm);
 
@@ -1205,33 +1179,28 @@ int ku_test() {
   ku_lexdump(vm);
 
   vm = kut_new(false);
-  res = ku_exec(vm, "let f = a => a*2; let x=f(3);");
-  EXPECT_INT(vm, res, KVM_OK, "lambda res");
+  EXPECT_EXEC_SUCCESS_M(vm, "let f = a => a*2; let x=f(3);", "lambda res");
   EXPECT_VAL(vm, ku_get_global(vm, "x"), NUM_VAL(6), "lambda ret");
   kut_free(vm);
 
   vm = kut_new(false);
-  res = ku_exec(vm, "function f(x) { return x(2); } let x = f(a => a*3);");
-  EXPECT_INT(vm, res, KVM_OK, "lambda arg res");
+  EXPECT_EXEC_SUCCESS_M(vm, "function f(x) { return x(2); } let x = f(a => a*3);", "lambda arg res");
   EXPECT_VAL(vm, ku_get_global(vm, "x"), NUM_VAL(6), "lambda arg ret");
   kut_free(vm);
 
   vm = kut_new(false);
-  res = ku_exec(vm, "let f = (a,b) => a*b; let x=f(3,4);");
-  EXPECT_INT(vm, res, KVM_OK, "lambda (args) res");
+  EXPECT_EXEC_SUCCESS_M(vm, "let f = (a,b) => a*b; let x=f(3,4);", "lambda (args) res");
   EXPECT_VAL(vm, ku_get_global(vm, "x"), NUM_VAL(12), "lambda (args) ret");
   kut_free(vm);
 
 
   vm = kut_new(false);
-  res = ku_exec(vm, "let max = (a,b) => { if (a>b) return a; else return b; }; let x=max(3,14);");
-  EXPECT_INT(vm, res, KVM_OK, "lambda args body res");
+  EXPECT_EXEC_SUCCESS_M(vm, "let max = (a,b) => { if (a>b) return a; else return b; }; let x=max(3,14);", "lambda args body res");
   EXPECT_VAL(vm, ku_get_global(vm, "x"), NUM_VAL(14), "lambda args body ret");
   kut_free(vm);
 
   vm = kut_new(false);
-  res = ku_exec(vm, "let abs = a => { if (a<0) return -a; else return a; }; let x=abs(-12);");
-  EXPECT_INT(vm, res, KVM_OK, "lambda body res");
+  EXPECT_EXEC_SUCCESS_M(vm, "let abs = a => { if (a<0) return -a; else return a; }; let x=abs(-12);", "lambda body res");
   EXPECT_VAL(vm, ku_get_global(vm, "x"), NUM_VAL(12), "lambda body ret");
   kut_free(vm);
 
@@ -1246,32 +1215,27 @@ int ku_test() {
   kut_free(vm);
 
   vm = kut_new(false);
-  res = ku_exec(vm, "let x=0; while(x < 5) { if (x > 2) break; x=x+1; }");
-  EXPECT_INT(vm, res, KVM_OK, "while break res");
+  EXPECT_EXEC_SUCCESS_M(vm, "let x=0; while(x < 5) { if (x > 2) break; x=x+1; }", "while break res");
   EXPECT_VAL(vm, ku_get_global(vm, "x"), NUM_VAL(3), "while break ret");
   kut_free(vm);
 
   vm = kut_new(false);
-  res = ku_exec(vm, "let x=0; for(let i=0; i<10; i=i+1) { if (i > 2) break;  x = i;}");
-  EXPECT_INT(vm, res, KVM_OK, "for break res");
+  EXPECT_EXEC_SUCCESS_M(vm, "let x=0; for(let i=0; i<10; i=i+1) { if (i > 2) break;  x = i;}", "for break res");
   EXPECT_VAL(vm, ku_get_global(vm, "x"), NUM_VAL(2), "for break ret");
   kut_free(vm);
 
   vm = kut_new(false);
-  res = ku_exec(vm, "let x=0; let y=0; while(x < 5) { x=x+1; if (x > 2) continue; y=x; }");
-  EXPECT_INT(vm, res, KVM_OK, "while continue res");
+  EXPECT_EXEC_SUCCESS_M(vm, "let x=0; let y=0; while(x < 5) { x=x+1; if (x > 2) continue; y=x; }", "while continue res");
   EXPECT_VAL(vm, ku_get_global(vm, "y"), NUM_VAL(2), "while continue ret");
   kut_free(vm);
 
   vm = kut_new(false);
-  res = ku_exec(vm, "let y=0; for(let x=0; x<5; x=x+1) { if (x > 2) continue; y=x; }");
-  EXPECT_INT(vm, res, KVM_OK, "for continue res");
+  EXPECT_EXEC_SUCCESS_M(vm, "let y=0; for(let x=0; x<5; x=x+1) { if (x > 2) continue; y=x; }", "for continue res");
   EXPECT_VAL(vm, ku_get_global(vm, "y"), NUM_VAL(2), "for continue ret");
   kut_free(vm);
 
   vm = kut_new(true);
-  res = ku_exec(vm, "let y=\"12\"; let x=y.count;");
-  EXPECT_INT(vm, res, KVM_OK, "string.count res");
+  EXPECT_EXEC_SUCCESS_M(vm, "let y=\"12\"; let x=y.count;", "string.count res");
   EXPECT_VAL(vm, ku_get_global(vm, "x"), NUM_VAL(2), "string.count ret");
   kut_free(vm);
 
@@ -1286,27 +1250,23 @@ int ku_test() {
   kut_free(vm);
 
   vm = kut_new(true);
-  res = ku_exec(vm, "let y=\"12\\n\\r\\t\"; let x=y.count;");
-  EXPECT_INT(vm, res, KVM_OK, "strlit escape res");
+  EXPECT_EXEC_SUCCESS_M(vm, "let y=\"12\\n\\r\\t\"; let x=y.count;", "strlit escape res");
   EXPECT_VAL(vm, ku_get_global(vm, "x"), NUM_VAL(5), "strlit escape ret");
   kut_free(vm);
 
   vm = kut_new(true);
-  res = ku_exec(vm, "let x=1.2e3;");
-  EXPECT_INT(vm, res, KVM_OK, "1.2e3 res");
+  EXPECT_EXEC_SUCCESS_M(vm, "let x=1.2e3;", "1.2e3 res");
   EXPECT_VAL(vm, ku_get_global(vm, "x"), NUM_VAL(1.2e3), "1.2e3 ret");
   kut_free(vm);
 
   vm = kut_new(true);
-  res = ku_exec(vm, "let x=0xcafeb10b;");
-  EXPECT_INT(vm, res, KVM_OK, "hex res");
+  EXPECT_EXEC_SUCCESS_M(vm, "let x=0xcafeb10b;", "hex res");
   EXPECT_VAL(vm, ku_get_global(vm, "x"), NUM_VAL(0xcafeb10b), "hex ret");
   kut_free(vm);
 
   vm = kut_new(false);
   tclass_init(vm, 0);
-  res = ku_exec(vm, "let x=test;");
-  EXPECT_INT(vm, res, KVM_OK, "class res");
+  EXPECT_EXEC_SUCCESS_M(vm, "let x=test;", "class res");
   EXPECT_TRUE(vm, IS_CCLASS(ku_get_global(vm, "x")), "class ret");
   kut_free(vm);
   EXPECT_INT(vm, tclass_sfree, 0, "class no sfree");
@@ -1353,20 +1313,17 @@ int ku_test() {
   kut_free(vm);
 
   vm = kut_new(true);
-  res = ku_exec(vm, "let x=math.sin(math.pi);");
-  EXPECT_INT(vm, res, KVM_OK, "math.sin res");
+  EXPECT_EXEC_SUCCESS_M(vm, "let x=math.sin(math.pi);", "math.sin res");
   EXPECT_TRUE(vm, APPROX(ku_get_global(vm, "x"), 0), "math.sin ret");
   kut_free(vm);
 
   vm = kut_new(true);
-  res = ku_exec(vm, "let x=math.cos(math.pi);");
-  EXPECT_INT(vm, res, KVM_OK, "math.cos res");
+  EXPECT_EXEC_SUCCESS_M(vm, "let x=math.cos(math.pi);", "math.cos res");
   EXPECT_TRUE(vm, APPROX(ku_get_global(vm, "x"), -1), "math.cos ret");
   kut_free(vm);
 
   vm = kut_new(true);
-  res = ku_exec(vm, "let x=math.tan(math.pi/4);");
-  EXPECT_INT(vm, res, KVM_OK, "math.tan res");
+  EXPECT_EXEC_SUCCESS_M(vm, "let x=math.tan(math.pi/4);", "math.tan res");
   EXPECT_TRUE(vm, APPROX(ku_get_global(vm, "x"), 1), "math.tan ret");
   kut_free(vm);
 
@@ -1425,8 +1382,7 @@ int ku_test() {
   kut_free(vm);
 
   vm = kut_new(true);
-  res = ku_exec(vm, "let x=string.format(\"ABC %g,%s,%b,%b\",123.45,\"FF\", true, false);");
-  EXPECT_INT(vm, res, KVM_OK, "string.format res");
+  EXPECT_EXEC_SUCCESS_M(vm, "let x=string.format(\"ABC %g,%s,%b,%b\",123.45,\"FF\", true, false);", "string.format res");
   v = ku_get_global(vm, "x");
   EXPECT_TRUE(vm, IS_STR(v), "string.format ret");
   kustr *__nonnull str = AS_STR(v);
@@ -1434,8 +1390,7 @@ int ku_test() {
   kut_free(vm);
 
   vm = kut_new(true);
-  res = ku_exec(vm, "let x=string.format(\"%f\", 123.456);");
-  EXPECT_INT(vm, res, KVM_OK, "string.format(%f) res");
+  EXPECT_EXEC_SUCCESS_M(vm, "let x=string.format(\"%f\", 123.456);", "string.format(%f) res");
   EXPECT_STR(vm, ku_get_global(vm, "x"), "123.456000", "string.format(%f) ret");
   kut_free(vm);
 
@@ -1445,12 +1400,12 @@ int ku_test() {
   kut_free(vm);
 
   vm = kut_new(true);
-  res = ku_exec(vm, "let x=string.format(\"%x\",0xfb1cfd);");
+  EXPECT_EXEC_SUCCESS(vm, "let x=string.format(\"%x\",0xfb1cfd);");
   EXPECT_STR(vm, ku_get_global(vm, "x"), "fb1cfd", "string.format %x");
   kut_free(vm);
 
   vm = kut_new(true);
-  res = ku_exec(vm, "let x=string.format(\"%d\",123.45);");
+  EXPECT_EXEC_SUCCESS(vm, "let x=string.format(\"%d\",123.45);");
   EXPECT_STR(vm, ku_get_global(vm, "x"), "123", "string.format %d");
   kut_free(vm);
 
@@ -1485,33 +1440,28 @@ int ku_test() {
   kut_free(vm);
 
   vm = kut_new(true);
-  res = ku_exec(vm, "let x=string.format(12);");
-  EXPECT_INT(vm, res, KVM_OK, "string.format num res");
+  EXPECT_EXEC_SUCCESS_M(vm, "let x=string.format(12);", "string.format num res");
   EXPECT_TRUE(vm, IS_NULL(ku_get_global(vm, "x")), "string.format ret");
   kut_free(vm);
 
   vm = kut_new(true);
-  res = ku_exec(vm, "let x=string.bogus(12);");
-  EXPECT_INT(vm, res, KVM_OK, "string.bogus num res");
+  EXPECT_EXEC_SUCCESS_M(vm, "let x=string.bogus(12);", "string.bogus num res");
   EXPECT_TRUE(vm, IS_NULL(ku_get_global(vm, "x")), "string.bogus ret");
   kut_free(vm);
 
   vm = kut_new(true);
-  res = ku_exec(vm, "let s=\"123\"; let x=s.bogus;");
-  EXPECT_INT(vm, res, KVM_OK, "s.bogus res");
+  EXPECT_EXEC_SUCCESS_M(vm, "let s=\"123\"; let x=s.bogus;", "s.bogus res");
   EXPECT_TRUE(vm, IS_NULL(ku_get_global(vm, "x")), "s.bogus ret");
   kut_free(vm);
 
 
   vm = kut_new(true);
-  res = ku_exec(vm, "let x=math.bogus(12);");
-  EXPECT_INT(vm, res, KVM_OK, "math.bogus scall res");
+  EXPECT_EXEC_SUCCESS_M(vm, "let x=math.bogus(12);", "math.bogus scall res");
   EXPECT_TRUE(vm, IS_NULL(ku_get_global(vm, "x")), "math.bogus scall ret");
   kut_free(vm);
 
   vm = kut_new(true);
-  res = ku_exec(vm, "let x=math.bogus;");
-  EXPECT_INT(vm, res, KVM_OK, "math.bogus sget res");
+  EXPECT_EXEC_SUCCESS_M(vm, "let x=math.bogus;", "math.bogus sget res");
   EXPECT_TRUE(vm, IS_NULL(ku_get_global(vm, "x")), "math.bogus sget ret");
   kut_free(vm);
 
@@ -1541,8 +1491,7 @@ int ku_test() {
   kut_free(vm);
 
   vm = kut_new(true);
-  res = ku_exec(vm, "let x=0xCaFeb10B;");
-  EXPECT_INT(vm, res, KVM_OK, "hex mixed case res");
+  EXPECT_EXEC_SUCCESS_M(vm, "let x=0xCaFeb10B;", "hex mixed case res");
   EXPECT_VAL(vm, ku_get_global(vm, "x"), NUM_VAL(0xcafeb10b), "hex mixed case ret");
   kut_free(vm);
 
@@ -1575,8 +1524,7 @@ int ku_test() {
   kut_free(vm);
 
   vm = kut_new(true);
-  res = ku_exec(vm, "let x=[1,2,3];");
-  EXPECT_INT(vm, res, KVM_OK, "array init");
+  EXPECT_EXEC_SUCCESS_M(vm, "let x=[1,2,3];", "array init");
   v = ku_get_global(vm, "x");
   EXPECT_TRUE(vm, IS_ARRAY(v), "array type");
   EXPECT_VAL(vm, ku_arrget(vm, AS_ARRAY(v), 0), NUM_VAL(1), "array[0]");
@@ -1585,8 +1533,7 @@ int ku_test() {
   kut_free(vm);
 
   vm = kut_new(true);
-  res = ku_exec(vm, "let x=[1,\"hello\",3,4];");
-  EXPECT_INT(vm, res, KVM_OK, "mix array res");
+  EXPECT_EXEC_SUCCESS_M(vm, "let x=[1,\"hello\",3,4];", "mix array res");
   v = ku_get_global(vm, "x");
   EXPECT_TRUE(vm, IS_ARRAY(v), "mix array type");
   EXPECT_VAL(vm, ku_arrget(vm, AS_ARRAY(v), 0), NUM_VAL(1), "mix array[0]");
@@ -1598,8 +1545,7 @@ int ku_test() {
   kut_free(vm);
 
   vm = kut_new(true);
-  res = ku_exec(vm, "let a=[1,3,4]; let x=a[1];");
-  EXPECT_INT(vm, res, KVM_OK, "array get res");
+  EXPECT_EXEC_SUCCESS_M(vm, "let a=[1,3,4]; let x=a[1];", "array get res");
   EXPECT_VAL(vm, ku_get_global(vm, "x"), NUM_VAL(3), "array get value");
   kut_free(vm);
 
@@ -1609,14 +1555,12 @@ int ku_test() {
   kut_free(vm);
 
   vm = kut_new(true);
-  res = ku_exec(vm, "let a=[1,3,4]; a[1]=9; let x=a[1];");
-  EXPECT_INT(vm, res, KVM_OK, "array set res");
+  EXPECT_EXEC_SUCCESS_M(vm, "let a=[1,3,4]; a[1]=9; let x=a[1];", "array set res");
   EXPECT_VAL(vm, ku_get_global(vm, "x"), NUM_VAL(9), "array get value");
   kut_free(vm);
 
   vm = kut_new(true);
-  res = ku_exec(vm, "let a=array(7);");
-  EXPECT_INT(vm, res, KVM_OK, "array cons res");
+  EXPECT_EXEC_SUCCESS_M(vm, "let a=array(7);", "array cons res");
   v = ku_get_global(vm, "a");
   EXPECT_TRUE(vm, IS_ARRAY(v), "array cons type");
   ao = AS_ARRAY(v);
@@ -1624,8 +1568,7 @@ int ku_test() {
   kut_free(vm);
 
   vm = kut_new(true);
-  res = ku_exec(vm, "let a=array(0);");
-  EXPECT_INT(vm, res, KVM_OK, "array cons(0) res");
+  EXPECT_EXEC_SUCCESS_M(vm, "let a=array(0);", "array cons(0) res");
   v = ku_get_global(vm, "a");
   EXPECT_TRUE(vm, IS_ARRAY(v), "array cons(0) type");
   ao = AS_ARRAY(v);
@@ -1633,14 +1576,12 @@ int ku_test() {
   kut_free(vm);
 
   vm = kut_new(true);
-  res = ku_exec(vm, "let a=[1,3,4]; let x=a.count;");
-  EXPECT_INT(vm, res, KVM_OK, "array count res");
+  EXPECT_EXEC_SUCCESS_M(vm, "let a=[1,3,4]; let x=a.count;", "array count res");
   EXPECT_VAL(vm, ku_get_global(vm, "x"), NUM_VAL(3), "array count ret");
   kut_free(vm);
 
   vm = kut_new(true);
-  res = ku_exec(vm, "let a=[1,3,4]; let x=a.map(e => e*2);");
-  EXPECT_INT(vm, res, KVM_OK, "array.map res");
+  EXPECT_EXEC_SUCCESS_M(vm, "let a=[1,3,4]; let x=a.map(e => e*2);", "array.map res");
   v = ku_get_global(vm, "x");
   EXPECT_TRUE(vm, IS_ARRAY(v), "array.map type");
   EXPECT_VAL(vm, ku_arrget(vm, AS_ARRAY(v), 0), NUM_VAL(2), "array.map[0]");
@@ -1664,8 +1605,7 @@ int ku_test() {
   kut_free(vm);
 
   vm = kut_new(true);
-  res = ku_exec(vm, "let sum=[1,3,4].reduce(0, (v,e) => v+e);");
-  EXPECT_INT(vm, res, KVM_OK, "array.reduce res");
+  EXPECT_EXEC_SUCCESS_M(vm, "let sum=[1,3,4].reduce(0, (v,e) => v+e);", "array.reduce res");
   EXPECT_VAL(vm, ku_get_global(vm, "sum"), NUM_VAL(8), "array.reduce value");
   kut_free(vm);
 
@@ -1691,6 +1631,7 @@ int ku_test() {
 
   vm = kut_new(true);
   res = ku_exec(vm, "let a=[1,3,4]; let x =a.bogus();");
+  EXPECT_INT(vm, res, KVM_ERR_RUNTIME, "array.bogus");
   EXPECT_VAL(vm, ku_get_global(vm, "x"), NULL_VAL, "array.invoke bogus");
   kut_free(vm);
 
@@ -1701,13 +1642,12 @@ int ku_test() {
   kut_free(vm);
 
   vm = kut_new(true);
-  res = ku_exec(vm, "let x=1.23e-2;");
+  EXPECT_EXEC_SUCCESS(vm, "let x=1.23e-2;");
   EXPECT_VAL(vm, ku_get_global(vm, "x"), NUM_VAL(1.23e-2), "1.23e-2");
   kut_free(vm);
 
   vm = kut_new(true);
-  res = ku_exec(vm, "for(let i=0; i<10; i=i+1) { if (i>2) break; if (i>3) break; }");
-  EXPECT_INT(vm, res, KVM_OK, "two break");
+  EXPECT_EXEC_SUCCESS_M(vm, "for(let i=0; i<10; i=i+1) { if (i>2) break; if (i>3) break; }", "two break");
   kut_free(vm);
 
   vm = kut_new(true);
@@ -1718,44 +1658,37 @@ int ku_test() {
 
   vm = kut_new(true);
   vm->flags |= KVM_F_GCSTRESS;
-  res = ku_exec(vm, "let t=table(); t.x=1; t.y=2; let x=t.x+t.y;");
-  EXPECT_INT(vm, res, KVM_OK, "table res");
+  EXPECT_EXEC_SUCCESS_M(vm, "let t=table(); t.x=1; t.y=2; let x=t.x+t.y;", "table res");
   EXPECT_VAL(vm, ku_get_global(vm, "x"), NUM_VAL(3), "table ret");
   kut_free(vm);
 
   vm = kut_new(true);
-  res = ku_exec(vm, "let t=table(); t.x=1; t.y=2; let x=t.z;");
-  EXPECT_INT(vm, res, KVM_OK, "table res");
+  EXPECT_EXEC_SUCCESS_M(vm, "let t=table(); t.x=1; t.y=2; let x=t.z;", "table res");
   EXPECT_VAL(vm, ku_get_global(vm, "x"), NULL_VAL, "table null ret");
   kut_free(vm);
 
   vm = kut_new(true);
-  res = ku_exec(vm, "let t=table(); t.set(\"x\",1); let x=t.get(\"x\");");
-  EXPECT_INT(vm, res, KVM_OK, "table set get res");
+  EXPECT_EXEC_SUCCESS_M(vm, "let t=table(); t.set(\"x\",1); let x=t.get(\"x\");", "table set get res");
   EXPECT_VAL(vm, ku_get_global(vm, "x"), NUM_VAL(1), "table set get ret");
   kut_free(vm);
 
   vm = kut_new(true);
-  res = ku_exec(vm, "let t=table(); t.set(1,1); let x=t.get(\"x\");");
-  EXPECT_INT(vm, res, KVM_OK, "table set(null) res");
+  EXPECT_EXEC_SUCCESS_M(vm, "let t=table(); t.set(1,1); let x=t.get(\"x\");", "table set(null) res");
   EXPECT_VAL(vm, ku_get_global(vm, "x"), NULL_VAL, "table set(null)");
   kut_free(vm);
 
   vm = kut_new(true);
-  res = ku_exec(vm, "let t=table(); t.set(\"x\",1); let x=t.get(1);");
-  EXPECT_INT(vm, res, KVM_OK, "table get(null) res");
+  EXPECT_EXEC_SUCCESS_M(vm, "let t=table(); t.set(\"x\",1); let x=t.get(1);", "table get(null) res");
   EXPECT_VAL(vm, ku_get_global(vm, "x"), NULL_VAL, "table get(null)");
   kut_free(vm);
 
   vm = kut_new(true);
-  res = ku_exec(vm, "let t=table(); let x = t.bogus();");
-  EXPECT_INT(vm, res, KVM_OK, "table bogus res");
+  EXPECT_EXEC_SUCCESS_M(vm, "let t=table(); let x = t.bogus();", "table bogus res");
   EXPECT_VAL(vm, ku_get_global(vm, "x"), NULL_VAL, "table bogus");
   kut_free(vm);
 
   vm = kut_new(true);
-  res = ku_exec(vm, "let t=table(); t.x=1; t.y=2; t.z=3; let K=\"\"; let V=0; t.iter( (k,v) => { K=K+k; V=V+v; } );");
-  EXPECT_INT(vm, res, KVM_OK, "table iter res");
+  EXPECT_EXEC_SUCCESS_M(vm, "let t=table(); t.x=1; t.y=2; t.z=3; let K=\"\"; let V=0; t.iter( (k,v) => { K=K+k; V=V+v; } );", "table iter res");
   v = ku_get_global(vm, "K");
   EXPECT_TRUE(vm, IS_STR(v), "table iter K type");
   // this is fragile depends on hashing and key insertion order
@@ -1764,69 +1697,59 @@ int ku_test() {
   kut_free(vm);
 
   vm = kut_new(true);
-  res = ku_exec(vm, "let t=table(); t.iter(k => k);");
-  EXPECT_INT(vm, res, KVM_OK, "table iter argc res");
+  EXPECT_EXEC_SUCCESS_M(vm, "let t=table(); t.iter(k => k);", "table iter argc res");
   kut_free(vm);
 
   vm = kut_new(true);
-  res = ku_exec(vm, "let t=table(); t.iter();");
-  EXPECT_INT(vm, res, KVM_OK, "table iter null res");
+  EXPECT_EXEC_SUCCESS_M(vm, "let t=table(); t.iter();", "table iter null res");
   kut_free(vm);
 
   vm = kut_new(true);
-  res = ku_exec(vm, "let t=table(); t.iter(12);");
-  EXPECT_INT(vm, res, KVM_OK, "table iter num res");
+  EXPECT_EXEC_SUCCESS_M(vm, "let t=table(); t.iter(12);", "table iter num res");
   kut_free(vm);
 
   vm = kut_new(true);
-  res = ku_exec(vm, "let x = math.imod(9,5);");
-  EXPECT_INT(vm, res, KVM_OK, "imod res");
+  EXPECT_EXEC_SUCCESS_M(vm, "let x = math.imod(9,5);", "imod res");
   EXPECT_VAL(vm, ku_get_global(vm, "x"), NUM_VAL(4), "imod ret");
   kut_free(vm);
 
   vm = kut_new(true);
-  res = ku_exec(vm, "let x = math.sqrt(4);");
-  EXPECT_INT(vm, res, KVM_OK, "sqrt res");
+  EXPECT_EXEC_SUCCESS_M(vm, "let x = math.sqrt(4);", "sqrt res");
   EXPECT_VAL(vm, ku_get_global(vm, "x"), NUM_VAL(2), "sqrt ret");
   kut_free(vm);
 
   vm = kut_new(true);
-  res = ku_exec(vm, "let x = math.pow(3,2);");
-  EXPECT_INT(vm, res, KVM_OK, "pow res");
+  EXPECT_EXEC_SUCCESS_M(vm, "let x = math.pow(3,2);", "pow res");
   EXPECT_VAL(vm, ku_get_global(vm, "x"), NUM_VAL(9), "pow ret");
   kut_free(vm);
 
   vm = kut_new(true);
-  res = ku_exec(vm, "let x = int(3.2);");
-  EXPECT_INT(vm, res, KVM_OK, "int res");
+  EXPECT_EXEC_SUCCESS_M(vm, "let x = int(3.2);", "int res");
   EXPECT_VAL(vm, ku_get_global(vm, "x"), NUM_VAL(3), "int ret");
   kut_free(vm);
 
   vm = kut_new(true);
-  res = ku_exec(vm, "let x = int(true);");
+  EXPECT_EXEC_SUCCESS(vm, "let x = int(true);");
   EXPECT_VAL(vm, ku_get_global(vm, "x"), NULL_VAL, "int(bool) ret");
   kut_free(vm);
 
   vm = kut_new(true);
-  res = ku_exec(vm, "let x = parseFloat(\"3.2\");");
-  EXPECT_INT(vm, res, KVM_OK, "parseFloat res");
+  EXPECT_EXEC_SUCCESS_M(vm, "let x = parseFloat(\"3.2\");", "parseFloat res");
   EXPECT_VAL(vm, ku_get_global(vm, "x"), NUM_VAL(3.2), "parseFloat ret");
   kut_free(vm);
 
   vm = kut_new(true);
-  res = ku_exec(vm, "let x = parseFloat(true);");
+  EXPECT_EXEC_SUCCESS(vm, "let x = parseFloat(true);");
   EXPECT_VAL(vm, ku_get_global(vm, "x"), NULL_VAL, "parseFloat(bool) ret");
   kut_free(vm);
 
   vm = kut_new(true);
-  res = ku_exec(vm, "let x = 0xf7f1 | 0x9854;");
-  EXPECT_INT(vm, res, KVM_OK, "bit || res");
+  EXPECT_EXEC_SUCCESS_M(vm, "let x = 0xf7f1 | 0x9854;", "bit || res");
   EXPECT_VAL(vm, ku_get_global(vm, "x"), NUM_VAL(65525), "bit || ret");
   kut_free(vm);
 
   vm = kut_new(true);
-  res = ku_exec(vm, "let x = 0xf7f1 & 0x9854;");
-  EXPECT_INT(vm, res, KVM_OK, "bit && res");
+  EXPECT_EXEC_SUCCESS_M(vm, "let x = 0xf7f1 & 0x9854;", "bit && res");
   EXPECT_VAL(vm, ku_get_global(vm, "x"), NUM_VAL(36944), "bit && ret");
   kut_free(vm);
 
@@ -1849,27 +1772,23 @@ int ku_test() {
   ku_exec(vm, "let t=0;");
   ku_exec(vm, "let samples=array(6);");
   ku_exec(vm, "samples[0] = (1 + math.sin(t*1.2345 + math.cos(t*0.33457)*0.44))*0.5;");
-  res = ku_exec(vm, "let x = samples[0];");
-  EXPECT_INT(vm, res, KVM_OK, "array index crash res");
+  EXPECT_EXEC_SUCCESS_M(vm, "let x = samples[0];", "array index crash res");
   kut_free(vm);
 
   vm = kut_new(true);
-  ku_exec(vm, "let x=7, y=9;");
-  EXPECT_INT(vm, res, KVM_OK, "multi-let res");
+  EXPECT_EXEC_SUCCESS_M(vm, "let x=7, y=9;", "multi-let res");
   EXPECT_VAL(vm, ku_get_global(vm, "x"), NUM_VAL(7), "multi-let x");
   EXPECT_VAL(vm, ku_get_global(vm, "y"), NUM_VAL(9), "multi-let y");
   kut_free(vm);
 
   vm = kut_new(true);
-  ku_exec(vm, "let x,y;");
-  EXPECT_INT(vm, res, KVM_OK, "multi-let null res");
+  EXPECT_EXEC_SUCCESS_M(vm, "let x,y;", "multi-let null res");
   EXPECT_VAL(vm, ku_get_global(vm, "x"), NULL_VAL, "multi-let null x");
   EXPECT_VAL(vm, ku_get_global(vm, "y"), NULL_VAL, "multi-let null y");
   kut_free(vm);
 
   vm = kut_new(true);
-  res = ku_exec(vm, "let x = 2 << 4;");
-  EXPECT_INT(vm, res, KVM_OK, "shl res");
+  EXPECT_EXEC_SUCCESS_M(vm, "let x = 2 << 4;", "shl res");
   EXPECT_VAL(vm, ku_get_global(vm, "x"), NUM_VAL(2 << 4), "shl ret");
   kut_free(vm);
 
@@ -1879,8 +1798,7 @@ int ku_test() {
   kut_free(vm);
 
   vm = kut_new(true);
-  res = ku_exec(vm, "let x = 16 >> 2;");
-  EXPECT_INT(vm, res, KVM_OK, "shr res");
+  EXPECT_EXEC_SUCCESS_M(vm, "let x = 16 >> 2;", "shr res");
   EXPECT_VAL(vm, ku_get_global(vm, "x"), NUM_VAL(16 >> 2), "shr ret");
   kut_free(vm);
 
@@ -1890,14 +1808,12 @@ int ku_test() {
   kut_free(vm);
 
   vm = kut_new(true);
-  res = ku_exec(vm, "let x = string.frombytes([65,66,67]);");
-  EXPECT_INT(vm, res, KVM_OK, "string.frombytes res");
+  EXPECT_EXEC_SUCCESS_M(vm, "let x = string.frombytes([65,66,67]);", "string.frombytes res");
   EXPECT_STR(vm, ku_get_global(vm, "x"), "ABC", "string.frombytes ret");
   kut_free(vm);
 
   vm = kut_new(true);
-  res = ku_exec(vm, "let a=[1,2,3]; a[0]=4; let x=a.count;");
-  EXPECT_INT(vm, res, KVM_OK, "arr change res");
+  EXPECT_EXEC_SUCCESS_M(vm, "let a=[1,2,3]; a[0]=4; let x=a.count;", "arr change res");
   EXPECT_VAL(vm, ku_get_global(vm, "x"), NUM_VAL(3), "arr change count");
   kut_free(vm);
 
@@ -1912,51 +1828,43 @@ int ku_test() {
   kut_free(vm);
 
   vm = kut_new(true);
-  res = ku_exec(vm, "function F() { let a=array(2); a[0]=1; a[1]=2; a[2]=3; return a[2]; } let x=F();");
-  EXPECT_INT(vm, res, KVM_OK, "arr nogc res");
+  EXPECT_EXEC_SUCCESS_M(vm, "function F() { let a=array(2); a[0]=1; a[1]=2; a[2]=3; return a[2]; } let x=F();", "arr nogc res");
   EXPECT_VAL(vm, ku_get_global(vm, "x"), NUM_VAL(3), "arr no gc ret");
   kut_free(vm);
 
   vm = kut_new(true);
   vm->flags = KVM_F_GCSTRESS;
-  res = ku_exec(vm, "function F() { let a=array(2); a[0]=1; a[1]=2; a[2]=3; return a[2]; } let x=F();");
-  EXPECT_INT(vm, res, KVM_OK, "arr gc res");
+  EXPECT_EXEC_SUCCESS_M(vm, "function F() { let a=array(2); a[0]=1; a[1]=2; a[2]=3; return a[2]; } let x=F();", "arr gc res");
   EXPECT_VAL(vm, ku_get_global(vm, "x"), NUM_VAL(3), "arr gc ret");
   kut_free(vm);
 
   vm = kut_new(true);
-  res = ku_exec(vm, "let a = []; let x = a.first;");
-  EXPECT_INT(vm, res, KVM_OK, "arr empty first res");
+  EXPECT_EXEC_SUCCESS_M(vm, "let a = []; let x = a.first;", "arr empty first res");
   EXPECT_VAL(vm, ku_get_global(vm, "x"), NULL_VAL, "arr empty first ret");
   kut_free(vm);
 
   vm = kut_new(true);
-  res = ku_exec(vm, "let a = [12,3]; let x = a.first;");
-  EXPECT_INT(vm, res, KVM_OK, "arr first res");
+  EXPECT_EXEC_SUCCESS_M(vm, "let a = [12,3]; let x = a.first;", "arr first res");
   EXPECT_VAL(vm, ku_get_global(vm, "x"), NUM_VAL(12), "arr first ret");
   kut_free(vm);
 
   vm = kut_new(true);
-  res = ku_exec(vm, "let a = []; let x = a.last;");
-  EXPECT_INT(vm, res, KVM_OK, "arr empty last res");
+  EXPECT_EXEC_SUCCESS_M(vm, "let a = []; let x = a.last;", "arr empty last res");
   EXPECT_VAL(vm, ku_get_global(vm, "x"), NULL_VAL, "arr empty last ret");
   kut_free(vm);
 
   vm = kut_new(true);
-  res = ku_exec(vm, "let a = [12,3]; let x = a.last;");
-  EXPECT_INT(vm, res, KVM_OK, "arr last res");
+  EXPECT_EXEC_SUCCESS_M(vm, "let a = [12,3]; let x = a.last;", "arr last res");
   EXPECT_VAL(vm, ku_get_global(vm, "x"), NUM_VAL(3), "arr last ret");
   kut_free(vm);
 
   vm = kut_new(true);
-  res = ku_exec(vm, "let x=2; let a = (x > 2) && 7 || 6;");
-  EXPECT_INT(vm, res, KVM_OK, "tertiary res");
+  EXPECT_EXEC_SUCCESS_M(vm, "let x=2; let a = (x > 2) && 7 || 6;", "tertiary res");
   EXPECT_VAL(vm, ku_get_global(vm, "a"), NUM_VAL(6), "tertiary ret");
   kut_free(vm);
 
   vm = kut_new(true);
-  res = ku_exec(vm, "let a=[1,3,4]; let x=a.filter(e => e > 1);");
-  EXPECT_INT(vm, res, KVM_OK, "array.filter res");
+  EXPECT_EXEC_SUCCESS_M(vm, "let a=[1,3,4]; let x=a.filter(e => e > 1);", "array.filter res");
   v = ku_get_global(vm, "x");
   EXPECT_TRUE(vm, IS_ARRAY(v), "array.filter type");
   EXPECT_VAL(vm, ku_arrget(vm, AS_ARRAY(v), 0), NUM_VAL(3), "array.filter[0]");
@@ -1979,14 +1887,13 @@ int ku_test() {
   kut_free(vm);
 
   vm = kut_new(true);
-  res = ku_exec(vm, "let x=[7,3,4]; x.sort((a,b) => a-b );");
-  EXPECT_INT(vm, res, KVM_OK, "array.sort res");
+  EXPECT_EXEC_SUCCESS_M(vm, "let x=[7,3,4]; x.sort((a,b) => a-b );", "array.sort res");
   v = ku_get_global(vm, "x");
   EXPECT_TRUE(vm, IS_ARRAY(v), "array.sort type");
   EXPECT_VAL(vm, ku_arrget(vm, AS_ARRAY(v), 0), NUM_VAL(3), "array.sort[0]");
   EXPECT_VAL(vm, ku_arrget(vm, AS_ARRAY(v), 1), NUM_VAL(4), "array.sort[1]");
   EXPECT_VAL(vm, ku_arrget(vm, AS_ARRAY(v), 2), NUM_VAL(7), "array.sort[2]");
-  res = ku_exec(vm, "let c = x.count;");
+  EXPECT_EXEC_SUCCESS(vm, "let c = x.count;");
   EXPECT_VAL(vm, ku_get_global(vm, "c"), NUM_VAL(3), "array sort count");
   kut_free(vm);
 
@@ -2006,8 +1913,7 @@ int ku_test() {
   kut_free(vm);
 
   vm = kut_new(true);
-  res = ku_exec(vm, "let x={\"a\"=1, \"b\"=2}; let z=x.a; let w=x.b;");
-  EXPECT_INT(vm, res, KVM_OK, "table lit res");
+  EXPECT_EXEC_SUCCESS_M(vm, "let x={\"a\"=1, \"b\"=2}; let z=x.a; let w=x.b;", "table lit res");
   v = ku_get_global(vm, "x");
   EXPECT_TRUE(vm, IS_CINST(v), "table instance");
   EXPECT_VAL(vm, ku_get_global(vm, "z"), NUM_VAL(1), "table lit prop1");
@@ -2015,95 +1921,79 @@ int ku_test() {
   kut_free(vm);
 
   vm = kut_new(true);
-  res = ku_exec(vm, "let comp = (a, b) => ( (a < b) && -1 || ( (a > b) && 1 || 0)) ;");
-  EXPECT_INT(vm, res, KVM_OK, "tertiary comp res");
-  res = ku_exec(vm, "let x = comp(9, 7);");
+  EXPECT_EXEC_SUCCESS_M(vm, "let comp = (a, b) => ( (a < b) && -1 || ( (a > b) && 1 || 0)) ;", "tertiary comp res");
+  EXPECT_EXEC_SUCCESS(vm, "let x = comp(9, 7);");
   EXPECT_VAL(vm, ku_get_global(vm, "x"), NUM_VAL(1), "tertiary comp ret");
   kut_free(vm);
 
   vm = kut_new(true);
-  res = ku_exec(vm, "let comp = (a, b) => ( (a < b) && -1 || ( (a > b) && 1 || 0)) ;");
-  EXPECT_INT(vm, res, KVM_OK, "db comp res");
-  res = ku_exec(vm, "let db = [ { \"name\" = \"mohsen\", \"age\"=55 }, { \"name\" = \"josh\", \"age\"=40 }];");
-  EXPECT_INT(vm, res, KVM_OK, "db init res");
-  res = ku_exec(vm, "db.sort((a,b) => comp(a.name, b.name));");
-  EXPECT_INT(vm, res, KVM_OK, "db sort res");
-  res = ku_exec(vm, "let c = db.count;");
+  EXPECT_EXEC_SUCCESS_M(vm, "let comp = (a, b) => ( (a < b) && -1 || ( (a > b) && 1 || 0)) ;", "db comp res");
+  EXPECT_EXEC_SUCCESS_M(vm, "let db = [ { \"name\" = \"mohsen\", \"age\"=55 }, { \"name\" = \"josh\", \"age\"=40 }];", "db init res");
+  EXPECT_EXEC_SUCCESS_M(vm, "db.sort((a,b) => comp(a.name, b.name));", "db sort res");
+  EXPECT_EXEC_SUCCESS(vm, "let c = db.count;");
   EXPECT_VAL(vm, ku_get_global(vm, "c"), NUM_VAL(2), "db sort count");
-  res = ku_exec(vm, "let f = db.first.name;");
+  EXPECT_EXEC_SUCCESS(vm, "let f = db.first.name;");
   EXPECT_STR(vm, ku_get_global(vm, "f"), "josh", "db sort first name");
   kut_free(vm);
 
 
   vm = kut_new(true);
-  res = ku_exec(vm, "let x=eval(\"12/3\");");
-  EXPECT_INT(vm, res, KVM_OK, "eval res");
+  EXPECT_EXEC_SUCCESS_M(vm, "let x=eval(\"12/3\");", "eval res");
   EXPECT_VAL(vm, ku_get_global(vm, "x"), NUM_VAL(4), "eval ret");
   kut_free(vm);
 
   vm = kut_new(true);
-  res = ku_exec(vm, "let x=eval();");
-  EXPECT_INT(vm, res, KVM_OK, "eval arg res");
+  EXPECT_EXEC_SUCCESS_M(vm, "let x=eval();", "eval arg res");
   EXPECT_VAL(vm, ku_get_global(vm, "x"), NULL_VAL, "eval arg ret");
   kut_free(vm);
 
   vm = kut_new(true);
-  res = ku_exec(vm, "let x=eval(\"12/3\", 10);");
-  EXPECT_INT(vm, res, KVM_OK, "eval stack res");
+  EXPECT_EXEC_SUCCESS_M(vm, "let x=eval(\"12/3\", 10);", "eval stack res");
   EXPECT_VAL(vm, ku_get_global(vm, "x"), NUM_VAL(4), "eval stack ret");
   kut_free(vm);
 
   vm = kut_new(true);
-  res = ku_exec(vm, "let s=\"012345678\"; let x=s.substr();");
-  EXPECT_INT(vm, res, KVM_OK, "substr() res");
+  EXPECT_EXEC_SUCCESS_M(vm, "let s=\"012345678\"; let x=s.substr();", "substr() res");
   EXPECT_STR(vm, ku_get_global(vm, "x"), "012345678", "substr() ret");
   kut_free(vm);
 
   vm = kut_new(true);
-  res = ku_exec(vm, "let s=\"012345678\"; let x=s.substr(3);");
-  EXPECT_INT(vm, res, KVM_OK, "substr(3) res");
+  EXPECT_EXEC_SUCCESS_M(vm, "let s=\"012345678\"; let x=s.substr(3);", "substr(3) res");
   EXPECT_STR(vm, ku_get_global(vm, "x"), "345678", "substr(3) ret");
   kut_free(vm);
 
   vm = kut_new(true);
-  res = ku_exec(vm, "let s=\"012345678\"; let x=s.substr(3,5);");
-  EXPECT_INT(vm, res, KVM_OK, "substr(3,5) res");
+  EXPECT_EXEC_SUCCESS_M(vm, "let s=\"012345678\"; let x=s.substr(3,5);", "substr(3,5) res");
   EXPECT_STR(vm, ku_get_global(vm, "x"), "345", "substr(3,5) ret");
   kut_free(vm);
 
   vm = kut_new(true);
-  res = ku_exec(vm, "let s=\"012345678\"; let x=s.substr(-1);");
-  EXPECT_INT(vm, res, KVM_OK, "substr(-1) res");
+  EXPECT_EXEC_SUCCESS_M(vm, "let s=\"012345678\"; let x=s.substr(-1);", "substr(-1) res");
   EXPECT_STR(vm, ku_get_global(vm, "x"), "8", "substr(-1) ret");
   kut_free(vm);
 
   vm = kut_new(true);
-  res = ku_exec(vm, "let s=\"012345678\"; let x=s.substr(-3,-1);");
-  EXPECT_INT(vm, res, KVM_OK, "substr(-3,-1) res");
+  EXPECT_EXEC_SUCCESS_M(vm, "let s=\"012345678\"; let x=s.substr(-3,-1);", "substr(-3,-1) res");
   EXPECT_STR(vm, ku_get_global(vm, "x"), "678", "substr(-1) ret");
   kut_free(vm);
 
   vm = kut_new(true);
-  res = ku_exec(vm, "let s=\"012345678\"; let x=s.substr(-12,55);");
-  EXPECT_INT(vm, res, KVM_OK, "substr(-12,55) res");
+  EXPECT_EXEC_SUCCESS_M(vm, "let s=\"012345678\"; let x=s.substr(-12,55);", "substr(-12,55) res");
   EXPECT_STR(vm, ku_get_global(vm, "x"), "012345678", "substr(-12,5) ret");
   kut_free(vm);
 
   vm = kut_new(true);
-  res = ku_exec(vm, "let s=\"012345678\"; let x=s.substr(-12,55, true);");
-  EXPECT_INT(vm, res, KVM_OK, "substr(-12,55, true) res");
+  EXPECT_EXEC_SUCCESS_M(vm, "let s=\"012345678\"; let x=s.substr(-12,55, true);", "substr(-12,55, true) res");
   EXPECT_STR(vm, ku_get_global(vm, "x"), "", "substr(-12,5, true) ret");
   kut_free(vm);
 
   vm = kut_new(true);
-  res = ku_exec(vm, "let s=\"012345678\"; let x=s.bogus(-1,55);");
-  EXPECT_INT(vm, res, KVM_OK, "string.bogus res");
+  EXPECT_EXEC_SUCCESS_M(vm, "let s=\"012345678\"; let x=s.bogus(-1,55);", "string.bogus res");
   EXPECT_VAL(vm, ku_get_global(vm, "x"), NULL_VAL, "string.bogus ret");
   kut_free(vm);
 
   vm = kut_new(true);
-  res = ku_exec(vm, "let s=\"012345678\"; let x=s[2];");
-  EXPECT_INT(vm, res, KVM_OK, "str[idx] res");
+  EXPECT_EXEC_SUCCESS_M(vm, "let s=\"012345678\"; let x=s[2];", "str[idx] res");
   EXPECT_STR(vm, ku_get_global(vm, "x"), "2", "str[idx] ret");
   kut_free(vm);
 
@@ -2123,52 +2013,46 @@ int ku_test() {
   kut_free(vm);
 
   vm = kut_new(true);
-  res = ku_exec(vm, "let x = math.fmod(9,7);");
-  EXPECT_INT(vm, res, KVM_OK, "fmod res");
+  EXPECT_EXEC_SUCCESS_M(vm, "let x = math.fmod(9,7);", "fmod res");
   EXPECT_VAL(vm, ku_get_global(vm, "x"), NUM_VAL(fmod(9,7)), "fmod ret");
   kut_free(vm);
 
   vm = kut_new(true);
-  res = ku_exec(vm, "let x = math.abs(-7);");
-  EXPECT_INT(vm, res, KVM_OK, "abs negative res");
+  EXPECT_EXEC_SUCCESS_M(vm, "let x = math.abs(-7);", "abs negative res");
   EXPECT_VAL(vm, ku_get_global(vm, "x"), NUM_VAL(-1), "abs negative ret");
   kut_free(vm);
 
   vm = kut_new(true);
-  res = ku_exec(vm, "let x = math.abs(7);");
-  EXPECT_INT(vm, res, KVM_OK, "abs positive res");
+  EXPECT_EXEC_SUCCESS_M(vm, "let x = math.abs(7);", "abs positive res");
   EXPECT_VAL(vm, ku_get_global(vm, "x"), NUM_VAL(1), "abs positive ret");
   kut_free(vm);
 
   vm = kut_new(true);
-  res = ku_exec(vm, "let x = math.abs(0);");
-  EXPECT_INT(vm, res, KVM_OK, "abs 0 res");
+  EXPECT_EXEC_SUCCESS_M(vm, "let x = math.abs(0);", "abs 0 res");
   EXPECT_VAL(vm, ku_get_global(vm, "x"), NUM_VAL(0), "abs 0 ret");
   kut_free(vm);
 
   vm = kut_new(true);
-  res = ku_exec(vm, "let x = math.floor(3.767);");
-  EXPECT_INT(vm, res, KVM_OK, "floor res");
+  EXPECT_EXEC_SUCCESS_M(vm, "let x = math.floor(3.767);", "floor res");
   EXPECT_VAL(vm, ku_get_global(vm, "x"), NUM_VAL(floor(3.767)), "floor ret");
   kut_free(vm);
 
   vm = kut_new(true);
-  res = ku_exec(vm, "let x = math.round(3.767);");
-  EXPECT_INT(vm, res, KVM_OK, "round res");
+  EXPECT_EXEC_SUCCESS_M(vm, "let x = math.round(3.767);", "round res");
   EXPECT_VAL(vm, ku_get_global(vm, "x"), NUM_VAL(round(3.767)), "round ret");
   kut_free(vm);
 
   debug_call_count = 0;
   vm = kut_new(true);
   vm->debugger = test_debugger_stop;
-  res = ku_exec(vm, "let x = 2;");
+  EXPECT_EXEC_SUCCESS(vm, "let x = 2;");
   EXPECT_INT(vm, debug_call_count, 1, "debug stop count");
   kut_free(vm);
 
   debug_call_count = 0;
   vm = kut_new(true);
   vm->debugger = test_debugger_cont;
-  res = ku_exec(vm, "let x = 2;");
+  EXPECT_EXEC_SUCCESS(vm, "let x = 2;");
   EXPECT_INT(vm, debug_call_count, 4, "debug cont count");
   kut_free(vm);
 
