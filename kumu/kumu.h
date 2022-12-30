@@ -69,7 +69,7 @@ typedef enum {
   FUNC_STD,
   FUNC_MAIN,
   FUNC_METHOD,
-  FUNC_INIT,
+  FUNC_CTOR,
 } kufunc_t;
 
 // ********************** object **********************
@@ -542,7 +542,7 @@ typedef struct kuvm {
   int underflow;
 #endif // STACK_CHECK
 
-  kustr *__nullable initstr;
+  kustr *__nullable ctorstr;
   kustr *__nullable countstr;
 
   kuobj *__nullable objects;
