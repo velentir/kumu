@@ -710,7 +710,7 @@ static void ku_emitret(kuvm *__nonnull vm, bool lambda) {
     ku_emitop(vm, OP_RET);
     return;
   }
-  if (vm->compiler->type == FUNC_INIT) {
+  if (vm->compiler->type == FUNC_CTOR) {
     ku_emitop2(vm, OP_GET_LOCAL, 0);
   } else {
     ku_emitop(vm, OP_NULL);
@@ -1004,8 +1004,8 @@ static void ku_return(kuvm *__nonnull vm, KU_UNUSED kuloop *__nullable loop) {
     ku_emitret(vm, false);
   } else {
 
-    if (vm->compiler->type == FUNC_INIT) {
-      ku_err(vm, "cannot return from initializer");
+    if (vm->compiler->type == FUNC_CTOR) {
+      ku_err(vm, "cannot return from constructor");
     }
     ku_expr(vm);
     ku_pconsume(vm, TOK_SEMI, "';' expected");
@@ -1207,8 +1207,8 @@ static void ku_method(kuvm *__nonnull vm) {
   uint8_t name = ku_pidconst(vm, &vm->parser.prev);
   kufunc_t type = FUNC_METHOD;
 
-  if (vm->parser.prev.len == 4 && memcmp(vm->parser.prev.start, "init", 4) == 0) {
-    type = FUNC_INIT;
+  if (vm->parser.prev.len == 11 && memcmp(vm->parser.prev.start, "constructor", 11) == 0) {
+    type = FUNC_CTOR;
   }
   ku_function(vm, type);
   ku_emitop2(vm, OP_METHOD, name);
@@ -1719,7 +1719,7 @@ kuvm *__nonnull ku_newvm(int stack_max, kuenv *__nullable env) {
   ku_tabinit(vm, &vm->gconst);
   ku_reset(vm);
 
-  vm->initstr = ku_strfrom(vm, "init", 4);
+  vm->ctorstr = ku_strfrom(vm, "constructor", 11);
   vm->countstr = ku_strfrom(vm, "count", 5);
 
   return vm;
@@ -1740,7 +1740,7 @@ static void ku_freeobjects(kuvm *__nonnull vm) {
 }
 
 void ku_freevm(kuvm *__nonnull vm) {
-  vm->initstr = NULL; // free_objects will take care of it
+  vm->ctorstr = NULL; // free_objects will take care of it
   vm->countstr = NULL;
 
   ku_freeobjects(vm);
@@ -1843,10 +1843,10 @@ static bool ku_callvalue(kuvm *__nonnull vm, kuval callee, int argc, bool *__non
         return ku_docall(vm, AS_CLOSURE(callee), argc);
       case OBJ_CLASS: {
         kuclass *__nonnull c = AS_CLASS(callee);
-        kuval initfn;
+        kuval ctorfn;
         vm->sp[-argc - 1] = OBJ_VAL(ku_instnew(vm, c));
-        if (ku_tabget(vm, &c->methods, vm->initstr, &initfn)) {
-          return ku_docall(vm, AS_CLOSURE(initfn), argc);
+        if (ku_tabget(vm, &c->methods, vm->ctorstr, &ctorfn)) {
+          return ku_docall(vm, AS_CLOSURE(ctorfn), argc);
         } else if (argc != 0) {
           ku_err(vm, "no args expected got %d", argc);
           return false;
@@ -3658,7 +3658,7 @@ void ku_gc(kuvm *__nonnull vm) {
   size_t bytes = vm->allocated;
 
   ku_markroots(vm);
-  ku_markobj(vm, (kuobj *)vm->initstr);
+  ku_markobj(vm, (kuobj *)vm->ctorstr);
   ku_markobj(vm, (kuobj *)vm->countstr);
   ku_tracerefs(vm);
   ku_freeweak(vm, &vm->strings);

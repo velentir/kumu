@@ -1027,22 +1027,22 @@ int ku_test() {
 
   vm = kut_new(false);
   res = ku_exec(vm, "class C {}\nlet c=C(12,14);");
-  EXPECT_INT(vm, res, KVM_ERR_RUNTIME, "no init with args");
+  EXPECT_INT(vm, res, KVM_ERR_RUNTIME, "no ctor with args");
   kut_free(vm);
 
   vm = kut_new(false);
-  res = ku_exec(vm, "class C { init(x) { this.x = x; }}\nlet c=C(12);let x = c.x;");
-  EXPECT_INT(vm, res, KVM_OK, "init args res");
-  EXPECT_VAL(vm, ku_get_global(vm, "x"), NUM_VAL(12), "init args ret");
+  res = ku_exec(vm, "class C { constructor(x) { this.x = x; }}\nlet c=C(12);let x = c.x;");
+  EXPECT_INT(vm, res, KVM_OK, "ctor args res");
+  EXPECT_VAL(vm, ku_get_global(vm, "x"), NUM_VAL(12), "ctor args ret");
   kut_free(vm);
 
   vm = kut_new(false);
-  res = ku_exec(vm, "class C { init(x) { this.x = x; return 7; }}\nlet c=C(12);let x = c.x;");
-  EXPECT_INT(vm, res, KVM_ERR_RUNTIME, "init return res");
+  res = ku_exec(vm, "class C { constructor(x) { this.x = x; return 7; }}\nlet c=C(12);let x = c.x;");
+  EXPECT_INT(vm, res, KVM_ERR_RUNTIME, "ctor return res");
   kut_free(vm);
 
   vm = kut_new(false);
-  res = ku_exec(vm, "let x=1; class C { init() { function f() { x=8; } this.f = f; } }\nlet c = C(); c.f();");
+  res = ku_exec(vm, "let x=1; class C { constructor() { function f() { x=8; } this.f = f; } }\nlet c = C(); c.f();");
   EXPECT_INT(vm, res, KVM_OK, "field invoke res");
   EXPECT_VAL(vm, ku_get_global(vm, "x"), NUM_VAL(8), "field invoke ret");
   kut_free(vm);
