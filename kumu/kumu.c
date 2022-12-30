@@ -542,7 +542,14 @@ static kutok_t ku_keyword(kuvm *__nonnull vm) {
       }
     case 'i': return ku_lexkey(vm, 1,1,"f", TOK_IF);
     case 'l': return ku_lexkey(vm, 1,2,"et", TOK_LET);
-    case 'n': return ku_lexkey(vm, 1,3,"ull", TOK_NULL);
+    case 'n': {
+      if (vm->scanner.curr - vm->scanner.start > 1) {
+        switch (vm->scanner.start[1]) {
+          case 'e': return ku_lexkey(vm, 2,1,"w", TOK_NEW);
+          case 'u': return ku_lexkey(vm, 2,2,"ll", TOK_NULL);
+        }
+      }
+    }
     case 'r': return ku_lexkey(vm, 1,5,"eturn", TOK_RETURN);
     case 's': return ku_lexkey(vm, 1,4,"uper", TOK_SUPER);
     case 't':
@@ -1576,6 +1583,15 @@ void ku_or(kuvm *__nonnull vm, KU_UNUSED bool lhs) {
   ku_prec(vm, P_OR);
   ku_patchjump(vm, end_jump);
 }
+
+static void ku_new(kuvm *__nonnull vm, KU_UNUSED bool lhs) {
+  ku_pconsume(vm, TOK_IDENT, "class name expected");
+  ku_pvar(vm, false);
+  ku_pconsume(vm, TOK_LPAR, "'(' expected after class name");
+  uint8_t argc = ku_arglist(vm, TOK_RPAR);
+  ku_emitop2(vm, OP_NEW, argc);
+}
+
 kuprule ku_rules[] = {
   [TOK_LPAR] =        { ku_lambda_or_group, ku_call,  P_CALL },
   [TOK_RPAR] =        { NULL,        NULL,     P_NONE },
@@ -1612,6 +1628,7 @@ kuprule ku_rules[] = {
   [TOK_FOR] =         { NULL,        NULL,     P_NONE },
   [TOK_FUN] =         { ku_funcexpr, NULL,     P_NONE },
   [TOK_IF] =          { NULL,        NULL,     P_NONE },
+  [TOK_NEW] =         { ku_new,      NULL,     P_NONE },
   [TOK_NULL] =        { ku_lit,      NULL,     P_NONE },
   [TOK_OR] =          { NULL,        ku_or,    P_OR },
   [TOK_SUPER] =       { ku_super,    NULL,     P_NONE },
@@ -1841,25 +1858,11 @@ static bool ku_callvalue(kuvm *__nonnull vm, kuval callee, int argc, bool *__non
       }
       case OBJ_CLOSURE:
         return ku_docall(vm, AS_CLOSURE(callee), argc);
-      case OBJ_CLASS: {
-        kuclass *__nonnull c = AS_CLASS(callee);
-        kuval ctorfn;
-        vm->sp[-argc - 1] = OBJ_VAL(ku_instnew(vm, c));
-        if (ku_tabget(vm, &c->methods, vm->ctorstr, &ctorfn)) {
-          return ku_docall(vm, AS_CLOSURE(ctorfn), argc);
-        } else if (argc != 0) {
-          ku_err(vm, "no args expected got %d", argc);
-          return false;
-        }
-        return true;
-      }
-
       case OBJ_BOUND_METHOD: {
         kubound *__nonnull bm = AS_BOUND_METHOD(callee);
         vm->sp[-argc - 1] = bm->receiver;
         return ku_docall(vm, bm->method, argc);
       }
-
       case OBJ_FUNC: // not allowed anymore
       default:
         // TODO: add code coverage
@@ -2162,6 +2165,31 @@ kures ku_run(kuvm *__nonnull vm) {
         double dv = AS_NUM(v);
         kuval nv = NUM_VAL(-dv);
         ku_push(vm, nv);
+      }
+        break; // TODO: figure out code coverage
+
+      case OP_NEW: {
+        int argc = KU_BYTE_READ(vm);
+
+        kuval callee = ku_peek(vm, argc);
+        if (!(IS_OBJ(callee) && OBJ_TYPE(callee) == OBJ_CLASS)) {
+          ku_err(vm, "target of new is not a class");
+          return KVM_ERR_RUNTIME;
+        }
+
+        kuclass *__nonnull c = AS_CLASS(callee);
+        vm->sp[-argc - 1] = OBJ_VAL(ku_instnew(vm, c));
+
+        kuval ctorfn;
+        if (ku_tabget(vm, &c->methods, vm->ctorstr, &ctorfn)) {
+          if (!ku_docall(vm, AS_CLOSURE(ctorfn), argc)) {
+            return KVM_ERR_RUNTIME;
+          }
+        } else if (argc != 0) {
+          ku_err(vm, "no args expected for new, got %d", argc);
+          return KVM_ERR_RUNTIME;
+        }
+        frame = &vm->frames[vm->framecount - 1];
       }
         break; // TODO: figure out code coverage
 
