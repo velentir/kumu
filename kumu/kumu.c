@@ -542,7 +542,14 @@ static kutok_t ku_keyword(kuvm *__nonnull vm) {
       }
     case 'i': return ku_lexkey(vm, 1,1,"f", TOK_IF);
     case 'l': return ku_lexkey(vm, 1,2,"et", TOK_LET);
-    case 'n': return ku_lexkey(vm, 1,3,"ull", TOK_NULL);
+    case 'n': {
+      if (vm->scanner.curr - vm->scanner.start > 1) {
+        switch (vm->scanner.start[1]) {
+          case 'e': return ku_lexkey(vm, 2,1,"w", TOK_NEW);
+          case 'u': return ku_lexkey(vm, 2,2,"ll", TOK_NULL);
+        }
+      }
+    }
     case 'r': return ku_lexkey(vm, 1,5,"eturn", TOK_RETURN);
     case 's': return ku_lexkey(vm, 1,4,"uper", TOK_SUPER);
     case 't':
@@ -710,7 +717,7 @@ static void kup_emitret(kuvm *__nonnull vm, bool lambda) {
     kup_emitop(vm, OP_RET);
     return;
   }
-  if (vm->compiler->type == FUNC_INIT) {
+  if (vm->compiler->type == FUNC_CTOR) {
     kup_emitop2(vm, OP_GET_LOCAL, 0);
   } else {
     kup_emitop(vm, OP_NULL);
@@ -1005,8 +1012,8 @@ static void kup_return(kuvm *__nonnull vm, KU_UNUSED kuloop *__nullable loop) {
     kup_emitret(vm, false);
   } else {
 
-    if (vm->compiler->type == FUNC_INIT) {
-      ku_err(vm, "cannot return from initializer");
+    if (vm->compiler->type == FUNC_CTOR) {
+      ku_err(vm, "cannot return from constructor");
     }
     kup_expr(vm);
     kup_pconsume(vm, TOK_SEMI, "';' expected");
@@ -1208,8 +1215,8 @@ static void kup_method(kuvm *__nonnull vm) {
   uint8_t name = kup_pidconst(vm, &vm->parser.prev);
   kufunc_t type = FUNC_METHOD;
 
-  if (vm->parser.prev.len == 4 && memcmp(vm->parser.prev.start, "init", 4) == 0) {
-    type = FUNC_INIT;
+  if (vm->parser.prev.len == 11 && memcmp(vm->parser.prev.start, "constructor", 11) == 0) {
+    type = FUNC_CTOR;
   }
   kup_function(vm, type);
   kup_emitop2(vm, OP_METHOD, name);
@@ -1577,6 +1584,14 @@ void kup_or(kuvm *__nonnull vm, KU_UNUSED bool lhs) {
   kup_patchjump(vm, end_jump);
 }
 
+static void kup_new(kuvm *__nonnull vm, KU_UNUSED bool lhs) {
+  kup_pconsume(vm, TOK_IDENT, "class name expected");
+  kup_pvar(vm, false);
+  kup_pconsume(vm, TOK_LPAR, "'(' expected after class name");
+  uint8_t argc = kup_arglist(vm, TOK_RPAR);
+  kup_emitop2(vm, OP_NEW, argc);
+}
+
 kuprule kup_rules[] = {
   [TOK_LPAR] =        { kup_lambda_or_group, kup_call,  P_CALL },
   [TOK_RPAR] =        { NULL,         NULL,      P_NONE },
@@ -1613,6 +1628,7 @@ kuprule kup_rules[] = {
   [TOK_FOR] =         { NULL,         NULL,      P_NONE },
   [TOK_FUN] =         { kup_funcexpr, NULL,      P_NONE },
   [TOK_IF] =          { NULL,         NULL,      P_NONE },
+  [TOK_NEW] =         { kup_new,      NULL,      P_NONE },
   [TOK_NULL] =        { kup_lit,      NULL,      P_NONE },
   [TOK_OR] =          { NULL,         kup_or,    P_OR },
   [TOK_SUPER] =       { kup_super,    NULL,      P_NONE },
@@ -1720,7 +1736,7 @@ kuvm *__nonnull ku_newvm(int stack_max, kuenv *__nullable env) {
   ku_tabinit(vm, &vm->gconst);
   ku_reset(vm);
 
-  vm->initstr = ku_strfrom(vm, "init", 4);
+  vm->ctorstr = ku_strfrom(vm, "constructor", 11);
   vm->countstr = ku_strfrom(vm, "count", 5);
 
   return vm;
@@ -1741,7 +1757,7 @@ static void ku_freeobjects(kuvm *__nonnull vm) {
 }
 
 void ku_freevm(kuvm *__nonnull vm) {
-  vm->initstr = NULL; // free_objects will take care of it
+  vm->ctorstr = NULL; // free_objects will take care of it
   vm->countstr = NULL;
 
   ku_freeobjects(vm);
@@ -1842,25 +1858,11 @@ static bool ku_callvalue(kuvm *__nonnull vm, kuval callee, int argc, bool *__non
       }
       case OBJ_CLOSURE:
         return ku_docall(vm, AS_CLOSURE(callee), argc);
-      case OBJ_CLASS: {
-        kuclass *__nonnull c = AS_CLASS(callee);
-        kuval initfn;
-        vm->sp[-argc - 1] = OBJ_VAL(ku_instnew(vm, c));
-        if (ku_tabget(vm, &c->methods, vm->initstr, &initfn)) {
-          return ku_docall(vm, AS_CLOSURE(initfn), argc);
-        } else if (argc != 0) {
-          ku_err(vm, "no args expected got %d", argc);
-          return false;
-        }
-        return true;
-      }
-
       case OBJ_BOUND_METHOD: {
         kubound *__nonnull bm = AS_BOUND_METHOD(callee);
         vm->sp[-argc - 1] = bm->receiver;
         return ku_docall(vm, bm->method, argc);
       }
-
       case OBJ_FUNC: // not allowed anymore
       default:
         // TODO: add code coverage
@@ -2163,6 +2165,31 @@ kures ku_run(kuvm *__nonnull vm) {
         double dv = AS_NUM(v);
         kuval nv = NUM_VAL(-dv);
         ku_push(vm, nv);
+      }
+        break; // TODO: figure out code coverage
+
+      case OP_NEW: {
+        int argc = KU_BYTE_READ(vm);
+
+        kuval callee = ku_peek(vm, argc);
+        if (!(IS_OBJ(callee) && OBJ_TYPE(callee) == OBJ_CLASS)) {
+          ku_err(vm, "target of new is not a class");
+          return KVM_ERR_RUNTIME;
+        }
+
+        kuclass *__nonnull c = AS_CLASS(callee);
+        vm->sp[-argc - 1] = OBJ_VAL(ku_instnew(vm, c));
+
+        kuval ctorfn;
+        if (ku_tabget(vm, &c->methods, vm->ctorstr, &ctorfn)) {
+          if (!ku_docall(vm, AS_CLOSURE(ctorfn), argc)) {
+            return KVM_ERR_RUNTIME;
+          }
+        } else if (argc != 0) {
+          ku_err(vm, "no args expected for new, got %d", argc);
+          return KVM_ERR_RUNTIME;
+        }
+        frame = &vm->frames[vm->framecount - 1];
       }
         break; // TODO: figure out code coverage
 
@@ -3659,7 +3686,7 @@ void ku_gc(kuvm *__nonnull vm) {
   size_t bytes = vm->allocated;
 
   ku_markroots(vm);
-  ku_markobj(vm, (kuobj *)vm->initstr);
+  ku_markobj(vm, (kuobj *)vm->ctorstr);
   ku_markobj(vm, (kuobj *)vm->countstr);
   ku_tracerefs(vm);
   ku_freeweak(vm, &vm->strings);
