@@ -1313,17 +1313,17 @@ int ku_test() {
   kut_free(vm);
 
   vm = kut_new(true);
-  EXPECT_EXEC_SUCCESS_M(vm "let x = Math.sin(Math.PI);", "Math.sin res");
+  EXPECT_EXEC_SUCCESS_M(vm, "let x = Math.sin(Math.PI);", "Math.sin res");
   EXPECT_TRUE(vm, APPROX(ku_get_global(vm, "x"), 0), "Math.sin ret");
   kut_free(vm);
 
   vm = kut_new(true);
-  EXPECT_EXEC_SUCCESS_M(vm "let x = Math.cos(Math.PI);", "Math.cos res");
+  EXPECT_EXEC_SUCCESS_M(vm, "let x = Math.cos(Math.PI);", "Math.cos res");
   EXPECT_TRUE(vm, APPROX(ku_get_global(vm, "x"), -1), "Math.cos ret");
   kut_free(vm);
 
   vm = kut_new(true);
-  EXPECT_EXEC_SUCCESS_M(vm "let x = Math.tan(Math.PI/4);", "Math.tan res");
+  EXPECT_EXEC_SUCCESS_M(vm, "let x = Math.tan(Math.PI/4);", "Math.tan res");
   EXPECT_TRUE(vm, APPROX(ku_get_global(vm, "x"), 1), "Math.tan ret");
   kut_free(vm);
 
