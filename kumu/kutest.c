@@ -86,6 +86,13 @@ const char *__nonnull last_test = "";
 // EXPECT_EXEC_SUCCESS(kuvm *__nonnull vm, const char *__nonnull code)
 #define EXPECT_EXEC_SUCCESS(vm, code) EXPECT_EXEC_SUCCESS_M(vm, code, code)
 
+// EXPECT_EXEC_FAILURE(kuvm *__nonnull vm, kures expected, const char *__nonnull code, const char *__nonnull errmsg)
+#define EXPECT_EXEC_FAILURE(vm, expected, code, errmsg) \
+  do { \
+    kures res = ku_exec((vm), (code)); \
+    EXPECT_INT((vm), res, (expected), (errmsg)); \
+  } while (0)
+
 static void ku_test_summary() {
   printf("[  PASSED  ] %d test\n", ktest_pass);
   printf("[   WARN   ] %d test\n", ktest_warn);
@@ -367,18 +374,15 @@ int ku_test() {
   kut_free(vm);
 
   vm = kut_new(false);
-  res = ku_exec(vm, "12+");
-  EXPECT_INT(vm, res, KVM_ERR_SYNTAX, "12+");
+  EXPECT_EXEC_FAILURE(vm, KVM_ERR_SYNTAX, "12+", "invalid syntax trailing plus");
   kut_free(vm);
 
   vm = kut_new(false);
-  res = ku_exec(vm, "let x = $2");
-  EXPECT_INT(vm, res, KVM_ERR_SYNTAX, "12+");
+  EXPECT_EXEC_FAILURE(vm, KVM_ERR_SYNTAX, "let x = $2", "invalid syntax dollar sign");
   kut_free(vm);
 
   vm = kut_new(false);
-  res = ku_exec(vm, "2 = 14");
-  EXPECT_INT(vm, res, KVM_ERR_SYNTAX, "12+");
+  EXPECT_EXEC_FAILURE(vm, KVM_ERR_SYNTAX, "2 = 14", "invalid syntax numeric varname");
   kut_free(vm);
 
   vm = kut_new(false);
@@ -521,8 +525,7 @@ int ku_test() {
   kut_free(vm);
 
   vm = kut_new(false);
-  res = ku_exec(vm, "-true");
-  EXPECT_INT(vm, res, KVM_ERR_SYNTAX, "negate err");
+  EXPECT_EXEC_FAILURE(vm, KVM_ERR_SYNTAX, "-true", "negate err");
   kut_free(vm);
 
   vm = kut_new(false);
@@ -636,13 +639,11 @@ int ku_test() {
   kut_free(vm);
 
   vm = kut_new(false);
-  res = ku_exec(vm, "let x = 12 < true;");
-  EXPECT_INT(vm, res, KVM_ERR_RUNTIME, "< num expected");
+  EXPECT_EXEC_FAILURE(vm, KVM_ERR_RUNTIME, "let x = 12 < true;", "< num expected");
   kut_free(vm);
 
   vm = kut_new(false);
-  res = ku_exec(vm, "let x = 12 + true;");
-  EXPECT_INT(vm, res, KVM_ERR_RUNTIME, "add num expected");
+  EXPECT_EXEC_FAILURE(vm, KVM_ERR_RUNTIME, "let x = 12 + true;", "add num expected");
   kut_free(vm);
 
   vm = kut_new(false);
@@ -702,8 +703,7 @@ int ku_test() {
   kut_free(vm);
 
   vm = kut_new(false);
-  res = ku_exec(vm, "x = 20;");
-  EXPECT_INT(vm, res, KVM_ERR_RUNTIME, "undeclard global assign");
+  EXPECT_EXEC_FAILURE(vm, KVM_ERR_RUNTIME, "x = 20;", "undeclard global assign");
   kut_free(vm);
 
   vm = kut_new(false);
@@ -719,13 +719,11 @@ int ku_test() {
   kut_free(vm);
 
   vm = kut_new(false);
-  res = ku_exec(vm, "const x=1; const y=2; const x=3;");
-  EXPECT_INT(vm, res, KVM_ERR_SYNTAX, "const double decl");
+  EXPECT_EXEC_FAILURE(vm, KVM_ERR_SYNTAX, "const x=1; const y=2; const x=3;", "const double decl");
   kut_free(vm);
 
   vm = kut_new(false);
-  res = ku_exec(vm, "const x=1; x=3;");
-  EXPECT_INT(vm, res, KVM_ERR_SYNTAX, "const double init");
+  EXPECT_EXEC_FAILURE(vm, KVM_ERR_SYNTAX, "const x=1; x=3;", "const double init");
   kut_free(vm);
 
   vm = kut_new(false);
@@ -734,13 +732,11 @@ int ku_test() {
   kut_free(vm);
 
   vm = kut_new(false);
-  res = ku_exec(vm, "{ const a=20; a = 7; }");
-  EXPECT_INT(vm, res, KVM_ERR_SYNTAX, "local const late assign");
+  EXPECT_EXEC_FAILURE(vm, KVM_ERR_SYNTAX, "{ const a=20; a = 7; }", "local const late assign");
   kut_free(vm);
 
   vm = kut_new(false);
-  res = ku_exec(vm, "{ let a = a; }");
-  EXPECT_INT(vm, res, KVM_ERR_SYNTAX, "local own init");
+  EXPECT_EXEC_FAILURE(vm, KVM_ERR_SYNTAX, "{ let a = a; }", "local own init");
   kut_free(vm);
 
   vm = kut_new(false);
@@ -763,13 +759,11 @@ int ku_test() {
   kut_free(vm);
 
   vm = kut_new(true);
-  res = ku_exec(vm, "if true) { printf(222); }");
-  EXPECT_INT(vm, res, KVM_ERR_SYNTAX, "if no (");
+  EXPECT_EXEC_FAILURE(vm, KVM_ERR_SYNTAX, "if true) { printf(222); }", "if no (");
   kut_free(vm);
 
   vm = kut_new(true);
-  res = ku_exec(vm, "if (true { printf(222); }");
-  EXPECT_INT(vm, res, KVM_ERR_SYNTAX, "if no )");
+  EXPECT_EXEC_FAILURE(vm, KVM_ERR_SYNTAX, "if (true { printf(222); }", "if no )");
   kut_free(vm);
 
   vm = kut_new(false);
@@ -818,13 +812,11 @@ int ku_test() {
   kut_free(vm);
 
   vm = kut_new(false);
-  res = ku_exec(vm, "let x = 1; while x < 20) { x = x + 1; }");
-  EXPECT_INT(vm, res, KVM_ERR_SYNTAX, "while no lpar");
+  EXPECT_EXEC_FAILURE(vm, KVM_ERR_SYNTAX, "let x = 1; while x < 20) { x = x + 1; }", "while no lpar");
   kut_free(vm);
 
   vm = kut_new(false);
-  res = ku_exec(vm, "let x = 1; while (x < 20 { x = x + 1; }");
-  EXPECT_INT(vm, res, KVM_ERR_SYNTAX, "while no rpar");
+  EXPECT_EXEC_FAILURE(vm, KVM_ERR_SYNTAX, "let x = 1; while (x < 20 { x = x + 1; }", "while no rpar");
   kut_free(vm);
 
   vm = kut_new(false);
@@ -833,8 +825,7 @@ int ku_test() {
   kut_free(vm);
 
   vm = kut_new(false);
-  res = ku_exec(vm, "let x = 0; for let j=0; j < 10; j=j+1) x = j;");
-  EXPECT_INT(vm, res, KVM_ERR_SYNTAX, "for no lpar");
+  EXPECT_EXEC_FAILURE(vm, KVM_ERR_SYNTAX, "let x = 0; for let j=0; j < 10; j=j+1) x = j;", "for no lpar");
   kut_free(vm);
 
   vm = kut_new(true);
@@ -856,64 +847,52 @@ int ku_test() {
 
   vm = kut_new(true);
   vm->max_params = 1;
-  res = ku_exec(vm, "function foo(a,b) { printf(555); }; foo(4,5,6);");
-  EXPECT_INT(vm, res, KVM_ERR_SYNTAX, "too many params");
+  EXPECT_EXEC_FAILURE(vm, KVM_ERR_SYNTAX, "function foo(a,b) { printf(555); }; foo(4,5,6);", "too many params");
   kut_free(vm);
 
   vm = kut_new(true);
   EXPECT_EXEC_SUCCESS_M(vm, "function foo(a,b) { printf(2); }", "function call def");
-  res = ku_exec(vm, "foo(1,2,3);");
-  EXPECT_INT(vm, res, KVM_ERR_RUNTIME, "function call mismatch");
+  EXPECT_EXEC_FAILURE(vm, KVM_ERR_RUNTIME, "foo(1,2,3);", "function call mismatch");
   kut_free(vm);
 
   vm = kut_new(false);
-  res = ku_exec(vm, "a=7; a();");
-  EXPECT_INT(vm, res, KVM_ERR_RUNTIME, "non-function call");
+  EXPECT_EXEC_FAILURE(vm, KVM_ERR_RUNTIME, "a=7; a();", "non-function call");
   kut_free(vm);
 
   vm = kut_new(false);
-  res = ku_exec(vm, "function a() { b(); }\nfunction b() { b(12); }\na();");
-  EXPECT_INT(vm, res, KVM_ERR_RUNTIME, "too many args print");
+  EXPECT_EXEC_FAILURE(vm, KVM_ERR_RUNTIME, "function a() { b(); }\nfunction b() { b(12); }\na();", "too many args print");
   kut_free(vm);
 
   vm = kut_new(false);
-  res = ku_exec(vm, "return 2;");
-  EXPECT_INT(vm, res, KVM_ERR_SYNTAX, "return from __main__");
+  EXPECT_EXEC_FAILURE(vm, KVM_ERR_SYNTAX, "return 2;", "return from __main__");
   kut_free(vm);
 
   vm = kut_new(false);
-  res = ku_exec(vm, "let x=2 return function foo()");
-  EXPECT_INT(vm, res, KVM_ERR_SYNTAX, "parse_skip return");
+  EXPECT_EXEC_FAILURE(vm, KVM_ERR_SYNTAX, "let x=2 return function foo()", "parse_skip return");
   kut_free(vm);
 
   vm = kut_new(false);
-  res = ku_exec(vm, "let x=2 function foo()");
-  EXPECT_INT(vm, res, KVM_ERR_SYNTAX, "parse_skip function");
+  EXPECT_EXEC_FAILURE(vm, KVM_ERR_SYNTAX, "let x=2 function foo()", "parse_skip function");
   kut_free(vm);
 
   vm = kut_new(false);
-  res = ku_exec(vm, "let x=2 class foo()");
-  EXPECT_INT(vm, res, KVM_ERR_SYNTAX, "parse_skip class");
+  EXPECT_EXEC_FAILURE(vm, KVM_ERR_SYNTAX, "let x=2 class foo()", "parse_skip class");
   kut_free(vm);
 
   vm = kut_new(false);
-  res = ku_exec(vm, "let x=2 let foo()");
-  EXPECT_INT(vm, res, KVM_ERR_SYNTAX, "parse_skip let");
+  EXPECT_EXEC_FAILURE(vm, KVM_ERR_SYNTAX, "let x=2 let foo()", "parse_skip let");
   kut_free(vm);
 
   vm = kut_new(false);
-  res = ku_exec(vm, "let x=2 for foo()");
-  EXPECT_INT(vm, res, KVM_ERR_SYNTAX, "parse_skip for");
+  EXPECT_EXEC_FAILURE(vm, KVM_ERR_SYNTAX, "let x=2 for foo()", "parse_skip for");
   kut_free(vm);
 
   vm = kut_new(false);
-  res = ku_exec(vm, "let x=2 if foo()");
-  EXPECT_INT(vm, res, KVM_ERR_SYNTAX, "parse_skip if");
+  EXPECT_EXEC_FAILURE(vm, KVM_ERR_SYNTAX, "let x=2 if foo()", "parse_skip if");
   kut_free(vm);
 
   vm = kut_new(false);
-  res = ku_exec(vm, "let x=2 while foo()");
-  EXPECT_INT(vm, res, KVM_ERR_SYNTAX, "parse_skip while");
+  EXPECT_EXEC_FAILURE(vm, KVM_ERR_SYNTAX, "let x=2 while foo()", "parse_skip while");
   kut_free(vm);
 
   vm = kut_new(false);
@@ -928,8 +907,7 @@ int ku_test() {
 
   vm = kut_new(false);
   ku_cfuncdef(vm, "nadd", kutest_native_add);
-  res = ku_exec(vm, "let x = nadd(3,4);");
-  EXPECT_INT(vm, res, KVM_OK, "cfunction res");
+  EXPECT_EXEC_SUCCESS_M(vm, "let x = nadd(3,4);", "cfunction res");
   EXPECT_VAL(vm, ku_get_global(vm, "x"), NUM_VAL(7), "cfunction return");
   kut_free(vm);
 
@@ -974,8 +952,7 @@ int ku_test() {
   vm = kut_new(false);
   vm->flags = KVM_F_GCLOG;
   vm->gcnext = 0;
-  res = ku_exec(vm, "let x = \"hello\"; x=null;");
-  EXPECT_INT(vm, res, KVM_OK, "gcnext res");
+  EXPECT_EXEC_SUCCESS_M(vm, "let x = \"hello\"; x=null;", "gcnext res");
   EXPECT_VAL(vm, ku_get_global(vm, "x"), NULL_VAL, "gcnext val");
   kut_free(vm);
 
@@ -993,8 +970,7 @@ int ku_test() {
 
   vm = kut_new(false);
   vm->flags = KVM_F_GCSTRESS | KVM_F_GCLOG;
-  res = ku_exec(vm, "function M(x) { let m = x; let mm=x*2; function e(n) { return m*n*mm; } return e; }\n let z = M(5); let x = z(3); x = null;");
-  EXPECT_INT(vm, res, KVM_OK, "gc closure2 res");
+  EXPECT_EXEC_SUCCESS_M(vm, "function M(x) { let m = x; let mm=x*2; function e(n) { return m*n*mm; } return e; }\n let z = M(5); let x = z(3); x = null;", "gc closure2 res");
   EXPECT_VAL(vm, ku_get_global(vm, "x"), NULL_VAL, "gc closure2 val");
   kut_free(vm);
 
@@ -1015,18 +991,15 @@ int ku_test() {
   kut_free(vm);
 
   vm = kut_new(true);
-  res = ku_exec(vm, "function Foo() {}\n let f = new Foo();");
-  EXPECT_INT(vm, res, KVM_ERR_RUNTIME, "non-class parameter to new");
+  EXPECT_EXEC_FAILURE(vm, KVM_ERR_RUNTIME, "function Foo() {}\n let f = new Foo();", "non-class parameter to new");
   kut_free(vm);
 
   vm = kut_new(false);
-  res = ku_exec(vm, "let c = 7; c.p = 9;");
-  EXPECT_INT(vm, res, KVM_ERR_RUNTIME, "non-instance setprop");
+  EXPECT_EXEC_FAILURE(vm, KVM_ERR_RUNTIME, "let c = 7; c.p = 9;", "non-instance setprop");
   kut_free(vm);
 
   vm = kut_new(false);
-  res = ku_exec(vm, "let c = 7; let x = c.p;");
-  EXPECT_INT(vm, res, KVM_ERR_RUNTIME, "non-instance getprop");
+  EXPECT_EXEC_FAILURE(vm, KVM_ERR_RUNTIME, "let c = 7; let x = c.p;", "non-instance getprop");
   kut_free(vm);
 
   vm = kut_new(false);
@@ -1035,8 +1008,7 @@ int ku_test() {
   kut_free(vm);
 
   vm = kut_new(false);
-  res = ku_exec(vm, "class C{}\n let c = new C(); c.p=9; let x=c.z;");
-  EXPECT_INT(vm, res, KVM_ERR_RUNTIME, "set/get prop not found");
+  EXPECT_EXEC_FAILURE(vm, KVM_ERR_RUNTIME, "class C{}\n let c = new C(); c.p=9; let x=c.z;", "set/get prop not found");
   kut_free(vm);
 
   vm = kut_new(false);
@@ -1050,13 +1022,11 @@ int ku_test() {
   kut_free(vm);
 
   vm = kut_new(false);
-  res = ku_exec(vm, "let x = this;");
-  EXPECT_INT(vm, res, KVM_ERR_SYNTAX, "global this res");
+  EXPECT_EXEC_FAILURE(vm, KVM_ERR_SYNTAX, "let x = this;", "global this res");
   kut_free(vm);
 
   vm = kut_new(false);
-  res = ku_exec(vm, "class C {}\n let c = new C(12,14);");
-  EXPECT_INT(vm, res, KVM_ERR_RUNTIME, "no ctor with args");
+  EXPECT_EXEC_FAILURE(vm, KVM_ERR_RUNTIME, "class C {}\n let c = new C(12,14);", "no ctor with args");
   kut_free(vm);
 
   vm = kut_new(false);
@@ -1065,8 +1035,7 @@ int ku_test() {
   kut_free(vm);
 
   vm = kut_new(false);
-  res = ku_exec(vm, "class C { constructor(x) { this.x = x; return 7; }}\n let c = new C(12); let x = c.x;");
-  EXPECT_INT(vm, res, KVM_ERR_RUNTIME, "ctor return res");
+  EXPECT_EXEC_FAILURE(vm, KVM_ERR_RUNTIME, "class C { constructor(x) { this.x = x; return 7; }}\n let c = new C(12); let x = c.x;", "ctor return res");
   kut_free(vm);
 
   vm = kut_new(false);
@@ -1075,28 +1044,23 @@ int ku_test() {
   kut_free(vm);
 
   vm = kut_new(false);
-  res = ku_exec(vm, "class A extends A {}");
-  EXPECT_INT(vm, res, KVM_ERR_SYNTAX, "class ownsubclass res");
+  EXPECT_EXEC_FAILURE(vm, KVM_ERR_SYNTAX, "class A extends A {}", "class ownsubclass res");
   kut_free(vm);
 
   vm = kut_new(false);
-  res = ku_exec(vm, "class A extends 12 {}");
-  EXPECT_INT(vm, res, KVM_ERR_SYNTAX, "class bad inherit static res");
+  EXPECT_EXEC_FAILURE(vm, KVM_ERR_SYNTAX, "class A extends 12 {}", "class bad inherit static res");
   kut_free(vm);
 
   vm = kut_new(false);
-  res = ku_exec(vm, "let B = 9; class A extends B {}");
-  EXPECT_INT(vm, res, KVM_ERR_RUNTIME, "class bad inherit run res");
+  EXPECT_EXEC_FAILURE(vm, KVM_ERR_RUNTIME, "let B = 9; class A extends B {}", "class bad inherit run res");
   kut_free(vm);
 
   vm = kut_new(false);
-  res = ku_exec(vm, "let x = super.foo();");
-  EXPECT_INT(vm, res, KVM_ERR_SYNTAX, "global super res");
+  EXPECT_EXEC_FAILURE(vm, KVM_ERR_SYNTAX, "let x = super.foo();", "global super res");
   kut_free(vm);
 
   vm = kut_new(false);
-  res = ku_exec(vm, "class A { f() { let x = super.foo(); } }");
-  EXPECT_INT(vm, res, KVM_ERR_SYNTAX, "no superclass super res");
+  EXPECT_EXEC_FAILURE(vm, KVM_ERR_SYNTAX, "class A { f() { let x = super.foo(); } }", "no superclass super res");
   kut_free(vm);
 
   vm = kut_new(false);
@@ -1106,8 +1070,7 @@ int ku_test() {
 
   vm = kut_new(false);
   vm->flags = 0;
-  res = ku_exec(vm, "class A { f() { return 2; } }\n class B extends A { f() { let z = super.f; return z()*3; }}\n let b = new B(); let x = b.f();");
-  EXPECT_INT(vm, res, KVM_OK, "super call res");
+  EXPECT_EXEC_SUCCESS_M(vm, "class A { f() { return 2; } }\n class B extends A { f() { let z = super.f; return z()*3; }}\n let b = new B(); let x = b.f();", "super call res");
   EXPECT_VAL(vm, ku_get_global(vm, "x"), NUM_VAL(6), "super call ret");
   kut_free(vm);
 
@@ -1118,13 +1081,11 @@ int ku_test() {
 
   vm = kut_new(false);
   vm->max_const = 1;
-  res = ku_exec(vm, "let x=1; let y=2;");
-  EXPECT_INT(vm, res, KVM_ERR_SYNTAX, "too many const");
+  EXPECT_EXEC_FAILURE(vm, KVM_ERR_SYNTAX, "let x=1; let y=2;", "too many const");
   kut_free(vm);
 
   vm = kut_new(false);
-  res = ku_exec(vm, "function=7; ");
-  EXPECT_INT(vm, res, KVM_ERR_SYNTAX, "invalid assign");
+  EXPECT_EXEC_FAILURE(vm, KVM_ERR_SYNTAX, "function=7; ", "invalid assign");
   kut_free(vm);
 
   vm = kut_new(false);
@@ -1133,46 +1094,38 @@ int ku_test() {
 
   vm = kut_new(false);
   vm->max_closures = 1;
-  res = ku_exec(vm, "function O() { let a=1; let b=2; function I() { return a*b; } return e; }\n let z=M(); let x=z();");
-  EXPECT_INT(vm, res, KVM_ERR_RUNTIME, "too many closures res");
+  EXPECT_EXEC_FAILURE(vm, KVM_ERR_RUNTIME, "function O() { let a=1; let b=2; function I() { return a*b; } return e; }\n let z=M(); let x=z();", "too many closures res");
   kut_free(vm);
 
   vm = kut_new(false);
   vm->max_jump = 1;
-  res = ku_exec(vm, "let x = 0; for(let j=0; j < 10; j=j+1) x = j;");
-  EXPECT_INT(vm, res, KVM_ERR_SYNTAX, "max jump");
+  EXPECT_EXEC_FAILURE(vm, KVM_ERR_SYNTAX, "let x = 0; for(let j=0; j < 10; j=j+1) x = j;", "max jump");
   kut_free(vm);
 
   vm = kut_new(false);
   vm->max_body = 1;
-  res = ku_exec(vm, "let x = 0; for(let j=0; j < 10; j=j+1) x = j;");
-  EXPECT_INT(vm, res, KVM_ERR_SYNTAX, "max body");
+  EXPECT_EXEC_FAILURE(vm, KVM_ERR_SYNTAX, "let x = 0; for(let j=0; j < 10; j=j+1) x = j;", "max body");
   kut_free(vm);
 
   vm = kut_new(false);
   vm->max_frames = 1;
-  res = ku_exec(vm, "function a(){} function b(){a();} function c(){b();} c();");
-  EXPECT_INT(vm, res, KVM_ERR_RUNTIME, "stack overflow");
+  EXPECT_EXEC_FAILURE(vm, KVM_ERR_RUNTIME, "function a(){} function b(){a();} function c(){b();} c();", "stack overflow");
   kut_free(vm);
 
   vm = kut_new(false);
-  res = ku_exec(vm, "class A{}\n let a = new A(); a.x();");
-  EXPECT_INT(vm, res, KVM_ERR_RUNTIME, "invoke invalid prop");
+  EXPECT_EXEC_FAILURE(vm, KVM_ERR_RUNTIME, "class A{}\n let a = new A(); a.x();", "invoke invalid prop");
   kut_free(vm);
 
   vm = kut_new(false);
-  res = ku_exec(vm, "class A{}\n let a = 7; a.x();");
-  EXPECT_INT(vm, res, KVM_ERR_RUNTIME, "invoke invalid receiver");
+  EXPECT_EXEC_FAILURE(vm, KVM_ERR_RUNTIME, "class A{}\n let a = 7; a.x();", "invoke invalid receiver");
   kut_free(vm);
 
   vm = kut_new(false);
-  res = ku_exec(vm, "class A {} class B extends A { f() { super.x(); }} let b = new B(); b.f();");
-  EXPECT_INT(vm, res, KVM_ERR_RUNTIME, "invoke invalid super");
+  EXPECT_EXEC_FAILURE(vm, KVM_ERR_RUNTIME, "class A {} class B extends A { f() { super.x(); }} let b = new B(); b.f();", "invoke invalid super");
   kut_free(vm);
 
   vm = kut_new(false);
-  res = ku_exec(vm, "let x=true; let y=-x;");
-  EXPECT_INT(vm, res, KVM_ERR_RUNTIME, "negate non-number");
+  EXPECT_EXEC_FAILURE(vm, KVM_ERR_RUNTIME, "let x=true; let y=-x;", "negate non-number");
   kut_free(vm);
 
   vm = kut_new(false);
@@ -1181,8 +1134,7 @@ int ku_test() {
   kut_free(vm);
 
   vm = kut_new(false);
-  res = ku_exec(vm, "class A {} class B extends A { f() { let m = super.x; }} let b = new B(); b.f();");
-  EXPECT_INT(vm, res, KVM_ERR_RUNTIME, "invalid get super");
+  EXPECT_EXEC_FAILURE(vm, KVM_ERR_RUNTIME, "class A {} class B extends A { f() { let m = super.x; }} let b = new B(); b.f();", "invalid get super");
   kut_free(vm);
 
   vm = kut_new(false);
@@ -1193,8 +1145,7 @@ int ku_test() {
 
   vm = kut_new(false);
   vm->max_locals = 1;
-  res = ku_exec(vm, "function f() { let x=9; let m=2; }");
-  EXPECT_INT(vm, res, KVM_ERR_SYNTAX, "max_locals");
+  EXPECT_EXEC_FAILURE(vm, KVM_ERR_SYNTAX, "function f() { let x=9; let m=2; }", "max_locals");
   kut_free(vm);
 
   vm = kut_new(false);
@@ -1245,13 +1196,11 @@ int ku_test() {
   kut_free(vm);
 
   vm = kut_new(false);
-  res = ku_exec(vm, "let x =3; break;");
-  EXPECT_INT(vm, res, KVM_ERR_SYNTAX, "global break");
+  EXPECT_EXEC_FAILURE(vm, KVM_ERR_SYNTAX, "let x =3; break;", "global break");
   kut_free(vm);
 
   vm = kut_new(false);
-  res = ku_exec(vm, "let x =3; continue;");
-  EXPECT_INT(vm, res, KVM_ERR_SYNTAX, "global continue");
+  EXPECT_EXEC_FAILURE(vm, KVM_ERR_SYNTAX, "let x =3; continue;", "global continue");
   kut_free(vm);
 
   vm = kut_new(false);
@@ -1280,13 +1229,11 @@ int ku_test() {
   kut_free(vm);
 
   vm = kut_new(true);
-  res = ku_exec(vm, "let x=v.count;");
-  EXPECT_INT(vm, res, KVM_ERR_RUNTIME, "string.count null");
+  EXPECT_EXEC_FAILURE(vm, KVM_ERR_RUNTIME, "let x=v.count;", "string.count null");
   kut_free(vm);
 
   vm = kut_new(true);
-  res = ku_exec(vm, "let x=12; let y=x.count;");
-  EXPECT_INT(vm, res, KVM_ERR_RUNTIME, "string.count non num");
+  EXPECT_EXEC_FAILURE(vm, KVM_ERR_RUNTIME, "let x=12; let y=x.count;", "string.count non num");
   kut_free(vm);
 
   vm = kut_new(true);
@@ -1321,8 +1268,7 @@ int ku_test() {
 
   vm = kut_new(false);
   tclass_init(vm, 0);
-  res = ku_exec(vm, "let x=test.prop;");
-  EXPECT_INT(vm, res, KVM_ERR_RUNTIME, "class no sget res");
+  EXPECT_EXEC_FAILURE(vm, KVM_ERR_RUNTIME, "let x=test.prop;", "class no sget res");
   kut_free(vm);
 
   vm = kut_new(false);
@@ -1341,8 +1287,7 @@ int ku_test() {
 
   vm = kut_new(false);
   tclass_init(vm, 0);
-  res = ku_exec(vm, "test.method(5,2,1);");
-  EXPECT_INT(vm, res, KVM_ERR_RUNTIME, "class no scall res");
+  EXPECT_EXEC_FAILURE(vm, KVM_ERR_RUNTIME, "test.method(5,2,1);", "class no scall res");
   kut_free(vm);
 
   vm = kut_new(false);
@@ -1379,8 +1324,7 @@ int ku_test() {
 
   vm = kut_new(false);
   tclass_init(vm, 0);
-  res = ku_exec(vm, "let x = test(4);");
-  EXPECT_INT(vm, res, KVM_ERR_RUNTIME, "class no cons");
+  EXPECT_EXEC_FAILURE(vm, KVM_ERR_RUNTIME, "let x = test(4);", "class no cons");
   kut_free(vm);
 
   vm = kut_new(false);
@@ -1410,8 +1354,7 @@ int ku_test() {
 
   vm = kut_new(false);
   tclass_init(vm, CONS | IFREE );
-  res = ku_exec(vm, "let x=test(4); x.prop=9;");
-  EXPECT_INT(vm, res, KVM_ERR_RUNTIME, "no iput res");
+  EXPECT_EXEC_FAILURE(vm, KVM_ERR_RUNTIME, "let x=test(4); x.prop=9;", "no iput res");
   kut_free(vm);
 
   vm = kut_new(false);
@@ -1435,8 +1378,7 @@ int ku_test() {
   kut_free(vm);
 
   vm = kut_new(true);
-  res = ku_exec(vm, "let x=string.format(\"%f\", true);");
-  EXPECT_INT(vm, res, KVM_ERR_RUNTIME, "string.format(%f) invalid res");
+  EXPECT_EXEC_FAILURE(vm, KVM_ERR_RUNTIME, "let x=string.format(\"%f\", true);", "string.format(%f) invalid res");
   kut_free(vm);
 
   vm = kut_new(true);
@@ -1450,33 +1392,27 @@ int ku_test() {
   kut_free(vm);
 
   vm = kut_new(true);
-  res = ku_exec(vm, "let x=string.format(\"%d\",true);");
-  EXPECT_INT(vm, res, KVM_ERR_RUNTIME, "string.format bool to %d");
+  EXPECT_EXEC_FAILURE(vm, KVM_ERR_RUNTIME, "let x=string.format(\"%d\",true);", "string.format bool to %d");
   kut_free(vm);
 
   vm = kut_new(true);
-  res = ku_exec(vm, "let x=string.format(\"%s\",true);");
-  EXPECT_INT(vm, res, KVM_ERR_RUNTIME, "string.format bool to %s");
+  EXPECT_EXEC_FAILURE(vm, KVM_ERR_RUNTIME, "let x=string.format(\"%s\",true);", "string.format bool to %s");
   kut_free(vm);
 
   vm = kut_new(true);
-  res = ku_exec(vm, "let x=string.format(\"%g\",true);");
-  EXPECT_INT(vm, res, KVM_ERR_RUNTIME, "string.format bool to %g");
+  EXPECT_EXEC_FAILURE(vm, KVM_ERR_RUNTIME, "let x=string.format(\"%g\",true);", "string.format bool to %g");
   kut_free(vm);
 
   vm = kut_new(true);
-  res = ku_exec(vm, "let x=string.format(\"%x\",true);");
-  EXPECT_INT(vm, res, KVM_ERR_RUNTIME, "string.format bool to %x");
+  EXPECT_EXEC_FAILURE(vm, KVM_ERR_RUNTIME, "let x=string.format(\"%x\",true);", "string.format bool to %x");
   kut_free(vm);
 
   vm = kut_new(true);
-  res = ku_exec(vm, "let x=string.format(\"%b\",12);");
-  EXPECT_INT(vm, res, KVM_ERR_RUNTIME, "string.format num to %b");
+  EXPECT_EXEC_FAILURE(vm, KVM_ERR_RUNTIME, "let x=string.format(\"%b\",12);", "string.format num to %b");
   kut_free(vm);
 
   vm = kut_new(true);
-  res = ku_exec(vm, "let x=string.format(\"hello%\",12);");
-  EXPECT_INT(vm, res, KVM_ERR_RUNTIME, "string.format trailing %");
+  EXPECT_EXEC_FAILURE(vm, KVM_ERR_RUNTIME, "let x=string.format(\"hello%\",12);", "string.format trailing %");
   kut_free(vm);
 
   vm = kut_new(true);
@@ -1559,8 +1495,7 @@ int ku_test() {
   kut_free(vm);
 
   vm = kut_new(true);
-  res = ku_exec(vm, "let x=[1,2,3;");
-  EXPECT_INT(vm, res, KVM_ERR_SYNTAX, "array missing ']'");
+  EXPECT_EXEC_FAILURE(vm, KVM_ERR_SYNTAX, "let x=[1,2,3;", "array missing ']'");
   kut_free(vm);
 
   vm = kut_new(true);
@@ -1590,8 +1525,7 @@ int ku_test() {
   kut_free(vm);
 
   vm = kut_new(true);
-  res = ku_exec(vm, "let a=[1,3,4]; let x=a[1;");
-  EXPECT_INT(vm, res, KVM_ERR_SYNTAX, "array get ']'");
+  EXPECT_EXEC_FAILURE(vm, KVM_ERR_SYNTAX, "let a=[1,3,4]; let x=a[1;", "array get ']'");
   kut_free(vm);
 
   vm = kut_new(true);
@@ -1630,18 +1564,15 @@ int ku_test() {
   kut_free(vm);
 
   vm = kut_new(true);
-  res = ku_exec(vm, "let a=[1,3,4]; let x=a.map();");
-  EXPECT_INT(vm, res, KVM_ERR_RUNTIME, "array.map null");
+  EXPECT_EXEC_FAILURE(vm, KVM_ERR_RUNTIME, "let a=[1,3,4]; let x=a.map();", "array.map null");
   kut_free(vm);
 
   vm = kut_new(true);
-  res = ku_exec(vm, "let a=[1,3,4]; let x=a.map(9);");
-  EXPECT_INT(vm, res, KVM_ERR_RUNTIME, "array.map num");
+  EXPECT_EXEC_FAILURE(vm, KVM_ERR_RUNTIME, "let a=[1,3,4]; let x=a.map(9);", "array.map num");
   kut_free(vm);
 
   vm = kut_new(true);
-  res = ku_exec(vm, "let a=[1,3,4]; let x=a.map((e, b) => e*2 );");
-  EXPECT_INT(vm, res, KVM_ERR_RUNTIME, "array.map args");
+  EXPECT_EXEC_FAILURE(vm, KVM_ERR_RUNTIME, "let a=[1,3,4]; let x=a.map((e, b) => e*2 );", "array.map args");
   kut_free(vm);
 
   vm = kut_new(true);
@@ -1650,35 +1581,29 @@ int ku_test() {
   kut_free(vm);
 
   vm = kut_new(true);
-  res = ku_exec(vm, "let sum=[1,3,4].reduce(0, (v,e) => bad());");
-  EXPECT_INT(vm, res, KVM_ERR_RUNTIME, "array.reduce bad fn");
+  EXPECT_EXEC_FAILURE(vm, KVM_ERR_RUNTIME, "let sum=[1,3,4].reduce(0, (v,e) => bad());", "array.reduce bad fn");
   kut_free(vm);
 
   vm = kut_new(true);
-  res = ku_exec(vm, "let sum=[1,3,4].reduce(9);");
-  EXPECT_INT(vm, res, KVM_ERR_RUNTIME, "array.reduce num");
+  EXPECT_EXEC_FAILURE(vm, KVM_ERR_RUNTIME, "let sum=[1,3,4].reduce(9);", "array.reduce num");
   kut_free(vm);
 
   vm = kut_new(true);
-  res = ku_exec(vm, "let sum=[1,3,4].reduce();");
-  EXPECT_INT(vm, res, KVM_ERR_RUNTIME, "array.reduce null");
+  EXPECT_EXEC_FAILURE(vm, KVM_ERR_RUNTIME, "let sum=[1,3,4].reduce();", "array.reduce null");
   kut_free(vm);
 
   vm = kut_new(true);
-  res = ku_exec(vm, "let sum=[1,3,4].reduce(0, v => v*2);");
-  EXPECT_INT(vm, res, KVM_ERR_RUNTIME, "array.reduce 1 arg");
+  EXPECT_EXEC_FAILURE(vm, KVM_ERR_RUNTIME, "let sum=[1,3,4].reduce(0, v => v*2);", "array.reduce 1 arg");
   kut_free(vm);
 
   vm = kut_new(true);
-  res = ku_exec(vm, "let a=[1,3,4]; let x =a.bogus();");
-  EXPECT_INT(vm, res, KVM_ERR_RUNTIME, "array.bogus");
+  EXPECT_EXEC_FAILURE(vm, KVM_ERR_RUNTIME, "let a=[1,3,4]; let x =a.bogus();", "array.bogus");
   EXPECT_VAL(vm, ku_get_global(vm, "x"), NULL_VAL, "array.invoke bogus");
   kut_free(vm);
 
 
   vm = kut_new(true);
-  res = ku_exec(vm, "let a=[1,3,4]; let x=a.map(e => f(e));");
-  EXPECT_INT(vm, res, KVM_ERR_RUNTIME, "array.map arg err res");
+  EXPECT_EXEC_FAILURE(vm, KVM_ERR_RUNTIME, "let a=[1,3,4]; let x=a.map(e => f(e));", "array.map arg err res");
   kut_free(vm);
 
   vm = kut_new(true);
@@ -1692,8 +1617,7 @@ int ku_test() {
 
   vm = kut_new(true);
   vm->max_patches = 1;
-  res = ku_exec(vm, "for(let i=0; i<10; i=i+1) { if (i>2) break; if (i>3) break; }");
-  EXPECT_INT(vm, res, KVM_ERR_SYNTAX, "patch limit");
+  EXPECT_EXEC_FAILURE(vm, KVM_ERR_SYNTAX, "for(let i=0; i<10; i=i+1) { if (i>2) break; if (i>3) break; }", "patch limit");
   kut_free(vm);
 
   vm = kut_new(true);
@@ -1794,13 +1718,11 @@ int ku_test() {
   kut_free(vm);
 
   vm = kut_new(true);
-  res = ku_exec(vm, "let x = 0xf7f1 | true;");
-  EXPECT_INT(vm, res, KVM_ERR_RUNTIME, "bit || invalid res");
+  EXPECT_EXEC_FAILURE(vm, KVM_ERR_RUNTIME, "let x = 0xf7f1 | true;", "bit || invalid res");
   kut_free(vm);
 
   vm = kut_new(true);
-  res = ku_exec(vm, "let x = 0xf7f1 & true;");
-  EXPECT_INT(vm, res, KVM_ERR_RUNTIME, "bit && invalid res");
+  EXPECT_EXEC_FAILURE(vm, KVM_ERR_RUNTIME, "let x = 0xf7f1 & true;", "bit && invalid res");
   kut_free(vm);
 
   vm = kut_new(true);
@@ -1833,8 +1755,7 @@ int ku_test() {
   kut_free(vm);
 
   vm = kut_new(true);
-  res = ku_exec(vm, "let x = 2 << true;");
-  EXPECT_INT(vm, res, KVM_ERR_RUNTIME, "shl arg res");
+  EXPECT_EXEC_FAILURE(vm, KVM_ERR_RUNTIME, "let x = 2 << true;", "shl arg res");
   kut_free(vm);
 
   vm = kut_new(true);
@@ -1843,8 +1764,7 @@ int ku_test() {
   kut_free(vm);
 
   vm = kut_new(true);
-  res = ku_exec(vm, "let x = true >> 2;");
-  EXPECT_INT(vm, res, KVM_ERR_RUNTIME, "shr arg res");
+  EXPECT_EXEC_FAILURE(vm, KVM_ERR_RUNTIME, "let x = true >> 2;", "shr arg res");
   kut_free(vm);
 
   vm = kut_new(true);
@@ -1858,13 +1778,11 @@ int ku_test() {
   kut_free(vm);
 
   vm = kut_new(true);
-  res = ku_exec(vm, "let a=true; a[0]=4; ");
-  EXPECT_INT(vm, res, KVM_ERR_RUNTIME, "non-array set res");
+  EXPECT_EXEC_FAILURE(vm, KVM_ERR_RUNTIME, "let a=true; a[0]=4; ", "non-array set res");
   kut_free(vm);
 
   vm = kut_new(true);
-  res = ku_exec(vm, "let a=true; let x = a[0]; ");
-  EXPECT_INT(vm, res, KVM_ERR_RUNTIME, "non-array get res");
+  EXPECT_EXEC_FAILURE(vm, KVM_ERR_RUNTIME, "let a=true; let x = a[0]; ", "non-array get res");
   kut_free(vm);
 
   vm = kut_new(true);
@@ -1912,18 +1830,15 @@ int ku_test() {
   kut_free(vm);
 
   vm = kut_new(true);
-  res = ku_exec(vm, "let a=[1,3,4]; let x=a.filter();");
-  EXPECT_INT(vm, res, KVM_ERR_RUNTIME, "array.filter null");
+  EXPECT_EXEC_FAILURE(vm, KVM_ERR_RUNTIME, "let a=[1,3,4]; let x=a.filter();", "array.filter null");
   kut_free(vm);
 
   vm = kut_new(true);
-  res = ku_exec(vm, "let a=[1,3,4]; let x=a.filter(9);");
-  EXPECT_INT(vm, res, KVM_ERR_RUNTIME, "array.filter num");
+  EXPECT_EXEC_FAILURE(vm, KVM_ERR_RUNTIME, "let a=[1,3,4]; let x=a.filter(9);", "array.filter num");
   kut_free(vm);
 
   vm = kut_new(true);
-  res = ku_exec(vm, "let a=[1,3,4]; let x=a.filter((e, b) => e*2 );");
-  EXPECT_INT(vm, res, KVM_ERR_RUNTIME, "array.filter args");
+  EXPECT_EXEC_FAILURE(vm, KVM_ERR_RUNTIME, "let a=[1,3,4]; let x=a.filter((e, b) => e*2 );", "array.filter args");
   kut_free(vm);
 
   vm = kut_new(true);
@@ -1938,18 +1853,15 @@ int ku_test() {
   kut_free(vm);
 
   vm = kut_new(true);
-  res = ku_exec(vm, "let x=[7,3,4]; x.sort(a => 0);");
-  EXPECT_INT(vm, res, KVM_ERR_RUNTIME, "array.sort argc res");
+  EXPECT_EXEC_FAILURE(vm, KVM_ERR_RUNTIME, "let x=[7,3,4]; x.sort(a => 0);", "array.sort argc res");
   kut_free(vm);
 
   vm = kut_new(true);
-  res = ku_exec(vm, "let x=[7,3,4]; x.sort();");
-  EXPECT_INT(vm, res, KVM_ERR_RUNTIME, "array.sort null res");
+  EXPECT_EXEC_FAILURE(vm, KVM_ERR_RUNTIME, "let x=[7,3,4]; x.sort();", "array.sort null res");
   kut_free(vm);
 
   vm = kut_new(true);
-  res = ku_exec(vm, "let x=[7,3,4]; x.sort((a,b) => false);");
-  EXPECT_INT(vm, res, KVM_ERR_RUNTIME, "array.sort res");
+  EXPECT_EXEC_FAILURE(vm, KVM_ERR_RUNTIME, "let x=[7,3,4]; x.sort((a,b) => false);", "array.sort res");
   kut_free(vm);
 
   vm = kut_new(true);
@@ -2038,18 +1950,15 @@ int ku_test() {
   kut_free(vm);
 
   vm = kut_new(true);
-  res = ku_exec(vm, "let s=\"012345678\"; let x=s[-1];");
-  EXPECT_INT(vm, res, KVM_ERR_RUNTIME, "str[idx] bounds low res");
+  EXPECT_EXEC_FAILURE(vm, KVM_ERR_RUNTIME, "let s=\"012345678\"; let x=s[-1];", "str[idx] bounds low res");
   kut_free(vm);
 
   vm = kut_new(true);
-  res = ku_exec(vm, "let s=\"012345678\"; let x=s[22];");
-  EXPECT_INT(vm, res, KVM_ERR_RUNTIME, "str[idx] bounds high res");
+  EXPECT_EXEC_FAILURE(vm, KVM_ERR_RUNTIME, "let s=\"012345678\"; let x=s[22];", "str[idx] bounds high res");
   kut_free(vm);
 
   vm = kut_new(true);
-  res = ku_exec(vm, "let s=\"012345678\"; let x=s[true];");
-  EXPECT_INT(vm, res, KVM_ERR_RUNTIME, "str[bool]  res");
+  EXPECT_EXEC_FAILURE(vm, KVM_ERR_RUNTIME, "let s=\"012345678\"; let x=s[true];", "str[bool]  res");
   kut_free(vm);
 
   vm = kut_new(true);
