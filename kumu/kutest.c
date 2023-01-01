@@ -112,11 +112,48 @@ kuval ku_test_eval(kuvm *__nonnull vm, const char *__nonnull expr) {
   return ku_get_global(vm, "x");
 }
 
+void kut_print(const char *_Nullable fmt, va_list args) {
+  vfprintf(stderr, fmt, args);
+}
+
+static kuval kut_assert_eq(kuvm *__nonnull vm, int argc, kuval *__nullable argv) {
+  if (argc != 2) {
+    ku_err(vm, "Invalid parameters to ASSERT_EQ(kuval expected, kuval actual)");
+    return NULL_VAL;
+  }
+
+  kuval expected = argv[0];
+  kuval actual = argv[1];
+
+  if (ku_equal(expected, actual)) {
+    return NULL_VAL;
+  }
+
+  // Print the failure.
+  kuprint current = vm->print;
+  vm->print = kut_print;
+
+  ku_printf(vm, "Assertion Failed:");
+  ku_printf(vm, "\n  Actual: ");
+  ku_printval(vm, actual);
+  ku_printf(vm, "\n  Expected: ");
+  ku_printval(vm, expected);
+  ku_printf(vm, "\n");
+
+  vm->print = current;
+
+  ku_err(vm, "ASSERT_EQ Failure");
+
+  return NULL_VAL;
+}
+
 kuvm *__nonnull kut_new(bool reglibs) {
   kuvm *__nonnull vm = ku_newvm(STACK_MAX, NULL);
   if (reglibs) {
     ku_reglibs(vm);
   }
+
+  ku_cfuncdef(vm, "ASSERT_EQ", kut_assert_eq);
   return vm;
 }
 
@@ -307,7 +344,10 @@ int ku_test() {
   kut_free(vm);
 
   vm = kut_new(false);
-  EXPECT_EXEC_SUCCESS_M(vm, "let x = -1+4;", "-1+4 res");
+  EXPECT_EXEC_SUCCESS_M(vm,
+                        "let x = -1+4;"
+                        "ASSERT_EQ(-1+4, x);",
+                        "-1+4 res");
   EXPECT_VAL(vm, ku_get_global(vm, "x"), NUM_VAL(-1+4), "-1+4 ret");
   kut_free(vm);
 
