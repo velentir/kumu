@@ -93,10 +93,109 @@ const char *__nonnull last_test = "";
     EXPECT_INT((vm), res, (expected), (errmsg)); \
   } while (0)
 
-static void ku_test_summary() {
-  printf("[  PASSED  ] %d test\n", ktest_pass);
-  printf("[   WARN   ] %d test\n", ktest_warn);
-  printf("[  FAILED  ] %d test\n", ktest_fail);
+// TEST_SCRIPT(const char *_nonnull name, const char *_nonnull code)
+#define TEST_SCRIPT(name, code)                 \
+  do {                                          \
+    kut_exec_kumu_test(name, code, KVM_OK);     \
+  } while (0)
+
+// TEST_SYNTAX_FAILURE(const char *_nonnull name, const char *_nonnull code)
+#define TEST_SYNTAX_FAILURE(name, code)                 \
+  do {                                                  \
+    kut_exec_kumu_test(name, code, KVM_ERR_SYNTAX);     \
+  } while (0)
+
+// TEST_RUNTIME_FAILURE(const char *_nonnull name, const char *_nonnull code)
+#define TEST_RUNTIME_FAILURE(name, code)                \
+  do {                                                  \
+    kut_exec_kumu_test(name, code, KVM_ERR_RUNTIME);    \
+  } while (0)
+
+// TEST_EXPRESSION(const char *_nonnull name, const char *_nonnull expected_kumu, kuval expected_kuval)
+#define TEST_EXPRESSION(code, expected_kumu, expected_kuval)            \
+  do {                                                                  \
+    kut_exec_kumu_test((code),                                          \
+                       ("ASSERT_EQ(" expected_kumu ", " code ");"),     \
+                       KVM_OK);                                         \
+    kut_exec_c_test((code),                                             \
+                    (code),                                             \
+                    (expected_kuval));                                  \
+  } while (0)
+
+void kut_print(const char *_Nullable fmt, va_list args) {
+  vfprintf(stderr, fmt, args);
+}
+
+static void kut_print_failure(kuvm *__nonnull vm, kuval expected, kuval actual)
+{
+  kuprint current = vm->print;
+  vm->print = kut_print;
+
+  ku_printf(vm, "[  ASSERTION FAILED in \"%s\"  ]", last_test);
+  ku_printf(vm, "\n  Actual: ");
+  ku_printval(vm, actual);
+  ku_printf(vm, "\n  Expected: ");
+  ku_printval(vm, expected);
+  ku_printf(vm, "\n");
+
+  vm->print = current;
+}
+
+static kuval kut_assert_eq(kuvm *__nonnull vm, int argc, kuval *__nullable argv) {
+  if (argc != 2) {
+    ku_err(vm, "Invalid parameters to ASSERT_EQ(kuval expected, kuval actual)");
+    return NULL_VAL;
+  }
+
+  kuval expected = argv[0];
+  kuval actual = argv[1];
+
+  if (ku_equal(expected, actual)) {
+    return NULL_VAL;
+  }
+
+  // Print the failure.
+  kuprint current = vm->print;
+  vm->print = kut_print;
+
+  ku_printf(vm, "[  ASSERTION FAILED in \"%s\"  ]", last_test);
+  ku_printf(vm, "\n  Actual: ");
+  ku_printval(vm, actual);
+  ku_printf(vm, "\n  Expected: ");
+  ku_printval(vm, expected);
+  ku_printf(vm, "\n");
+
+  vm->print = current;
+
+  ku_err(vm, "ASSERT_EQ Failure");
+
+  return NULL_VAL;
+}
+
+kuvm *__nonnull kut_new(bool reglibs) {
+  kuvm *__nonnull vm = ku_newvm(STACK_MAX, NULL);
+  if (reglibs) {
+    ku_reglibs(vm);
+  }
+
+  ku_cfuncdef(vm, "ASSERT_EQ", kut_assert_eq);
+  return vm;
+}
+
+void kut_free(kuvm *__nonnull vm) {
+  if (vm->sp > vm->stack) {
+    printf(">>> [%s] warning stack at %d\n", last_test, (int)(vm->sp - vm->stack));
+    ktest_warn++;
+  }
+
+#ifdef STACK_CHECK
+  if (vm->underflow > 0) {
+    printf(">>> [%s] warning stack underflow %d\n", last_test, vm->underflow);
+    ktest_warn++;
+  }
+#endif // STACK_CHECK
+
+  ku_freevm(vm);
 }
 
 kuval ku_get_global(kuvm *__nonnull vm, const char *__nonnull name) {
@@ -119,49 +218,42 @@ kuval ku_test_eval(kuvm *__nonnull vm, const char *__nonnull expr) {
   return ku_get_global(vm, "x");
 }
 
-void kut_print(const char *_Nullable fmt, va_list args) {
-  vfprintf(stderr, fmt, args);
+static void kut_exec_kumu_test(const char *__nonnull test_name,
+                               char *__nonnull kumu_code,
+                               kures kumu_ret_code) {
+  last_test = test_name;
+  kuvm *__nonnull vm = kut_new(false);
+
+  kures res = ku_exec(vm, kumu_code);
+  if (res == kumu_ret_code) {
+    ktest_pass++;
+  } else {
+    ktest_fail++;
+    // The kumu code is expected to print any test failures.
+  }
+  kut_free(vm);
 }
 
-static kuval kut_assert_eq(kuvm *__nonnull vm, int argc, kuval *__nullable argv) {
-  if (argc != 2) {
-    ku_err(vm, "Invalid parameters to ASSERT_EQ(kuval expected, kuval actual)");
-    return NULL_VAL;
+static void kut_exec_c_test(const char *__nonnull test_name,
+                            const char *__nonnull kumu_code,
+                            kuval expected_val) {
+  last_test = test_name;
+  kuvm *__nonnull vm = kut_new(false);
+
+  kuval v = ku_test_eval(vm, kumu_code);
+  if (ku_equal(v, expected_val)) {
+    ktest_pass++;
+  } else {
+    ktest_fail++;
+    kut_print_failure(vm, expected_val, v);
   }
-
-  kuval expected = argv[0];
-  kuval actual = argv[1];
-
-  if (ku_equal(expected, actual)) {
-    return NULL_VAL;
-  }
-
-  // Print the failure.
-  kuprint current = vm->print;
-  vm->print = kut_print;
-
-  ku_printf(vm, "Assertion Failed:");
-  ku_printf(vm, "\n  Actual: ");
-  ku_printval(vm, actual);
-  ku_printf(vm, "\n  Expected: ");
-  ku_printval(vm, expected);
-  ku_printf(vm, "\n");
-
-  vm->print = current;
-
-  ku_err(vm, "ASSERT_EQ Failure");
-
-  return NULL_VAL;
+  kut_free(vm);
 }
 
-kuvm *__nonnull kut_new(bool reglibs) {
-  kuvm *__nonnull vm = ku_newvm(STACK_MAX, NULL);
-  if (reglibs) {
-    ku_reglibs(vm);
-  }
-
-  ku_cfuncdef(vm, "ASSERT_EQ", kut_assert_eq);
-  return vm;
+static void ku_test_summary() {
+  printf("[  PASSED  ] %d test\n", ktest_pass);
+  printf("[   WARN   ] %d test\n", ktest_warn);
+  printf("[  FAILED  ] %d test\n", ktest_fail);
 }
 
 static kuval kutest_native_add(KU_UNUSED kuvm *__nonnull vm, int argc, KU_UNUSED kuval *__nullable argv) {
@@ -325,70 +417,33 @@ void tclass_init(kuvm *__nonnull vm, uint64_t flags) {
 
 #define APPROX(a,b) ((AS_NUM(a)-(b)) < 0.00000001)
 
-
-void kut_free(kuvm *__nonnull vm) {
-  if (vm->sp > vm->stack) {
-    printf(">>> [%s] warning stack at %d\n", last_test, (int)(vm->sp - vm->stack));
-    ktest_warn++;
-  }
-
-#ifdef STACK_CHECK
-  if (vm->underflow > 0) {
-    printf(">>> [%s] warning stack underflow %d\n", last_test, vm->underflow);
-    ktest_warn++;
-  }
-#endif // STACK_CHECK
-
-  ku_freevm(vm);
-}
-
 int ku_test() {
   kuvm *__nonnull vm;
   kures res;
 
-  vm = kut_new(false);
-  EXPECT_EXEC_SUCCESS(vm, "let x= -1+4;");
-  kut_free(vm);
+  TEST_EXPRESSION("-1+4", "3", NUM_VAL(-1+4));
 
-  vm = kut_new(false);
-  EXPECT_EXEC_SUCCESS_M(vm,
-                        "let x = -1+4;"
-                        "ASSERT_EQ(-1+4, x);",
-                        "-1+4 res");
-  EXPECT_VAL(vm, ku_get_global(vm, "x"), NUM_VAL(-1+4), "-1+4 ret");
-  kut_free(vm);
+  TEST_SCRIPT("-1+4 ret",
 
-  vm = kut_new(false);
-  EXPECT_EXEC_SUCCESS_M(vm, "let x = (-(1+2)-4)*5/6;", "ku_run res");
-  EXPECT_VAL(vm, ku_get_global(vm, "x"), NUM_VAL((-(1.0+2.0)-4.0)*5.0/6.0), "ku_run ret");
-  kut_free(vm);
+              "let x = -1+4;"
+              "ASSERT_EQ(3, x);");
 
-  vm = kut_new(false);
-  EXPECT_EXEC_SUCCESS_M(vm, "let x = 1+2;", "ku_exec res");
-  EXPECT_VAL(vm, ku_get_global(vm, "x"), NUM_VAL(3), "ku_exec ret");
-  kut_free(vm);
+  TEST_EXPRESSION("(-(1+2)-4)*5/6", "(-(1+2)-4)*5/6", NUM_VAL((-(1.0+2.0)-4.0)*5.0/6.0));
+
+  TEST_EXPRESSION("1+2", "3", NUM_VAL(3));
 
   vm = kut_new(false);
   ku_lexinit(vm, "let x = 12+3;");
   ku_lexdump(vm);
   kut_free(vm);
 
-  vm = kut_new(false);
-  EXPECT_EXEC_FAILURE(vm, KVM_ERR_SYNTAX, "12+", "invalid syntax trailing plus");
-  kut_free(vm);
+  TEST_SYNTAX_FAILURE("invalid syntax trailing plus", "12+");
 
-  vm = kut_new(false);
-  EXPECT_EXEC_FAILURE(vm, KVM_ERR_SYNTAX, "let x = $2", "invalid syntax dollar sign");
-  kut_free(vm);
+  TEST_SYNTAX_FAILURE("invalid syntax dollar sign", "let x = $2");
 
-  vm = kut_new(false);
-  EXPECT_EXEC_FAILURE(vm, KVM_ERR_SYNTAX, "2 = 14", "invalid syntax numeric varname");
-  kut_free(vm);
+  TEST_SYNTAX_FAILURE("invalid syntax numeric varname", "2 = 14");
 
-  vm = kut_new(false);
-  EXPECT_EXEC_SUCCESS_M(vm, "let x = (1+2)*3;", "grouping res");
-  EXPECT_VAL(vm, ku_get_global(vm, "x"), NUM_VAL(9), "grouping ret");
-  kut_free(vm);
+  TEST_EXPRESSION("(1+2)*3", "9", NUM_VAL(9));
 
   vm = kut_new(false);
   ku_printmem(vm);
@@ -407,10 +462,7 @@ int ku_test() {
   ku_pop(vm);
   kut_free(vm);
 
-  vm = kut_new(false);
-  EXPECT_EXEC_SUCCESS_M(vm, "let x = -2*3;", "unary res");
-  EXPECT_VAL(vm, ku_get_global(vm, "x"), NUM_VAL(-6), "unary ret");
-  kut_free(vm);
+  TEST_EXPRESSION("-2*3", "-6", NUM_VAL(-6));
 
   // unterminated string
   vm = kut_new(false);
@@ -420,16 +472,15 @@ int ku_test() {
 
   // ku_print_val
   vm = kut_new(false);
-  EXPECT_EXEC_SUCCESS(vm, "let x = 2+3;");
+  EXPECT_EXEC_SUCCESS(vm,
+                      "let x = 2+3;"
+                      "ASSERT_EQ(5, x);");
   kuval v = ku_get_global(vm, "x");
   EXPECT_VAL(vm, v, NUM_VAL(5), "ku_print_val ret");
   ku_printval(vm, v);
   kut_free(vm);
 
-  vm = kut_new(false);
-  EXPECT_EXEC_SUCCESS(vm, "let x = 12.3;");
-  EXPECT_VAL(vm, ku_get_global(vm, "x"), NUM_VAL(12.3), "ku_lex_peeknext ret");
-  kut_free(vm);
+  TEST_EXPRESSION("12.3", "12.3", NUM_VAL(12.3));
 
   vm = kut_new(false);
   ku_lexinit(vm, "&& class else false for function if new null || return super this true while extends {}[]!+-*/=!==><>=<= === => break continue const far\ttrick\nart\rcool eek too functiond");
@@ -505,8 +556,6 @@ int ku_test() {
   EXPECT_INT(vm, t.type, TOK_CONTINUE, "[continue]");
   t = ku_scan(vm);
   EXPECT_INT(vm, t.type, TOK_CONST, "[const]");
-
-
   t = ku_scan(vm);
   EXPECT_INT(vm, t.type, TOK_IDENT, "[identifier]");
   t = ku_scan(vm);
@@ -519,132 +568,97 @@ int ku_test() {
   EXPECT_INT(vm, t.type, TOK_EOF, "comment");
   kut_free(vm);
 
+  TEST_EXPRESSION("(12-2)/5", "2", NUM_VAL(2));
+
+  TEST_SYNTAX_FAILURE("negate err", "-true");
+
+  TEST_EXPRESSION("true", "true", BOOL_VAL(true));
+
+  TEST_EXPRESSION("false", "false", BOOL_VAL(false));
+
+  TEST_EXPRESSION("null", "null", NULL_VAL);
+
+  TEST_EXPRESSION("!true", "false", BOOL_VAL(false));
+
+  TEST_EXPRESSION("!false", "true", BOOL_VAL(true));
+
+  TEST_EXPRESSION("1===1", "true", BOOL_VAL(true));
+
+  TEST_EXPRESSION("1===false", "false", BOOL_VAL(false));
+
+  TEST_EXPRESSION("1===2", "false", BOOL_VAL(false));
+
+  TEST_EXPRESSION("1!==2", "true", BOOL_VAL(true));
+
+  TEST_EXPRESSION("1!==1", "false", BOOL_VAL(false));
+
+  TEST_EXPRESSION("1<1", "false", BOOL_VAL(false));
+
+  TEST_EXPRESSION("1<2", "true", BOOL_VAL(true));
+
+  TEST_EXPRESSION("\"abc\" < \"def\"", "true", BOOL_VAL(true));
+
+  TEST_EXPRESSION("\"abcd\" < \"abc\"", "false", BOOL_VAL(false));
+
   vm = kut_new(false);
-  v = ku_test_eval(vm, "(12-2)/5");
-  EXPECT_VAL(vm, v, NUM_VAL(2), "sub div ret");
+  EXPECT_EXEC_SUCCESS(vm,
+                      "let x = \"abc\" > \"def\";"
+                      "ASSERT_EQ(false, x);");
+  EXPECT_VAL(vm, ku_get_global(vm, "x"), BOOL_VAL(false), "string > false");
   kut_free(vm);
 
   vm = kut_new(false);
-  EXPECT_EXEC_FAILURE(vm, KVM_ERR_SYNTAX, "-true", "negate err");
+  EXPECT_EXEC_SUCCESS(vm,
+                      "let x = \"abcd\" > \"abc\";"
+                      "ASSERT_EQ(true, x);");
+  EXPECT_VAL(vm, ku_get_global(vm, "x"), BOOL_VAL(true), "string > true");
   kut_free(vm);
 
   vm = kut_new(false);
-  v = ku_test_eval(vm, "true");
-  EXPECT_VAL(vm, v, BOOL_VAL(true), "true literal eval");
+  EXPECT_EXEC_SUCCESS(vm,
+                      "let x = 2<=1;"
+                      "ASSERT_EQ(false, x);");
+  EXPECT_VAL(vm, ku_get_global(vm, "x"), BOOL_VAL(false), "<= false");
   kut_free(vm);
 
   vm = kut_new(false);
-  v = ku_test_eval(vm, "false");
-  EXPECT_VAL(vm, v, BOOL_VAL(false), "false literal eval");
+  EXPECT_EXEC_SUCCESS(vm,
+                      "let x = 2<=3;"
+                      "ASSERT_EQ(true, x);");
+  EXPECT_VAL(vm, ku_get_global(vm, "x"), BOOL_VAL(true), "<= true");
   kut_free(vm);
 
   vm = kut_new(false);
-  v = ku_test_eval(vm, "null");
-  EXPECT_VAL(vm, v, NULL_VAL, "null literal eval");
+  EXPECT_EXEC_SUCCESS(vm,
+                      "let x = 3>2;"
+                      "ASSERT_EQ(true, x);");
+  EXPECT_VAL(vm, ku_get_global(vm, "x"), BOOL_VAL(true), "> true");
   kut_free(vm);
 
   vm = kut_new(false);
-  v = ku_test_eval(vm, "!true");
-  EXPECT_VAL(vm, v, BOOL_VAL(false), "!true eval");
+  EXPECT_EXEC_SUCCESS(vm,
+                      "let x = 3>7;"
+                      "ASSERT_EQ(false, x);");
+  EXPECT_VAL(vm, ku_get_global(vm, "x"), BOOL_VAL(false), "> false");
   kut_free(vm);
 
   vm = kut_new(false);
-  v = ku_test_eval(vm, "!false");
-  EXPECT_VAL(vm, v, BOOL_VAL(true), "!false eval");
+  EXPECT_EXEC_SUCCESS(vm,
+                      "let x = 3>=7;"
+                      "ASSERT_EQ(false, x);");
+  EXPECT_VAL(vm, ku_get_global(vm, "x"), BOOL_VAL(false), ">= false");
   kut_free(vm);
 
   vm = kut_new(false);
-  v = ku_test_eval(vm, "1===1");
-  EXPECT_VAL(vm, v, BOOL_VAL(true), "=== true");
+  EXPECT_EXEC_SUCCESS(vm,
+                      "let x = 3>=3;"
+                      "ASSERT_EQ(true, x);");
+  EXPECT_VAL(vm, ku_get_global(vm, "x"), BOOL_VAL(true), ">= true");
   kut_free(vm);
 
-  vm = kut_new(false);
-  v = ku_test_eval(vm, "1===false");
-  EXPECT_VAL(vm, v, BOOL_VAL(false), "=== mismatch types");
-  kut_free(vm);
+  TEST_RUNTIME_FAILURE("< num expected", "let x = 12 < true;");
 
-  vm = kut_new(false);
-  v = ku_test_eval(vm, "1===2");
-  EXPECT_VAL(vm, v, BOOL_VAL(false), "=== false");
-  kut_free(vm);
-
-  vm = kut_new(false);
-  v = ku_test_eval(vm, "1!==2");
-  EXPECT_VAL(vm, v, BOOL_VAL(true), "!== true");
-  kut_free(vm);
-
-  vm = kut_new(false);
-  v = ku_test_eval(vm, "1!==1");
-  EXPECT_VAL(vm, v, BOOL_VAL(false), "!== false");
-  kut_free(vm);
-
-  vm = kut_new(false);
-  v = ku_test_eval(vm, "1<1");
-  EXPECT_VAL(vm, v, BOOL_VAL(false), "< false");
-  kut_free(vm);
-
-  vm = kut_new(false);
-  v = ku_test_eval(vm, "1<2");
-  EXPECT_VAL(vm, v, BOOL_VAL(true), "< true");
-  kut_free(vm);
-
-  vm = kut_new(false);
-  v = ku_test_eval(vm, "\"abc\" < \"def\"");
-  EXPECT_VAL(vm, v, BOOL_VAL(true), "string < true");
-  kut_free(vm);
-
-  vm = kut_new(false);
-  v = ku_test_eval(vm, "\"abcd\" < \"abc\"");
-  EXPECT_VAL(vm, v, BOOL_VAL(false), "string < false");
-  kut_free(vm);
-
-  vm = kut_new(false);
-  v = ku_test_eval(vm, "\"abc\" > \"def\"");
-  EXPECT_VAL(vm, v, BOOL_VAL(false), "string > false");
-  kut_free(vm);
-
-  vm = kut_new(false);
-  v = ku_test_eval(vm, "\"abcd\" > \"abc\"");
-  EXPECT_VAL(vm, v, BOOL_VAL(true), "string > true");
-  kut_free(vm);
-
-  vm = kut_new(false);
-  v = ku_test_eval(vm, "2<=1");
-  EXPECT_VAL(vm, v, BOOL_VAL(false), "<= false");
-  kut_free(vm);
-
-  vm = kut_new(false);
-  v = ku_test_eval(vm, "2<=3");
-  EXPECT_VAL(vm, v, BOOL_VAL(true), "<= true");
-  kut_free(vm);
-
-  vm = kut_new(false);
-  v = ku_test_eval(vm, "3>2");
-  EXPECT_VAL(vm, v, BOOL_VAL(true), "> true");
-  kut_free(vm);
-
-  vm = kut_new(false);
-  v = ku_test_eval(vm, "3>7");
-  EXPECT_VAL(vm, v, BOOL_VAL(false), "> false");
-  kut_free(vm);
-
-  vm = kut_new(false);
-  v = ku_test_eval(vm, "3>=7");
-  EXPECT_VAL(vm, v, BOOL_VAL(false), ">= false");
-  kut_free(vm);
-
-  vm = kut_new(false);
-  v = ku_test_eval(vm, "3>=3");
-  EXPECT_VAL(vm, v, BOOL_VAL(true), ">= true");
-  kut_free(vm);
-
-  vm = kut_new(false);
-  EXPECT_EXEC_FAILURE(vm, KVM_ERR_RUNTIME, "let x = 12 < true;", "< num expected");
-  kut_free(vm);
-
-  vm = kut_new(false);
-  EXPECT_EXEC_FAILURE(vm, KVM_ERR_RUNTIME, "let x = 12 + true;", "add num expected");
-  kut_free(vm);
+  TEST_RUNTIME_FAILURE("add num expected", "let x = 12 + true;");
 
   vm = kut_new(false);
   v = ku_test_eval(vm, "\"hello \" + \"world\"");
@@ -806,27 +820,21 @@ int ku_test() {
   EXPECT_VAL(vm, ku_get_global(vm, "x"), BOOL_VAL(true), "true || true");
   kut_free(vm);
 
-  vm = kut_new(false);
-  EXPECT_EXEC_SUCCESS_M(vm, "let x = 1; while(x < 20) { x = x + 1; }", "while parse");
-  EXPECT_VAL(vm, ku_get_global(vm, "x"), NUM_VAL(20), "while simple");
-  kut_free(vm);
+  TEST_SYNTAX_FAILURE("while no lpar", "let x = 1; while x < 20) { x = x + 1; }");
 
-  vm = kut_new(false);
-  EXPECT_EXEC_FAILURE(vm, KVM_ERR_SYNTAX, "let x = 1; while x < 20) { x = x + 1; }", "while no lpar");
-  kut_free(vm);
+  TEST_SCRIPT("while parse",
 
-  vm = kut_new(false);
-  EXPECT_EXEC_FAILURE(vm, KVM_ERR_SYNTAX, "let x = 1; while (x < 20 { x = x + 1; }", "while no rpar");
-  kut_free(vm);
+              "let x = 1;"
+              "while(x < 20) {"
+              "  x = x + 1;"
+              "}"
+              "ASSERT_EQ(20, x);");
 
-  vm = kut_new(false);
-  EXPECT_EXEC_SUCCESS_M(vm, "let x = 0; for(let j=0; j < 10; j=j+1) x = j;", "for parse");
-  EXPECT_VAL(vm, ku_get_global(vm, "x"), NUM_VAL(9), "for simple");
-  kut_free(vm);
+  TEST_SCRIPT("for parse",
 
-  vm = kut_new(false);
-  EXPECT_EXEC_FAILURE(vm, KVM_ERR_SYNTAX, "let x = 0; for let j=0; j < 10; j=j+1) x = j;", "for no lpar");
-  kut_free(vm);
+              "let x = 0;"
+              "for(let j=0; j < 10; j=j+1) x = j;"
+              "ASSERT_EQ(9, x);");
 
   vm = kut_new(true);
   vm->flags = 0;
