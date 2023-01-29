@@ -80,10 +80,6 @@ const char *__nonnull last_test = "";
 // C Validation Macros //
 /////////////////////////
 
-/////////////////////////
-// C Validation Macros //
-/////////////////////////
-
 // EXPECT_TRUE(kuvm *__nonnull vm, bool b, const char *__nonnull m)
 #define EXPECT_TRUE(vm, b, m) \
   do { \
@@ -129,44 +125,11 @@ const char *__nonnull last_test = "";
     } \
   } while(0)
 
-/////////////////////////
-// Test Running Macros //
-/////////////////////////
-
-// Defines whether or not to register the kumu VM standard libraries.
-#define REG_LIBS true
-#define NO_REG_LIBS false
-
-// TEST_SCRIPT(bool reglibs, const char *_nonnull name, const char *_nonnull code)
-#define TEST_SCRIPT(reglibs, name, code) kut_kumu_test(NULL, reglibs, name, code, KVM_OK);
-
-// TEST_SCRIPT_WITH_VM(kuvm *__nonnull vm, const char *_nonnull name, const char *_nonnull code)
-#define TEST_SCRIPT_WITH_VM(vm, name, code) kut_kumu_test(vm, false, name, code, KVM_OK);
-
-// TEST_SYNTAX_FAILURE(bool reglibs, const char *_nonnull name, const char *_nonnull code)
-#define TEST_SYNTAX_FAILURE(reglibs, name, code) kut_kumu_test(NULL, reglibs, name, code, KVM_ERR_SYNTAX);
-
-// TEST_SYNTAX_FAILURE_WITH_VM(kuvm *__nonnull vm, const char *_nonnull name, const char *_nonnull code)
-#define TEST_SYNTAX_FAILURE_WITH_VM(vm, name, code) kut_kumu_test(vm, false, name, code, KVM_ERR_SYNTAX)
-
-// TEST_RUNTIME_FAILURE(bool reglibs, const char *_nonnull name, const char *_nonnull code)
-#define TEST_RUNTIME_FAILURE(reglibs, name, code) kut_kumu_test(NULL, reglibs, name, code, KVM_ERR_RUNTIME);
-
-// TEST_RUNTIME_FAILURE_WITH_VM(kuvm *__nonnull vm, const char *_nonnull name, const char *_nonnull code)
-#define TEST_RUNTIME_FAILURE_WITH_VM(vm, name, code) kut_kumu_test(vm, false, name, code, KVM_ERR_RUNTIME);
-
-// TEST_EXPRESSION(bool reglibs, const char *_nonnull name, const char *_nonnull expected_kumu, kuval expected_kuval)
-#define TEST_EXPRESSION(reglibs, code, expected_kumu, expected_kuval)   \
-  do {                                                                  \
-    kut_kumu_test(NULL, reglibs, (code), ("ASSERT_EQ(" expected_kumu ", " code ");"), KVM_OK); \
-    kut_exec_c_test(reglibs, (code), (code), (expected_kuval));         \
-  } while (0)
-
 ////////////////////////////
 // Test Utility Functions //
 ////////////////////////////
 
-void kut_print(const char *_Nullable fmt, va_list args) {
+void kut_print(KU_UNUSED const char *_Nullable fmt, KU_UNUSED va_list args) {
   test_vfprintf(stderr, fmt, args);
 }
 
@@ -328,6 +291,7 @@ static void kut_kumu_test(kuvm *__nullable nullable_vm,
   }
 }
 
+__attribute__((unused))
 static void kut_exec_c_test(bool reglibs,
                             const char *__nonnull test_name,
                             const char *__nonnull kumu_code,
