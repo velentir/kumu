@@ -14,7 +14,71 @@ int ktest_fail = 0;
 int ktest_warn = 0;
 const char *__nonnull last_test = "";
 
-#define print_failure() printf("[  FAILED  ]\n  (line %d)", __LINE__)
+/////////////////////////
+// Test Running Macros //
+/////////////////////////
+
+// Defines whether or not to register the kumu VM standard libraries.
+#define REG_LIBS true
+#define NO_REG_LIBS false
+
+// Test Macros:
+//
+// TEST_SCRIPT(bool reglibs, const char *_nonnull name, const char *_nonnull code)
+// TEST_SCRIPT_WITH_VM(kuvm *__nonnull vm, const char *_nonnull name, const char *_nonnull code)
+// TEST_SYNTAX_FAILURE(bool reglibs, const char *_nonnull name, const char *_nonnull code)
+// TEST_SYNTAX_FAILURE_WITH_VM(kuvm *__nonnull vm, const char *_nonnull name, const char *_nonnull code)
+// TEST_RUNTIME_FAILURE(bool reglibs, const char *_nonnull name, const char *_nonnull code)
+// TEST_RUNTIME_FAILURE_WITH_VM(kuvm *__nonnull vm, const char *_nonnull name, const char *_nonnull code)
+// TEST_EXPRESSION(bool reglibs, const char *_nonnull name, const char *_nonnull expected_kumu, kuval expected_kuval)
+
+#define TEST_SCRIPT_WITH_VM(vm, name, code) kut_kumu_test(vm, false, name, code, KVM_OK);
+
+#define TEST_SYNTAX_FAILURE_WITH_VM(vm, name, code) kut_kumu_test(vm, false, name, code, KVM_ERR_SYNTAX)
+
+#define TEST_RUNTIME_FAILURE_WITH_VM(vm, name, code) kut_kumu_test(vm, false, name, code, KVM_ERR_RUNTIME);
+
+// Test Mode: In this mode, tests are run directly from C.
+
+#ifndef OUTPUT_TESTS
+
+#define test_printf printf
+#define test_vfprintf vfprintf
+
+#define TEST_SCRIPT(reglibs, name, code) kut_kumu_test(NULL, reglibs, name, code, KVM_OK);
+
+#define TEST_SYNTAX_FAILURE(reglibs, name, code) kut_kumu_test(NULL, reglibs, name, code, KVM_ERR_SYNTAX);
+
+#define TEST_RUNTIME_FAILURE(reglibs, name, code) kut_kumu_test(NULL, reglibs, name, code, KVM_ERR_RUNTIME);
+
+#define TEST_EXPRESSION(reglibs, code, expected_kumu, expected_kuval)   \
+  do {                                                                  \
+    kut_kumu_test(NULL, reglibs, (code), ("ASSERT_EQ(" expected_kumu ", " code ");"), KVM_OK); \
+    kut_exec_c_test(reglibs, (code), (code), (expected_kuval));         \
+  } while (0)
+
+// Output Mode: In this mode, any tests that can be run externally are output.
+
+#else // OUTPUT_TESTS
+
+#define test_printf(...)
+#define test_vfprintf(...)
+
+#define TEST_SCRIPT(reglibs, name, code) printf("<test> <name>%s</name> <code>%s</code> </test>\n", name, code);
+
+#define TEST_SYNTAX_FAILURE(reglibs, name, code) printf("<syntax_failure> <name>%s</name> <code>%s</code> </syntax_failure>\n", name, code);
+
+#define TEST_RUNTIME_FAILURE(reglibs, name, code) printf("<runtime_failure> <name>%s</name> <code>%s</code> </runtime_failure>\n", name, code);
+
+#define TEST_EXPRESSION(reglibs, code, expected_kumu, expected_kuval) printf("<test> <name>%s</name> <code>ASSERT_EQ(%s, %s);</code> </test>\n", code, expected_kumu, code);
+
+#endif // OUTPUT_TESTS
+
+#define print_failure() test_printf("[  FAILED  ]\n  (line %d)", __LINE__)
+
+/////////////////////////
+// C Validation Macros //
+/////////////////////////
 
 /////////////////////////
 // C Validation Macros //
@@ -29,7 +93,7 @@ const char *__nonnull last_test = "";
     } else { \
       ktest_fail++; \
       print_failure(); \
-      printf("expected true found false [%s]\n", (m)); \
+      test_printf("expected true found false [%s]\n", (m)); \
     } \
   } while (0)
 
@@ -42,7 +106,7 @@ const char *__nonnull last_test = "";
     } else { \
         ktest_fail++; \
         print_failure(); \
-        printf("expected: %d found: %d [%s]\n", (v2), (v1), (m)); \
+        test_printf("expected: %d found: %d [%s]\n", (v2), (v1), (m)); \
     } \
   } while (0)
 
@@ -56,11 +120,11 @@ const char *__nonnull last_test = "";
       uint64_t f = vm->flags; \
       ktest_fail++; \
       print_failure(); \
-      printf("expected: "); \
+      test_printf("expected: "); \
       ku_printval((vm), (v2)); \
-      printf(" found: "); \
+      test_printf(" found: "); \
       ku_printval((vm), (v1)); \
-      printf(" [%s]\n", (m)); \
+      test_printf(" [%s]\n", (m)); \
       vm->flags = f; \
     } \
   } while(0)
@@ -103,7 +167,7 @@ const char *__nonnull last_test = "";
 ////////////////////////////
 
 void kut_print(const char *_Nullable fmt, va_list args) {
-  vfprintf(stderr, fmt, args);
+  test_vfprintf(stderr, fmt, args);
 }
 
 static void kut_print_failure(kuvm *__nonnull vm, kuval expected, kuval actual)
@@ -193,13 +257,13 @@ kuvm *__nonnull kut_new(bool reglibs) {
 
 void kut_free(kuvm *__nonnull vm) {
   if (vm->sp > vm->stack) {
-    printf(">>> [%s] warning stack at %d\n", last_test, (int)(vm->sp - vm->stack));
+    test_printf(">>> [%s] warning stack at %d\n", last_test, (int)(vm->sp - vm->stack));
     ktest_warn++;
   }
 
 #ifdef STACK_CHECK
   if (vm->underflow > 0) {
-    printf(">>> [%s] warning stack underflow %d\n", last_test, vm->underflow);
+    test_printf(">>> [%s] warning stack underflow %d\n", last_test, vm->underflow);
     ktest_warn++;
   }
 #endif // STACK_CHECK
@@ -284,9 +348,9 @@ static void kut_exec_c_test(bool reglibs,
 }
 
 static void ku_test_summary() {
-  printf("[  PASSED  ] %d test\n", ktest_pass);
-  printf("[   WARN   ] %d test\n", ktest_warn);
-  printf("[  FAILED  ] %d test\n", ktest_fail);
+  test_printf("[  PASSED  ] %d test\n", ktest_pass);
+  test_printf("[   WARN   ] %d test\n", ktest_warn);
+  test_printf("[  FAILED  ] %d test\n", ktest_fail);
 }
 
 static kuval kutest_native_add(KU_UNUSED kuvm *__nonnull vm, int argc, KU_UNUSED kuval *__nullable argv) {
@@ -831,7 +895,7 @@ int ku_test() {
   TEST_SCRIPT(REG_LIBS, "function call def",
               "function foo(a,b) { printf(2); }");
 
-  TEST_RUNTIME_FAILURE_WITH_VM(vm, "function call mismatch", "foo(1,2,3);");
+  TEST_RUNTIME_FAILURE(REG_LIBS, "function call mismatch", "function foo(a,b) { printf(2); } foo(1,2,3);");
 
   TEST_RUNTIME_FAILURE(NO_REG_LIBS, "non-function call", "a=7; a();");
 
@@ -1090,6 +1154,9 @@ int ku_test() {
               "let f = (a,b) => a*b; let x=f(3,4);"
               "ASSERT_EQ(12, x);");
 
+  TEST_SCRIPT(NO_REG_LIBS, "lambda (args) ret",
+              "let f = (a,b) => a*b; let x=f(3,4);"
+              "ASSERT_EQ(12, x);");
 
   TEST_SCRIPT(NO_REG_LIBS, "lambda args body ret",
               "let max = (a,b) => { if (a>b) return a; else return b; }; let x=max(3,14);"

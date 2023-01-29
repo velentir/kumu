@@ -54,6 +54,10 @@ out/kumu: build/release/kumu.o build/release/kumain.o build/release/main.o | out
 out/test: build/debug/kumu.o build/debug/kutest.o build/debug/testmain.o | out
 	$(CC) $(LDFLAGS) $(LDLIBS) $(LLVMCOVLDFLAGS) $^ -o $@
 
+out/tests.xml: CFLAGS+=-DOUTPUT_TESTS
+out/tests.xml: out/test
+	-LLVM_PROFILE_FILE=$(LLVM_PROFRAW_FILE) $< > $@ 2>&1
+
 $(call usage,install,Install the kumu REPL CLI ($(binpath)).)
 all:: install
 .PHONY: install
@@ -80,6 +84,13 @@ all:: test
 .PHONY: test
 test: out/test
 	LLVM_PROFILE_FILE=$(LLVM_PROFRAW_FILE) $<
+
+$(call usage,test,Build and run the javascript unit tests (out/test).)
+all:: js_test
+.PHONY: js_test
+js_test: out/tests.xml
+	npm install jsdom
+	node kumu/test.js $<
 
 $(call usage,cov,Get test coverage of kumu core (excludes tests and main).)
 all:: cov
