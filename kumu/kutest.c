@@ -779,11 +779,11 @@ int ku_test() {
               "let x = 10; if (false) x = 30;  else x = 20; ASSERT_EQ(20, x);");
 
   TEST_SCRIPT(REG_LIBS, "if print",
-              "if (true) { printf(222); }");
+              "if (true) { console.log(222); }");
 
-  TEST_SYNTAX_FAILURE(REG_LIBS, "if no (", "if true) { printf(222); }");
+  TEST_SYNTAX_FAILURE(REG_LIBS, "if no (", "if true) { console.log(222); }");
 
-  TEST_SYNTAX_FAILURE(REG_LIBS, "if no )", "if (true { printf(222); }");
+  TEST_SYNTAX_FAILURE(REG_LIBS, "if no )", "if (true { console.log(222); }");
 
   TEST_SCRIPT(NO_REG_LIBS, "false && true",
               "let x = false && true;"
@@ -834,7 +834,7 @@ int ku_test() {
   vm = kut_new(true);
   vm->flags = 0;
   TEST_SCRIPT_WITH_VM(vm, "for no init",
-                      "let x = 0; for(; x < 10; x=x+1) {printf(x); printf(\"\\n\");}"
+                      "let x = 0; for(; x < 10; x=x+1) {console.log(x); console.log(\"\\n\");}"
                       "ASSERT_EQ(10, x);");
   kut_free(vm);
 
@@ -853,13 +853,13 @@ int ku_test() {
   vm = kut_new(true);
   vm->max_params = 1;
 
-  TEST_SYNTAX_FAILURE_WITH_VM(vm, "too many params", "function foo(a,b) { printf(555); }; foo(4,5,6);");
+  TEST_SYNTAX_FAILURE_WITH_VM(vm, "too many params", "function foo(a,b) { console.log(555); }; foo(4,5,6);");
   kut_free(vm);
 
   TEST_SCRIPT(REG_LIBS, "function call def",
-              "function foo(a,b) { printf(2); }");
+              "function foo(a,b) { console.log(2); }");
 
-  TEST_RUNTIME_FAILURE(REG_LIBS, "function call mismatch", "function foo(a,b) { printf(2); } foo(1,2,3);");
+  TEST_RUNTIME_FAILURE(REG_LIBS, "function call mismatch", "function foo(a,b) { console.log(2); } foo(1,2,3);");
 
   TEST_RUNTIME_FAILURE(NO_REG_LIBS, "non-function call", "a=7; a();");
 
@@ -903,8 +903,8 @@ int ku_test() {
   EXPECT_INT(vm, IS_NUM(v), true, "clock return");
   kut_free(vm);
 
-  TEST_SCRIPT(REG_LIBS, "printf res",
-              "printf(12);");
+  TEST_SCRIPT(REG_LIBS, "console.log res",
+              "console.log(12);");
 
   TEST_SCRIPT(NO_REG_LIBS, "closure val",
               "function M(x) { let m = x; function e(n) { return m*n; } return e; }\n let z = M(5); let x = z(3);"
@@ -938,8 +938,8 @@ int ku_test() {
                       "ASSERT_NULL(x);");
   kut_free(vm);
 
-  TEST_SCRIPT(REG_LIBS, "printf null",
-              "printf(null);");
+  TEST_SCRIPT(REG_LIBS, "console.log null",
+              "console.log(null);");
 
   vm = kut_new(false);
   vm->flags = KVM_F_GCSTRESS | KVM_F_GCLOG;
@@ -968,10 +968,10 @@ int ku_test() {
   kut_free(vm);
 
   TEST_SCRIPT(REG_LIBS, "class decl",
-              "class Foo {}\n printf(Foo);");
+              "class Foo {}\n console.log(Foo);");
 
   TEST_SCRIPT(REG_LIBS, "class cons",
-              "class Foo {}\n let f = new Foo(); printf(f);");
+              "class Foo {}\n let f = new Foo(); console.log(f);");
 
   TEST_RUNTIME_FAILURE(REG_LIBS, "non-class parameter to new", "function Foo() {}\n let f = new Foo();");
 

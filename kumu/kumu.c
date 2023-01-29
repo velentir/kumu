@@ -3212,6 +3212,16 @@ static kuval ku_print(kuvm *__nonnull vm, int argc, kuval *__nullable argv) {
   return NULL_VAL;
 }
 
+// ********************** console **********************
+kuval console_scall(KU_UNUSED kuvm *__nonnull vm, kustr *__nonnull m, int argc, kuval *__nullable argv) {
+  if (M3(m, "log")) {
+    ku_print(vm, argc, argv);
+  }
+
+  return NULL_VAL;
+}
+
+
 // ********************** math **********************
 #define  _USE_MATH_DEFINES    // for windows
 #include <math.h>
@@ -3439,9 +3449,12 @@ void ku_reglibs(kuvm *__nonnull vm) {
   ku_cfuncdef(vm, "clock", ku_clock);
   ku_cfuncdef(vm, "int", ku_intf);
   ku_cfuncdef(vm, "parseFloat", ku_parseFloat);
-  ku_cfuncdef(vm, "printf", ku_print);
   ku_cfuncdef(vm, "array", ku_arraycons);
   ku_cfuncdef(vm, "eval", ku_eval);
+
+  kucclass *__nonnull console = ku_cclassnew(vm, "console");
+  console->scall = console_scall;
+  ku_cclassdef(vm, console);
 
   kucclass *__nonnull math = ku_cclassnew(vm, "Math");
   math->sget = math_sget;
